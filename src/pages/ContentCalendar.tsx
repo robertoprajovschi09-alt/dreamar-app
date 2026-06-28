@@ -1,0 +1,327 @@
+import { useEffect, useMemo, useState } from "react";
+import { PageHeader, Button, Select, Panel, SectionCard, Badge, Input, Segmented } from "@/components/ui";
+import { Drawer, Modal } from "@/components/overlay";
+import { useToast } from "@/lib/toast";
+import { useContent, type ContentPost, type UIPostStatus } from "@/lib/content";
+import { useClients } from "@/lib/clients";
+import { SkeletonRows } from "@/components/Skeleton";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, FileText, GripVertical, Loader2, Plus, Trash2, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }> = {
+  idea: { label: "Idee", cls: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+  script: { label: "Scenariu", cls: "bg-info/15 text-info", dot: "bg-info" },
+  filming: { label: "Filmare", cls: "bg-indigo-500/15 text-indigo-500", dot: "bg-indigo-500" },
+  editing: { label: "Editare", cls: "bg-indigo-500/15 text-indigo-500", dot: "bg-indigo-500" },
+  approval: { label: "Pentru aprobare", cls: "bg-warning/20 text-[hsl(var(--warning))]", dot: "bg-[hsl(var(--warning))]" },
+  approved: { label: "Aprobat", cls: "bg-success/15 text-success", dot: "bg-success" },
+  scheduled: { label: "Programat", cls: "bg-primary/15 text-primary", dot: "bg-primary" },
+  published: { label: "Publicat", cls: "bg-emerald-500/15 text-emerald-500", dot: "bg-emerald-500" },
+  analyzed: { label: "Analizat", cls: "bg-foreground/10 text-foreground", dot: "bg-foreground" },
+};
+const statusOrder = Object.keys(statusMeta) as UIPostStatus[];
+const weekdays = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"];
+const platforms = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
+
+const iso = (y: number, m: number, day: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+function dayInMonth(date: string | null, y: number, m: number): number | null {
+  if (!date) return null;
+  const [yy, mm, dd] = date.split("-").map(Number);
+  return yy === y && mm - 1 === m ? dd : null;
+}
+const monthLabel = (y: number, m: number) => new Date(y, m, 1).toLocaleString("ro-RO", { month: "long", year: "numeric" });
+
+export default function ContentCalendar() {
+  const { push } = useToast();
+  const { posts, loading, live, createPost, updatePost, deletePost } = useContent();
+  const { clients } = useClients();
+
+  const today = useMemo(() => new Date(), []);
+  const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  const [client, setClient] = useState("all");
+  const [platform, setPlatform] = useState("all");
+  const [view, setView] = useState<"month" | "list">("month");
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overDay, setOverDay] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const selected = posts.find((p) => p.id === selectedId) ?? null;
+  const clientNames = useMemo(() => [...new Set(posts.map((p) => p.clientName))].sort(), [posts]);
+
+  const matches = (p: ContentPost) =>
+    (client === "all" || p.clientName === client) && (platform === "all" || p.platform === platform);
+
+  const daysInMonth = new Date(ym.y, ym.m + 1, 0).getDate();
+  const firstWeekday = (new Date(ym.y, ym.m, 1).getDay() + 6) % 7; // Monday = 0
+  const cells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const isCurrentMonth = ym.y === today.getFullYear() && ym.m === today.getMonth();
+
+  function shiftMonth(delta: number) {
+    setYm((p) => {
+      const d = new Date(p.y, p.m + delta, 1);
+      return { y: d.getFullYear(), m: d.getMonth() };
+    });
+  }
+  function onDrop(day: number) {
+    if (!draggingId) return;
+    updatePost(draggingId, { date: iso(ym.y, ym.m, day) });
+    setDraggingId(null);
+    setOverDay(null);
+  }
+
+  function Chip({ p }: { p: ContentPost }) {
+    const dim = !matches(p);
+    return (
+      <div
+        draggable
+        onDragStart={() => setDraggingId(p.id)}
+        onDragEnd={() => { setDraggingId(null); setOverDay(null); }}
+        onClick={() => setSelectedId(p.id)}
+        title={`${p.title} · ${p.clientName} · ${p.platform}`}
+        className={cn(
+          "group flex cursor-grab items-start gap-1 rounded-md px-1.5 py-1 text-[10px] font-600 leading-tight active:cursor-grabbing",
+          statusMeta[p.status].cls, draggingId === p.id && "opacity-40", dim && "opacity-30"
+        )}
+      >
+        <GripVertical className="mt-px h-3 w-3 shrink-0 opacity-40 group-hover:opacity-70" />
+        <span className="min-w-0">
+          <span className="block truncate">{p.title}</span>
+          <span className="block truncate opacity-70">{p.clientName}{p.platform ? ` · ${p.platform}` : ""}</span>
+        </span>
+      </div>
+    );
+  }
+
+  function DayCell({ day }: { day: number | null }) {
+    const dayPosts = day ? posts.filter((p) => dayInMonth(p.date, ym.y, ym.m) === day) : [];
+    const isToday = isCurrentMonth && day === today.getDate();
+    const isOver = overDay === day && draggingId !== null;
+    return (
+      <div
+        onDragOver={(e) => { if (!day) return; e.preventDefault(); setOverDay(day); }}
+        onDragLeave={() => setOverDay((d) => (d === day ? null : d))}
+        onDrop={() => day && onDrop(day)}
+        className={cn("min-h-[120px] border-b border-r border-border/70 p-1.5 transition-colors [&:nth-child(7n)]:border-r-0", isOver && "bg-primary/5 ring-2 ring-inset ring-primary/40")}
+      >
+        {day && (
+          <>
+            <div className="mb-1 flex justify-end">
+              <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs font-700", isToday ? "gradient-primary text-white" : "text-muted-foreground")}>{day}</span>
+            </div>
+            <div className="space-y-1">{dayPosts.map((p) => <Chip key={p.id} p={p} />)}</div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const listPosts = posts.filter(matches).slice().sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999"));
+
+  return (
+    <>
+      <PageHeader title="Calendar de conținut" subtitle="Trage postările pentru a le reprograma · apasă pentru a deschide editorul">
+        <Button variant="primary" onClick={() => setComposerOpen(true)} disabled={live && clients.length === 0}><Plus className="h-4 w-4" /> Postare nouă</Button>
+      </PageHeader>
+
+      <Panel className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="min-w-[150px] text-center font-display text-lg font-800">{monthLabel(ym.y, ym.m)}</span>
+          <Button variant="ghost" size="icon" onClick={() => shiftMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+          {!isCurrentMonth && <Button variant="ghost" size="sm" onClick={() => setYm({ y: today.getFullYear(), m: today.getMonth() })}>Astăzi</Button>}
+        </div>
+        <Segmented value={view} onChange={setView} className="lg:ml-2" options={[{ label: "Lună", value: "month" }, { label: "Listă", value: "list" }]} />
+        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-600 text-primary">
+            <CalendarDays className="h-3.5 w-3.5" /> {posts.length} {posts.length === 1 ? "postare" : "postări"}
+          </span>
+          <Select value={client} onChange={(e) => setClient(e.target.value)}>
+            <option value="all">Toți clienții</option>
+            {clientNames.map((c) => <option key={c}>{c}</option>)}
+          </Select>
+          <Select value={platform} onChange={(e) => setPlatform(e.target.value)}>
+            <option value="all">Toate platformele</option>
+            {platforms.map((p) => <option key={p}>{p}</option>)}
+          </Select>
+        </div>
+      </Panel>
+
+      {loading ? (
+        <SkeletonRows rows={6} cols={4} />
+      ) : posts.length === 0 ? (
+        <Panel className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary"><CalendarDays className="h-7 w-7" /></span>
+          <p className="font-display text-lg font-700">Încă nicio postare</p>
+          <p className="max-w-sm text-sm text-muted-foreground">{live && clients.length === 0 ? "Adaugă mai întâi un client, apoi planifică-i conținutul aici." : "Creează prima postare pentru a începe planificarea calendarului de conținut."}</p>
+          {!(live && clients.length === 0) && <Button variant="primary" className="mt-1" onClick={() => setComposerOpen(true)}><Plus className="h-4 w-4" /> Postare nouă</Button>}
+        </Panel>
+      ) : view === "month" ? (
+        <Panel className="overflow-hidden p-0">
+          <div className="grid grid-cols-7 border-b border-border">
+            {weekdays.map((d) => <div key={d} className="px-3 py-2.5 text-center text-[11px] font-700 uppercase tracking-wide text-muted-foreground">{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7">{cells.map((day, i) => <DayCell key={i} day={day} />)}</div>
+        </Panel>
+      ) : (
+        <Panel className="divide-y divide-border">
+          {listPosts.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Nicio postare nu corespunde acestor filtre.</p>}
+          {listPosts.map((p) => (
+            <button key={p.id} onClick={() => setSelectedId(p.id)} className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-muted/40">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-center">
+                <span className="font-display text-sm font-800 leading-none">{p.date ? Number(p.date.split("-")[2]) : "—"}</span>
+                <span className="text-[9px] uppercase text-muted-foreground">{p.date ? new Date(p.date + "T00:00:00").toLocaleString("ro-RO", { month: "short" }) : ""}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-600">{p.title}</p>
+                <p className="text-xs text-muted-foreground">{p.clientName}{p.platform ? ` · ${p.platform}` : ""}</p>
+              </div>
+              <span className={cn("rounded-full px-2.5 py-1 text-xs font-600", statusMeta[p.status].cls)}>{statusMeta[p.status].label}</span>
+            </button>
+          ))}
+        </Panel>
+      )}
+
+      <SectionCard title="Etape de producție">
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(statusMeta).map(([k, v]) => (
+            <span key={k} className={cn("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-600", v.cls)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", v.dot)} />{v.label}
+            </span>
+          ))}
+        </div>
+      </SectionCard>
+
+      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} clients={clients} defaultDate={iso(ym.y, ym.m, isCurrentMonth ? today.getDate() : 1)}
+        onCreate={async (input) => {
+          const res = await createPost(input);
+          if (res.error) push({ tone: "danger", title: "Nu s-a putut crea postarea", description: res.error });
+          else push({ tone: "success", title: "Postare creată", description: input.title });
+          return res;
+        }} />
+
+      <PostDrawer post={selected} onClose={() => setSelectedId(null)} statusMeta={statusMeta} statusOrder={statusOrder}
+        onSave={async (patch) => {
+          const res = selected ? await updatePost(selected.id, patch) : {};
+          if (res.error) { push({ tone: "danger", title: "Nu s-a putut salva postarea", description: res.error }); return; }
+          setSelectedId(null); push({ tone: "success", title: "Postare salvată" });
+        }}
+        onStatus={async (s) => {
+          if (!selected) return;
+          const res = await updatePost(selected.id, { status: s });
+          if (res.error) push({ tone: "danger", title: "Nu s-a putut actualiza statusul", description: res.error });
+        }}
+        onDelete={async () => {
+          if (!selected) return;
+          const res = await deletePost(selected.id);
+          if (res.error) { push({ tone: "danger", title: "Nu s-a putut șterge postarea", description: res.error }); return; }
+          setSelectedId(null); push({ tone: "warning", title: "Postare ștearsă" });
+        }} />
+    </>
+  );
+}
+
+function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
+  open: boolean; onClose: () => void; defaultDate: string;
+  clients: { id: string; name: string }[];
+  onCreate: (input: { clientId: string; title: string; platform: string; status: UIPostStatus; date: string | null }) => Promise<{ error?: string }>;
+}) {
+  const [clientId, setClientId] = useState("");
+  const [title, setTitle] = useState("");
+  const [platform, setPlatform] = useState("Instagram");
+  const [status, setStatus] = useState<UIPostStatus>("idea");
+  const [date, setDate] = useState(defaultDate);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setTitle(""); setPlatform("Instagram"); setStatus("idea"); setDate(defaultDate); } }, [open, clients, defaultDate]);
+
+  async function submit() {
+    if (!title.trim() || !clientId || busy) return;
+    setBusy(true);
+    const res = await onCreate({ clientId, title: title.trim(), platform, status, date });
+    setBusy(false);
+    if (!res.error) onClose();
+  }
+  return (
+    <Modal open={open} onClose={onClose} title="Postare nouă" subtitle="Planifică o postare de conținut pentru un client" size="md"
+      footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim() || !clientId} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează postarea</Button></>}>
+      <div className="space-y-4">
+        <Field label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full">{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
+        <Field label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex. Tur proprietate — Sky 2 camere" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{platforms.map((p) => <option key={p}>{p}</option>)}</Select></Field>
+          <Field label="Dată"><Input type="date" value={date ?? ""} onChange={(e) => setDate(e.target.value)} /></Field>
+        </div>
+        <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value as UIPostStatus)} className="w-full">{statusOrder.map((s) => <option key={s} value={s}>{statusMeta[s].label}</option>)}</Select></Field>
+      </div>
+    </Modal>
+  );
+}
+
+function PostDrawer({ post, onClose, statusMeta, statusOrder, onSave, onStatus, onDelete }: {
+  post: ContentPost | null; onClose: () => void;
+  statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }>; statusOrder: UIPostStatus[];
+  onSave: (patch: { title: string; script: string; platform: string; date: string | null }) => void; onStatus: (s: UIPostStatus) => void; onDelete: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [script, setScript] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [date, setDate] = useState("");
+  useEffect(() => {
+    if (post) {
+      setTitle(post.title); setScript(post.script); setPlatform(post.platform || "");
+      setDate(post.date && /^\d{4}-\d{2}-\d{2}/.test(String(post.date)) ? String(post.date).slice(0, 10) : "");
+    }
+  }, [post]);
+  return (
+    <Drawer open={!!post} onClose={onClose} title={post?.title}
+      subtitle={post ? `${post.clientName}${post.platform ? ` · ${post.platform}` : ""}${post.date ? ` · ${post.date}` : ""}` : undefined}
+      badge={post && <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-700", statusMeta[post.status].cls)}>{statusMeta[post.status].label}</span>}
+      footer={<>
+        <Button variant="ghost" size="sm" className="text-danger" onClick={onDelete}><Trash2 className="h-4 w-4" /> Șterge</Button>
+        <Button variant="primary" size="sm" className="ml-auto" onClick={() => onSave({ title, script, platform, date: date || null })}>Salvează</Button>
+      </>}>
+      {post && (
+        <div className="space-y-5">
+          <div>
+            <p className="mb-1.5 text-xs font-700 text-muted-foreground">Titlu</p>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-700 text-muted-foreground">Status de producție</p>
+            <div className="space-y-1">
+              {statusOrder.map((s, i) => {
+                const curIdx = statusOrder.indexOf(post.status);
+                const done = i < curIdx; const active = i === curIdx;
+                return (
+                  <button key={s} onClick={() => onStatus(s)} className={cn("flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-sm transition", active ? "bg-primary/[0.07]" : "hover:bg-muted")}>
+                    <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-700", done ? "bg-success text-white" : active ? "gradient-primary text-white" : "border border-border text-muted-foreground")}>{done ? "✓" : i + 1}</span>
+                    <span className={cn("font-600", active ? "text-foreground" : done ? "text-muted-foreground line-through" : "text-muted-foreground")}>{statusMeta[s].label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs font-700 text-muted-foreground"><FileText className="mr-1 inline h-3.5 w-3.5" />Scenariu</p>
+            <textarea value={script} onChange={(e) => setScript(e.target.value)} className="min-h-[110px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Hook, unghi principal, CTA…" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="mb-1.5 text-xs font-700 text-muted-foreground"><User className="mr-1 inline h-3.5 w-3.5" />Platformă</p>
+              <Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="h-9 w-full"><option value="">—</option>{platforms.map((p) => <option key={p}>{p}</option>)}</Select>
+            </div>
+            <div>
+              <p className="mb-1.5 text-xs font-700 text-muted-foreground"><CalendarClock className="mr-1 inline h-3.5 w-3.5" />Data programată</p>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" />
+            </div>
+          </div>
+        </div>
+      )}
+    </Drawer>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><p className="mb-1.5 text-xs font-700 text-muted-foreground">{label}</p>{children}</div>;
+}
