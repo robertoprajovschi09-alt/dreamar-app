@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Panel, Button, Badge, Select } from "@/components/ui";
 import { useToast } from "@/lib/toast";
+import { useWorkspace } from "@/lib/workspace";
+import { AiComingSoon } from "@/components/AiSoon";
 import { strategySuggestions } from "@/data/sample";
 import { ArrowUp, Mic, Paperclip, Plus, Share2, Sparkles, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -109,6 +111,7 @@ function Orb({ size = 32 }: { size?: number }) {
 
 export default function StrategyRoom() {
   const { push } = useToast();
+  const { live } = useWorkspace();
   const [client, setClient] = useState("Altmark Residences");
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -166,6 +169,14 @@ export default function StrategyRoom() {
   }
 
   const empty = messages.length === 0;
+
+  if (live) return (
+    <AiComingSoon
+      title="Cameră de strategie AI"
+      subtitle="Asistent de strategie pe datele fiecărui client"
+      blurb="Camera de strategie va folosi AI ca să-ți recomande planuri de conținut, hook-uri și scripturi pornind de la videoclipurile, metricile și feedback-ul fiecărui client. O activăm în curând — momentan poți planifica manual în Calendar și Sarcini."
+    />
+  );
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">

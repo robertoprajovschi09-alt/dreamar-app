@@ -5,7 +5,7 @@ import { useWorkspace } from "@/lib/workspace";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { nicheSpec, NICHE_ICONS, type NicheKey, type MetricField } from "@/lib/niches";
-import { Check, CheckCircle2, FileText, Loader2, Sparkles, Target, ThumbsUp, X } from "lucide-react";
+import { Check, CheckCircle2, FileText, Loader2, Pencil, Sparkles, Target, ThumbsUp, X } from "lucide-react";
 
 type Pending = { approvalId: string; title: string; platform: string };
 type Impact = Partial<Record<MetricField, number>> & { qualitative_feedback?: string; objections_heard?: string };
@@ -30,6 +30,7 @@ export default function ClientPortal() {
   const [impact, setImpact] = useState<Impact>({});
   const [clientReported, setClientReported] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
+  const [comments, setComments] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(live);
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -96,13 +97,22 @@ export default function ClientPortal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live, clientId]);
 
-  async function decide(approvalId: string, title: string, approved: boolean) {
+  type Decision = "approved" | "approved_with_changes" | "rejected";
+  async function decide(approvalId: string, title: string, decision: Decision) {
     setPending((p) => p.filter((x) => x.approvalId !== approvalId));
+    const note = (comments[approvalId] ?? "").trim();
     if (live && supabase) {
-      const { error } = await supabase.from("approvals").update({ status: approved ? "approved" : "rejected" }).eq("id", approvalId);
+      const patch: Record<string, unknown> = { status: decision };
+      if (note) { patch.comments = note; patch.change_requests = decision === "approved" ? null : note; }
+      const { error } = await supabase.from("approvals").update(patch).eq("id", approvalId);
       if (error) { push({ tone: "danger", title: "Nu am putut înregistra decizia", description: error.message }); void loadPortal(); return; }
     }
-    push({ tone: approved ? "success" : "warning", title: approved ? "Conținut aprobat" : "Modificări cerute", description: title });
+    const meta = decision === "approved"
+      ? { tone: "success" as const, title: "Conținut aprobat" }
+      : decision === "approved_with_changes"
+        ? { tone: "info" as const, title: "Modificări cerute" }
+        : { tone: "warning" as const, title: "Conținut respins" };
+    push({ tone: meta.tone, title: meta.title, description: title });
   }
 
   if (loading) {
@@ -189,9 +199,16 @@ export default function ClientPortal() {
                   <p className="flex-1 text-sm font-600">{a.title}</p>
                   {a.platform && <Badge tone="neutral">{a.platform}</Badge>}
                 </div>
-                <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => decide(a.approvalId, a.title, false)}><X className="h-3.5 w-3.5" /> Cere modificări</Button>
-                  <Button variant="primary" size="sm" className="flex-1" onClick={() => decide(a.approvalId, a.title, true)}><Check className="h-3.5 w-3.5" /> Aprobă</Button>
+                <textarea
+                  value={comments[a.approvalId] ?? ""}
+                  onChange={(e) => setComments((c) => ({ ...c, [a.approvalId]: e.target.value }))}
+                  placeholder="Opțional: spune-ne ce să schimbăm sau de ce respingi"
+                  className="mt-2.5 min-h-[52px] w-full rounded-lg border border-input bg-card p-2.5 text-xs ring-focus"
+                />
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" className="text-danger" onClick={() => decide(a.approvalId, a.title, "rejected")}><X className="h-3.5 w-3.5" /> Respinge</Button>
+                  <Button variant="outline" size="sm" onClick={() => decide(a.approvalId, a.title, "approved_with_changes")}><Pencil className="h-3.5 w-3.5" /> Modificări</Button>
+                  <Button variant="primary" size="sm" onClick={() => decide(a.approvalId, a.title, "approved")}><Check className="h-3.5 w-3.5" /> Aprobă</Button>
                 </div>
               </div>
             ))}

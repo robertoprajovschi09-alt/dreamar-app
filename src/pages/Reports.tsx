@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { PageHeader, Button, Badge, Panel, Select } from "@/components/ui";
 import { reportSections } from "@/data/sample";
+import { useWorkspace } from "@/lib/workspace";
+import { AiComingSoon } from "@/components/AiSoon";
 import { Check, Download, FileText, Loader2, Pencil, Plus, RotateCw, Sparkles, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,7 @@ const altText =
   "Regenerat de AI din cele mai recente videoclipuri, metrici și feedback ale acestui client. Editează liber această ciornă înainte de export.";
 
 export default function Reports() {
+  const { live } = useWorkspace();
   const [sections, setSections] = useState<Section[]>(
     reportSections.map((title, i) => ({
       id: `s${i}`,
@@ -73,6 +76,14 @@ export default function Reports() {
     setActiveId(id);
     document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  if (live) return (
+    <AiComingSoon
+      title="Rapoarte lunare AI"
+      subtitle="Rapoarte de performanță generate automat din datele clientului"
+      blurb="Rapoartele AI vor genera automat rezumate lunare din videoclipuri, metrici și feedback-ul clienților. Până le activăm, urmărești rezultatele în Tablou și în profilul fiecărui client, iar impactul în Profilul clientului → Impact în afacere."
+    />
+  );
 
   return (
     <>

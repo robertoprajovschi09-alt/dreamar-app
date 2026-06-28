@@ -174,7 +174,7 @@ function TeamTab() {
     setLoading(true);
     const { data, error } = await supabase
       .from("agency_members")
-      .select("id, role, profile:profiles(full_name, email)")
+      .select("id, role, profile:profiles!agency_members_profile_id_fkey(full_name, email)")
       .eq("agency_id", currentAgency.id);
     setLoading(false);
     if (error) { push({ tone: "danger", title: "Nu s-a putut încărca echipa", description: error.message }); return; }

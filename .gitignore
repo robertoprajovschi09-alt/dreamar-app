@@ -27,3 +27,4 @@ supabase/.temp
 
 # dev screenshots
 Screenshot*.png
+tsconfig.tsbuildinfo

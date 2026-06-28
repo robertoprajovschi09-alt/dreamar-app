@@ -5,7 +5,7 @@ import { useToast } from "@/lib/toast";
 import { useContent, type ContentPost, type UIPostStatus } from "@/lib/content";
 import { useClients } from "@/lib/clients";
 import { SkeletonRows } from "@/components/Skeleton";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, FileText, GripVertical, Loader2, Plus, Trash2, User } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, GripVertical, Loader2, Plus, Send, Trash2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }> = {
@@ -21,7 +21,13 @@ const statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string
 };
 const statusOrder = Object.keys(statusMeta) as UIPostStatus[];
 const weekdays = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"];
-const platforms = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
+const platforms = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn", "Twitter", "WhatsApp"];
+const APPROVAL_LABEL: Record<string, string> = {
+  pending: "Trimisă — așteaptă clientul",
+  approved: "Aprobată de client",
+  approved_with_changes: "Aprobată cu modificări",
+  rejected: "Respinsă de client",
+};
 
 const iso = (y: number, m: number, day: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 function dayInMonth(date: string | null, y: number, m: number): number | null {
@@ -33,7 +39,7 @@ const monthLabel = (y: number, m: number) => new Date(y, m, 1).toLocaleString("r
 
 export default function ContentCalendar() {
   const { push } = useToast();
-  const { posts, loading, live, createPost, updatePost, deletePost } = useContent();
+  const { posts, loading, live, createPost, updatePost, deletePost, requestApproval } = useContent();
   const { clients } = useClients();
 
   const today = useMemo(() => new Date(), []);
@@ -47,7 +53,12 @@ export default function ContentCalendar() {
   const [composerOpen, setComposerOpen] = useState(false);
 
   const selected = posts.find((p) => p.id === selectedId) ?? null;
-  const clientNames = useMemo(() => [...new Set(posts.map((p) => p.clientName))].sort(), [posts]);
+  // Filter options come from the live client list (so they appear even with 0 posts),
+  // merged with any client names already on posts.
+  const clientNames = useMemo(
+    () => [...new Set([...clients.map((c) => c.name), ...posts.map((p) => p.clientName)])].sort(),
+    [clients, posts]
+  );
 
   const matches = (p: ContentPost) =>
     (client === "all" || p.clientName === client) && (platform === "all" || p.platform === platform);
@@ -202,6 +213,11 @@ export default function ContentCalendar() {
         }} />
 
       <PostDrawer post={selected} onClose={() => setSelectedId(null)} statusMeta={statusMeta} statusOrder={statusOrder}
+        onRequestApproval={async (p) => {
+          const res = await requestApproval(p);
+          if (res.error) push({ tone: "danger", title: "Nu s-a putut trimite spre aprobare", description: res.error });
+          else push({ tone: "success", title: "Trimis clientului", description: `${p.title} — așteaptă decizia clientului.` });
+        }}
         onSave={async (patch) => {
           const res = selected ? await updatePost(selected.id, patch) : {};
           if (res.error) { push({ tone: "danger", title: "Nu s-a putut salva postarea", description: res.error }); return; }
@@ -258,10 +274,11 @@ function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
   );
 }
 
-function PostDrawer({ post, onClose, statusMeta, statusOrder, onSave, onStatus, onDelete }: {
+function PostDrawer({ post, onClose, statusMeta, statusOrder, onSave, onStatus, onDelete, onRequestApproval }: {
   post: ContentPost | null; onClose: () => void;
   statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }>; statusOrder: UIPostStatus[];
   onSave: (patch: { title: string; script: string; platform: string; date: string | null }) => void; onStatus: (s: UIPostStatus) => void; onDelete: () => void;
+  onRequestApproval: (post: ContentPost) => void;
 }) {
   const [title, setTitle] = useState("");
   const [script, setScript] = useState("");
@@ -286,6 +303,23 @@ function PostDrawer({ post, onClose, statusMeta, statusOrder, onSave, onStatus, 
           <div>
             <p className="mb-1.5 text-xs font-700 text-muted-foreground">Titlu</p>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <p className="mb-1.5 text-xs font-700 text-muted-foreground">Aprobare client</p>
+            {post.approvalStatus && post.approvalStatus !== "withdrawn" ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <span className="inline-flex items-center gap-1.5 text-sm font-600">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />{APPROVAL_LABEL[post.approvalStatus] ?? "Trimisă spre aprobare"}
+                </span>
+                {post.approvalStatus !== "pending" && (
+                  <Button size="sm" variant="outline" onClick={() => onRequestApproval(post)}><Send className="h-3.5 w-3.5" /> Retrimite</Button>
+                )}
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" className="w-full" onClick={() => onRequestApproval(post)}>
+                <Send className="h-4 w-4" /> Trimite clientului spre aprobare
+              </Button>
+            )}
           </div>
           <div>
             <p className="mb-2 text-xs font-700 text-muted-foreground">Status de producție</p>

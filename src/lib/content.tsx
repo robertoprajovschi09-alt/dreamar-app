@@ -63,6 +63,9 @@ type ContentCtx = {
   createPost: (input: NewPostInput) => Promise<{ error?: string; id?: string }>;
   updatePost: (id: string, patch: Partial<{ title: string; status: UIPostStatus; date: string | null; script: string; approvalStatus: string | null }>) => Promise<{ error?: string }>;
   deletePost: (id: string) => Promise<{ error?: string }>;
+  // Agency action: send a post to the client for approval (creates/refreshes an
+  // `approvals` row; the client then decides from their portal).
+  requestApproval: (post: ContentPost) => Promise<{ error?: string }>;
 };
 
 const Ctx = createContext<ContentCtx | null>(null);
@@ -158,8 +161,49 @@ export function ContentProvider({ children }: { children: ReactNode }) {
     return {};
   }, [live]);
 
+  const requestApproval = useCallback(async (post: ContentPost) => {
+    // optimistic: move to "Pentru aprobare" with a pending client decision
+    setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, status: "approval", approvalStatus: "pending" } : p)));
+    if (!live || !supabase || !agencyId) return {};
+
+    // Reuse an existing approval row for this post (avoid duplicate pending rows
+    // in the client's portal); otherwise create one. The DB trigger then copies
+    // status -> content_posts.approval_status.
+    const { data: existing } = await supabase
+      .from("approvals")
+      .select("id, status")
+      .eq("entity_type", "post").eq("entity_id", post.id)
+      .order("created_at", { ascending: false }).limit(1);
+    const row = existing?.[0];
+
+    let approvalErr: string | undefined;
+    if (row && row.status !== "pending") {
+      const { error } = await supabase.from("approvals").update({ status: "pending", comments: null, change_requests: null }).eq("id", row.id);
+      approvalErr = error?.message;
+    } else if (!row) {
+      const { data: u } = await supabase.auth.getUser();
+      const { error } = await supabase.from("approvals").insert({
+        agency_id: agencyId, client_id: post.clientId, entity_type: "post", entity_id: post.id,
+        status: "pending", requested_by: u.user?.id ?? null,
+      });
+      approvalErr = error?.message;
+    }
+    if (approvalErr) {
+      await reload();
+      // Friendly message for the plan feature gate (enforce_approval_workflow_feature).
+      if (/approval_workflow|plan_feature_required/i.test(approvalErr)) {
+        return { error: "Aprobările clienților fac parte din planul Growth sau superior. Treci la un plan superior pentru a trimite conținut spre aprobare." };
+      }
+      return { error: approvalErr };
+    }
+    // Keep the production stage in sync so the calendar shows "Pentru aprobare".
+    await supabase.from("content_posts").update({ status: "sent_for_approval" }).eq("id", post.id);
+    await reload();
+    return {};
+  }, [live, agencyId, reload]);
+
   return (
-    <Ctx.Provider value={{ posts, loading, live, reload, createPost, updatePost, deletePost }}>
+    <Ctx.Provider value={{ posts, loading, live, reload, createPost, updatePost, deletePost, requestApproval }}>
       {children}
     </Ctx.Provider>
   );
