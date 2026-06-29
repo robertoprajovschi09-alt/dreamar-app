@@ -174,7 +174,7 @@ export default function Clients() {
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 animate-scale-in items-center gap-2 panel px-3 py-2.5 shadow-glow">
+        <div className="fixed bottom-6 left-1/2 z-40 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 animate-scale-in flex-wrap items-center justify-center gap-2 panel px-3 py-2.5 shadow-glow">
           <span className="flex items-center gap-2 pr-1 text-sm font-700">
             <span className="grid h-6 min-w-6 place-items-center rounded-full gradient-primary px-1.5 text-xs text-white">{selected.size}</span>
             selectați

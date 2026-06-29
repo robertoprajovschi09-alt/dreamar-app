@@ -43,7 +43,7 @@ export function UserMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-64 animate-scale-in panel overflow-hidden p-1.5">
+        <div className="absolute right-0 top-12 z-50 w-64 max-w-[92vw] animate-scale-in panel overflow-hidden p-1.5">
           <div className="flex items-center gap-3 px-2.5 py-2.5">
             <Avatar name={profile.name || "?"} src={profile.avatarUrl || undefined} size={38} />
             <div className="min-w-0">

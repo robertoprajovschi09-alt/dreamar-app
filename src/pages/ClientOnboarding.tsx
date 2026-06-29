@@ -162,12 +162,12 @@ export default function ClientOnboarding() {
           </div>
         )}
 
-        <div className="mt-7 flex items-center justify-between">
-          <Button variant="ghost" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}><ChevronLeft className="h-4 w-4" /> Înapoi</Button>
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="ghost" className="w-full sm:w-auto" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}><ChevronLeft className="h-4 w-4" /> Înapoi</Button>
           {isLast ? (
-            <Button variant="primary" disabled={submitting} onClick={submit}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Finalizează și trimite agenției</Button>
+            <Button variant="primary" className="w-full sm:w-auto" disabled={submitting} onClick={submit}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Finalizează și trimite agenției</Button>
           ) : (
-            <Button variant="primary" disabled={!canNext} onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>Continuă <ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="primary" className="w-full sm:w-auto" disabled={!canNext} onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>Continuă <ChevronRight className="h-4 w-4" /></Button>
           )}
         </div>
       </Panel>

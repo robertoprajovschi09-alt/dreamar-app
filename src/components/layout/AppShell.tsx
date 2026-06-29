@@ -17,7 +17,7 @@ export function AppShell() {
     <ContentProvider>
     <LibraryProvider>
     <UIProvider>
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <Sidebar />
@@ -34,7 +34,7 @@ export function AppShell() {
         />
         <div
           className={cn(
-            "absolute left-0 top-0 h-full shadow-2xl transition-transform",
+            "absolute left-0 top-0 h-[100dvh] shadow-2xl transition-transform",
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -44,7 +44,7 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
           <div key={location.pathname} className="mx-auto max-w-[1320px] animate-page space-y-6 p-4 lg:p-6">
             <ErrorBoundary key={location.pathname}>
               <Suspense fallback={<div className="grid min-h-[50vh] place-items-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" /></div>}>

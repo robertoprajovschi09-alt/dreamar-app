@@ -205,7 +205,7 @@ export default function ClientPortal() {
                   placeholder="Opțional: spune-ne ce să schimbăm sau de ce respingi"
                   className="mt-2.5 min-h-[52px] w-full rounded-lg border border-input bg-card p-2.5 text-xs ring-focus"
                 />
-                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Button variant="outline" size="sm" className="text-danger" onClick={() => decide(a.approvalId, a.title, "rejected")}><X className="h-3.5 w-3.5" /> Respinge</Button>
                   <Button variant="outline" size="sm" onClick={() => decide(a.approvalId, a.title, "approved_with_changes")}><Pencil className="h-3.5 w-3.5" /> Modificări</Button>
                   <Button variant="primary" size="sm" onClick={() => decide(a.approvalId, a.title, "approved")}><Check className="h-3.5 w-3.5" /> Aprobă</Button>
@@ -284,7 +284,7 @@ function MonthlyReportModal({ open, onClose, niche, prefill, onSaved, clientId, 
     <Modal open={open} onClose={onClose} title={`Cum a mers ${monthLabel()}?`} subtitle="Cifrele tale reale — chiar și o estimare aproximativă ne ajută" size="md"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={saving} onClick={save}>{saving && <Loader2 className="h-4 w-4 animate-spin" />} Trimite către agenție</Button></>}>
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {spec.monthlyMetrics.map((m) => (
             <div key={m.field}>
               <p className="mb-1 text-xs font-700 text-muted-foreground">{m.label}{m.field === "revenue_estimate" ? " (€)" : ""}</p>

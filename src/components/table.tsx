@@ -20,7 +20,7 @@ export function THead({ children }: { children: ReactNode }) {
 export function TH({ children, className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("whitespace-nowrap px-4 py-3 text-[11px] font-700 uppercase tracking-wide text-muted-foreground", className)}
+      className={cn("whitespace-nowrap px-3 py-2.5 text-[11px] font-700 uppercase tracking-wide text-muted-foreground sm:px-4 sm:py-3", className)}
       {...props}
     >
       {children}
@@ -38,7 +38,7 @@ export function TR({ children, className, ...props }: HTMLAttributes<HTMLTableRo
 
 export function TD({ children, className, ...props }: HTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("whitespace-nowrap px-4 py-3 align-middle", className)} {...props}>
+    <td className={cn("whitespace-nowrap px-3 py-2.5 align-middle sm:px-4 sm:py-3", className)} {...props}>
       {children}
     </td>
   );

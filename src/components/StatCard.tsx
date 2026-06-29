@@ -46,7 +46,7 @@ export function StatCard({
           {sub && <span className="text-xs text-muted-foreground">{sub}</span>}
         </div>
         {spark && (
-          <div className="h-9 w-24 shrink-0">
+          <div className="h-9 w-20 shrink-0 sm:w-24">
             <Sparkline data={spark} tone={tone === "warning" ? "#f5a524" : undefined} />
           </div>
         )}

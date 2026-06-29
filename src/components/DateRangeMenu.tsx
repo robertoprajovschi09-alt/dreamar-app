@@ -32,7 +32,7 @@ export function DateRangeMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 w-72 animate-scale-in panel overflow-hidden p-1.5">
+        <div className="absolute right-0 top-12 z-50 w-72 max-w-[92vw] max-h-[70vh] animate-scale-in panel overflow-y-auto p-1.5">
           <p className="px-2.5 py-1.5 text-[10px] font-700 uppercase tracking-wide text-muted-foreground">Intervale rapide</p>
           {ranges.map((r) => (
             <button

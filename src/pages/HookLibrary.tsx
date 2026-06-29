@@ -147,7 +147,7 @@ function HookComposer({ open, editing, onClose, onSubmit }: {
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !text.trim()} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} {editing ? "Salvează modificările" : "Salvează hook"}</Button></>}>
       <div className="space-y-4">
         <HField label="Textul hook-ului"><textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder='ex. "Acest apartament de 450k € s-a vândut în 3 zile pentru că…"' /></HField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <HField label="Nișă"><Select value={niche} onChange={(e) => setNiche(e.target.value)} className="w-full"><option value="">Orice nișă</option>{(Object.keys(nicheLabels) as (keyof typeof nicheLabels)[]).map((k) => <option key={k} value={k}>{nicheLabels[k]}</option>)}</Select></HField>
           <HField label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{platformsList.map((p) => <option key={p}>{p}</option>)}</Select></HField>
         </div>

@@ -234,11 +234,11 @@ function TaskComposer({ open, editing, onClose, clients, members, myId, onSubmit
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim()} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} {editing ? "Salvează modificările" : "Creează sarcina"}</Button></>}>
       <div className="space-y-4">
         <TField label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex. Scrie scriptul pentru turul proprietății" /></TField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TField label="Client (opțional)"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full"><option value="">Intern / niciunul</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></TField>
           <TField label="Termen limită (opțional)"><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></TField>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TField label="Tip"><Select value={type} onChange={(e) => setType(e.target.value)} className="w-full">{TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</Select></TField>
           <TField label="Prioritate"><Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full">{PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}</Select></TField>
         </div>

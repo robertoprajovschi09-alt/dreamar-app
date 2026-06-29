@@ -210,12 +210,12 @@ function LogVideoComposer({ open, onClose, clients, onCreate }: {
       <div className="space-y-4">
         <VField label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full">{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></VField>
         <VField label="Linia de hook"><Input autoFocus value={hook} onChange={(e) => setHook(e.target.value)} placeholder={'ex. "Acest apartament de 450k € s-a vândut în 3 zile…"'} /></VField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <VField label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{platformsList.map((p) => <option key={p}>{p}</option>)}</Select></VField>
           <VField label="Data publicării"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></VField>
         </div>
         <VField label="Format"><Input value={format} onChange={(e) => setFormat(e.target.value)} placeholder="ex. Tur proprietate, Transformare" /></VField>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <VField label="Vizualizări"><Input type="number" value={views} onChange={(e) => setViews(e.target.value)} placeholder="0" /></VField>
           <VField label="Scor AI"><Input type="number" value={aiScore} onChange={(e) => setAiScore(e.target.value)} placeholder="0–100" /></VField>
           <VField label="Recomandare"><Select value={rec} onChange={(e) => setRec(e.target.value as "repeat" | "improve" | "stop")} className="w-full"><option value="repeat">Repetă</option><option value="improve">Îmbunătățește</option><option value="stop">Oprește</option></Select></VField>
@@ -258,16 +258,16 @@ function EditVideoModal({ open, onClose, video, onSave }: {
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy} onClick={save}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Salvează metricile</Button></>}>
       <div className="space-y-4">
         <VField label="Linia de hook"><Input value={f.hook ?? ""} onChange={(e) => set("hook", e.target.value)} /></VField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <VField label="Platformă"><Select value={f.platform ?? ""} onChange={(e) => set("platform", e.target.value)} className="w-full">{platformsList.map((p) => <option key={p}>{p}</option>)}</Select></VField>
           <VField label="Format"><Input value={f.format ?? ""} onChange={(e) => set("format", e.target.value)} /></VField>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <VField label="Vizualizări"><Input type="number" value={f.views ?? ""} onChange={(e) => set("views", e.target.value)} /></VField>
           <VField label="Reach"><Input type="number" value={f.reach ?? ""} onChange={(e) => set("reach", e.target.value)} /></VField>
           <VField label="Scor AI"><Input type="number" value={f.aiScore ?? ""} onChange={(e) => set("aiScore", e.target.value)} /></VField>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <VField label="Ret. 3s %"><Input type="number" value={f.retention3s ?? ""} onChange={(e) => set("retention3s", e.target.value)} /></VField>
           <VField label="Compl. %"><Input type="number" value={f.completion ?? ""} onChange={(e) => set("completion", e.target.value)} /></VField>
           <VField label="Recomandare"><Select value={f.rec ?? "improve"} onChange={(e) => set("rec", e.target.value)} className="w-full"><option value="repeat">Repetă</option><option value="improve">Îmbunătățește</option><option value="stop">Oprește</option></Select></VField>
@@ -321,7 +321,7 @@ function VideoDetail({ v }: { v: VideoRow }) {
       {/* Metrics grid */}
       <div>
         <p className="mb-2 text-xs font-700 uppercase tracking-wide text-muted-foreground">Performanță</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {metrics.map(([label, val]) => (
             <div key={label} className="rounded-lg border border-border p-2.5">
               <p className="font-display text-base font-800">{val}</p>

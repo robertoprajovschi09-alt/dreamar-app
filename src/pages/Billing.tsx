@@ -77,7 +77,7 @@ export default function Billing() {
             <h2 className="mt-2 font-display text-2xl font-800">{planName} — €{price}/lună</h2>
             <p className="mt-1 text-sm text-white/75">{renewLine}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="dark" className="bg-white text-[hsl(252_70%_30%)] hover:bg-white/90" onClick={() => push({ tone: "info", title: "Schimbă planul", description: "Alege mai jos un plan superior" })}><Zap className="h-4 w-4" /> Schimbă planul</Button>
             <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/20" onClick={() => push({ tone: "info", title: "Gestionează abonamentul", description: "Portalul de client Stripe vine odată cu facturarea" })}>Gestionează</Button>
           </div>

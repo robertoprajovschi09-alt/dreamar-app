@@ -180,3 +180,21 @@
 *::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.45);
 }
+
+/* ── Mobile hardening (unlayered → wins over Tailwind utilities) ───────────── */
+/* Never let a page become wider than the screen (kills the pan/zoom-out feel).
+   `clip` (not hidden) avoids creating a scroll container that breaks sticky. */
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+/* iOS zooms the whole page when focusing a control smaller than 16px.
+   Force a 16px touch target on phones so tapping a field no longer zooms. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

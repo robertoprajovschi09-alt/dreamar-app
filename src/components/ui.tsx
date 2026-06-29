@@ -27,7 +27,7 @@ export function SectionCard({
   return (
     <Panel className={cn("flex flex-col", className)}>
       {(title || action) && (
-        <div className="flex items-start justify-between gap-3 px-5 pt-5">
+        <div className="flex flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:pt-5">
           <div className="flex items-center gap-2.5">
             {Icon && (
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -42,7 +42,7 @@ export function SectionCard({
           {action}
         </div>
       )}
-      <div className={cn("p-5", bodyClassName)}>{children}</div>
+      <div className={cn("p-4 sm:p-5", bodyClassName)}>{children}</div>
     </Panel>
   );
 }
@@ -248,13 +248,13 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1", className)}>
+    <div className={cn("inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-muted/50 p-1", className)}>
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-md px-3 py-1.5 text-xs font-600 transition",
+            "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-600 transition",
             value === o.value ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
           )}
         >

@@ -34,7 +34,7 @@ export function SkeletonCard() {
         <Skeleton className="h-6 w-14 rounded-md" />
         <Skeleton className="h-6 w-14 rounded-md" />
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3 border-t border-border pt-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="space-y-1.5">
             <Skeleton className="mx-auto h-5 w-10" />

@@ -40,8 +40,8 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className={cn("relative w-full animate-scale-in panel max-h-[90vh] overflow-hidden flex flex-col", widths[size])}>
-        <div className="flex items-start justify-between gap-3 border-b border-border px-6 py-4">
+      <div className={cn("relative w-full max-w-[calc(100vw-1.5rem)] animate-scale-in panel max-h-[90dvh] overflow-hidden flex flex-col", widths[size])}>
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
             <div>
               {title && <h2 className="font-display text-lg font-800">{title}</h2>}
               {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
@@ -50,8 +50,8 @@ export function Modal({
               <X className="h-4 w-4" />
             </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">{children}</div>
+        {footer && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-4 sm:px-6">{footer}</div>}
       </div>
     </div>,
     document.body
@@ -86,7 +86,7 @@ export function Drawer({
         className="absolute right-0 top-0 flex h-full flex-col panel rounded-none rounded-l-xl shadow-2xl"
         style={{ width, maxWidth: "92vw", animation: "drawer-in 0.3s cubic-bezier(0.22,1,0.36,1)" }}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-5">
           <div className="flex items-center gap-2">
             <div>
               <div className="flex items-center gap-2">
@@ -100,8 +100,8 @@ export function Drawer({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5">{children}</div>
-        {footer && <div className="flex items-center gap-2 border-t border-border px-5 py-4">{footer}</div>}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">{children}</div>
+        {footer && <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-4 sm:px-5">{footer}</div>}
       </div>
       <style>{`@keyframes drawer-in{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
     </div>,
