@@ -7,6 +7,7 @@ import { UIProvider } from "@/lib/ui-context";
 import { ClientsProvider } from "@/lib/clients";
 import { ContentProvider } from "@/lib/content";
 import { LibraryProvider } from "@/lib/library";
+import { CampaignsProvider } from "@/lib/campaigns";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function AppShell() {
@@ -16,6 +17,7 @@ export function AppShell() {
     <ClientsProvider>
     <ContentProvider>
     <LibraryProvider>
+    <CampaignsProvider>
     <UIProvider>
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       {/* Desktop sidebar */}
@@ -56,6 +58,7 @@ export function AppShell() {
       </div>
     </div>
     </UIProvider>
+    </CampaignsProvider>
     </LibraryProvider>
     </ContentProvider>
     </ClientsProvider>

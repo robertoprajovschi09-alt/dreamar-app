@@ -19,6 +19,7 @@ const AgencyDashboard = lazy(() => import("@/pages/AgencyDashboard"));
 const Clients = lazy(() => import("@/pages/Clients"));
 const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
 const ContentCalendar = lazy(() => import("@/pages/ContentCalendar"));
+const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Approvals = lazy(() => import("@/pages/Approvals"));
 const VideoTracker = lazy(() => import("@/pages/VideoTracker"));
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<ClientDetail />} />
         <Route path="calendar" element={<ContentCalendar />} />
+        <Route path="campaigns" element={<Campaigns />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="videos" element={<VideoTracker />} />
