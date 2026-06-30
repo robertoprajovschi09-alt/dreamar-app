@@ -4,8 +4,9 @@ import { Drawer, Modal } from "@/components/overlay";
 import { useToast } from "@/lib/toast";
 import { useContent, type ContentPost, type UIPostStatus } from "@/lib/content";
 import { useClients } from "@/lib/clients";
+import { useLibrary } from "@/lib/library";
 import { SkeletonRows } from "@/components/Skeleton";
-import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, GripVertical, Loader2, Plus, Send, Trash2, User } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, GripVertical, Loader2, Plus, Send, Sparkles, Trash2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }> = {
@@ -41,6 +42,7 @@ export default function ContentCalendar() {
   const { push } = useToast();
   const { posts, loading, live, createPost, updatePost, deletePost, requestApproval } = useContent();
   const { clients } = useClients();
+  const { hooks } = useLibrary();
 
   const today = useMemo(() => new Date(), []);
   const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
@@ -223,7 +225,7 @@ export default function ContentCalendar() {
         </div>
       </SectionCard>
 
-      <PostComposer open={composerDate !== null} onClose={() => setComposerDate(null)} clients={clients} defaultDate={composerDate ?? defaultComposerDate}
+      <PostComposer open={composerDate !== null} onClose={() => setComposerDate(null)} clients={clients} hooks={hooks} defaultDate={composerDate ?? defaultComposerDate}
         onCreate={async (input) => {
           const res = await createPost(input);
           if (res.error) push({ tone: "danger", title: "Nu s-a putut crea postarea", description: res.error });
@@ -257,9 +259,10 @@ export default function ContentCalendar() {
   );
 }
 
-function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
+function PostComposer({ open, onClose, clients, hooks, defaultDate, onCreate }: {
   open: boolean; onClose: () => void; defaultDate: string;
   clients: { id: string; name: string }[];
+  hooks: { id: string; text: string; avgScore: number }[];
   onCreate: (input: { clientId: string; title: string; platform: string; status: UIPostStatus; date: string | null }) => Promise<{ error?: string }>;
 }) {
   const [clientId, setClientId] = useState("");
@@ -268,7 +271,8 @@ function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
   const [status, setStatus] = useState<UIPostStatus>("idea");
   const [date, setDate] = useState(defaultDate);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setTitle(""); setPlatform("Instagram"); setStatus("idea"); setDate(defaultDate); } }, [open, clients, defaultDate]);
+  const [showHooks, setShowHooks] = useState(false);
+  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setTitle(""); setPlatform("Instagram"); setStatus("idea"); setDate(defaultDate); setShowHooks(false); } }, [open, clients, defaultDate]);
 
   async function submit() {
     if (!title.trim() || !clientId || busy) return;
@@ -282,7 +286,24 @@ function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
     <Modal open={open} onClose={onClose} title="Postare nouă" subtitle={dateLabel ? `Pentru ${dateLabel}` : "Planifică o postare de conținut"} size="md"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim() || !clientId} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează postarea</Button></>}>
       <div className="space-y-4">
-        <Field label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Tur proprietate — Sky 2 camere" /></Field>
+        <Field label="Titlu">
+          <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Tur proprietate — Sky 2 camere" />
+          <button type="button" onClick={() => setShowHooks((s) => !s)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-700 text-primary">
+            <Sparkles className="h-3.5 w-3.5" /> {showHooks ? "Ascunde hook-urile" : "Folosește un hook care a mers"}
+          </button>
+          {showHooks && (
+            <div className="mt-2 max-h-44 space-y-1 overflow-y-auto rounded-lg border border-border p-1.5">
+              {hooks.length === 0 ? (
+                <p className="px-2 py-3 text-center text-xs text-muted-foreground">Încă niciun hook în bibliotecă.</p>
+              ) : hooks.map((h) => (
+                <button type="button" key={h.id} onClick={() => { setTitle(h.text); setShowHooks(false); }} className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition hover:bg-muted">
+                  <span className="min-w-0 flex-1 text-xs leading-snug">{h.text}</span>
+                  {h.avgScore > 0 && <span className="shrink-0 rounded bg-success/10 px-1.5 py-0.5 text-[10px] font-700 text-success">{h.avgScore}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </Field>
         <Field label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full">{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{platforms.map((p) => <option key={p}>{p}</option>)}</Select></Field>

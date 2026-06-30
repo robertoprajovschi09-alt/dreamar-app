@@ -179,7 +179,7 @@ export default function ClientDetail() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" /> Editează</Button>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" /> Invită în portal</Button>
-            <Link to="/strategy" className="w-full sm:w-auto"><Button variant="primary" className="w-full"><Sparkles className="h-4 w-4" /> Cameră de strategie</Button></Link>
+            <Link to="/strategy" className="w-full sm:w-auto"><Button variant="primary" className="w-full"><Sparkles className="h-4 w-4" /> Întreabă AI</Button></Link>
           </div>
         </div>
 
