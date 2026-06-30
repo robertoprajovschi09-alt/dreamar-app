@@ -50,7 +50,7 @@ export default function ContentCalendar() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overDay, setOverDay] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerDate, setComposerDate] = useState<string | null>(null);
 
   const selected = posts.find((p) => p.id === selectedId) ?? null;
   // Filter options come from the live client list (so they appear even with 0 posts),
@@ -82,6 +82,13 @@ export default function ContentCalendar() {
     setOverDay(null);
   }
 
+  const defaultComposerDate = iso(ym.y, ym.m, isCurrentMonth ? today.getDate() : 1);
+  // Open the composer, optionally pre-filled with a clicked day's date.
+  function openComposer(date?: string) {
+    if (live && clients.length === 0) return; // need a client first
+    setComposerDate(date ?? defaultComposerDate);
+  }
+
   function Chip({ p }: { p: ContentPost }) {
     const dim = !matches(p);
     return (
@@ -89,7 +96,7 @@ export default function ContentCalendar() {
         draggable
         onDragStart={() => setDraggingId(p.id)}
         onDragEnd={() => { setDraggingId(null); setOverDay(null); }}
-        onClick={() => setSelectedId(p.id)}
+        onClick={(e) => { e.stopPropagation(); setSelectedId(p.id); }}
         title={`${p.title} · ${p.clientName} · ${p.platform}`}
         className={cn(
           "group flex cursor-grab items-start gap-1 rounded-md px-1.5 py-1 text-[10px] font-600 leading-tight active:cursor-grabbing",
@@ -114,11 +121,19 @@ export default function ContentCalendar() {
         onDragOver={(e) => { if (!day) return; e.preventDefault(); setOverDay(day); }}
         onDragLeave={() => setOverDay((d) => (d === day ? null : d))}
         onDrop={() => day && onDrop(day)}
-        className={cn("min-h-[120px] border-b border-r border-border/70 p-1.5 transition-colors [&:nth-child(7n)]:border-r-0", isOver && "bg-primary/5 ring-2 ring-inset ring-primary/40")}
+        onClick={() => day && openComposer(iso(ym.y, ym.m, day))}
+        className={cn(
+          "group relative min-h-[120px] border-b border-r border-border/70 p-1.5 transition-colors [&:nth-child(7n)]:border-r-0",
+          day && "cursor-pointer hover:bg-muted/30",
+          isOver && "bg-primary/5 ring-2 ring-inset ring-primary/40"
+        )}
       >
         {day && (
           <>
-            <div className="mb-1 flex justify-end">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="grid h-5 w-5 place-items-center rounded-md text-primary opacity-0 transition group-hover:opacity-100" title="Adaugă postare în această zi">
+                <Plus className="h-3.5 w-3.5" />
+              </span>
               <span className={cn("grid h-6 w-6 place-items-center rounded-full text-xs font-700", isToday ? "gradient-primary text-white" : "text-muted-foreground")}>{day}</span>
             </div>
             <div className="space-y-1">{dayPosts.map((p) => <Chip key={p.id} p={p} />)}</div>
@@ -133,7 +148,7 @@ export default function ContentCalendar() {
   return (
     <>
       <PageHeader title="Calendar de conținut" subtitle="Trage postările pentru a le reprograma · apasă pentru a deschide editorul">
-        <Button variant="primary" onClick={() => setComposerOpen(true)} disabled={live && clients.length === 0}><Plus className="h-4 w-4" /> Postare nouă</Button>
+        <Button variant="primary" onClick={() => openComposer()} disabled={live && clients.length === 0}><Plus className="h-4 w-4" /> Postare nouă</Button>
       </PageHeader>
 
       <Panel className="flex flex-col gap-3 p-3 lg:flex-row lg:items-center">
@@ -166,7 +181,7 @@ export default function ContentCalendar() {
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary"><CalendarDays className="h-7 w-7" /></span>
           <p className="font-display text-lg font-700">Încă nicio postare</p>
           <p className="max-w-sm text-sm text-muted-foreground">{live && clients.length === 0 ? "Adaugă mai întâi un client, apoi planifică-i conținutul aici." : "Creează prima postare pentru a începe planificarea calendarului de conținut."}</p>
-          {!(live && clients.length === 0) && <Button variant="primary" className="mt-1" onClick={() => setComposerOpen(true)}><Plus className="h-4 w-4" /> Postare nouă</Button>}
+          {!(live && clients.length === 0) && <Button variant="primary" className="mt-1" onClick={() => openComposer()}><Plus className="h-4 w-4" /> Postare nouă</Button>}
         </Panel>
       ) : view === "month" ? (
         <Panel className="overflow-hidden p-0">
@@ -208,7 +223,7 @@ export default function ContentCalendar() {
         </div>
       </SectionCard>
 
-      <PostComposer open={composerOpen} onClose={() => setComposerOpen(false)} clients={clients} defaultDate={iso(ym.y, ym.m, isCurrentMonth ? today.getDate() : 1)}
+      <PostComposer open={composerDate !== null} onClose={() => setComposerDate(null)} clients={clients} defaultDate={composerDate ?? defaultComposerDate}
         onCreate={async (input) => {
           const res = await createPost(input);
           if (res.error) push({ tone: "danger", title: "Nu s-a putut crea postarea", description: res.error });
@@ -262,12 +277,13 @@ function PostComposer({ open, onClose, clients, defaultDate, onCreate }: {
     setBusy(false);
     if (!res.error) onClose();
   }
+  const dateLabel = date ? new Date(date + "T00:00:00").toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" }) : "";
   return (
-    <Modal open={open} onClose={onClose} title="Postare nouă" subtitle="Planifică o postare de conținut pentru un client" size="md"
+    <Modal open={open} onClose={onClose} title="Postare nouă" subtitle={dateLabel ? `Pentru ${dateLabel}` : "Planifică o postare de conținut"} size="md"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim() || !clientId} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează postarea</Button></>}>
       <div className="space-y-4">
+        <Field label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Tur proprietate — Sky 2 camere" /></Field>
         <Field label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full">{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
-        <Field label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex. Tur proprietate — Sky 2 camere" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{platforms.map((p) => <option key={p}>{p}</option>)}</Select></Field>
           <Field label="Dată"><Input type="date" value={date ?? ""} onChange={(e) => setDate(e.target.value)} /></Field>
