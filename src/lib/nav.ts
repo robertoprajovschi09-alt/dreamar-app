@@ -1,18 +1,18 @@
 import {
   Anchor,
+  Building2,
   CalendarDays,
   CreditCard,
   FileText,
   FolderOpen,
-  LayoutDashboard,
   ListTodo,
-  Megaphone,
   type LucideIcon,
-  MessagesSquare,
+  Megaphone,
   Plug,
   Settings,
   ShieldCheck,
   Sparkles,
+  Target,
   TrendingUp,
   Users,
   Video,
@@ -26,42 +26,40 @@ export type NavItem = {
   end?: boolean;
 };
 
-export type NavGroup = { heading: string; items: NavItem[] };
+export type NavGroup = { heading?: string; items: NavItem[] };
 
+// Agency OS — five workspaces. Everything else is reached inside a client,
+// inside a workspace, or via ⌘K (see `allDestinations`).
 export const navGroups: NavGroup[] = [
   {
-    heading: "Spațiu de lucru",
     items: [
-      { label: "Tablou de bord", to: "/dashboard", icon: LayoutDashboard, end: true },
+      { label: "Astăzi", to: "/dashboard", icon: Target, end: true },
       { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
-      { label: "Calendar de conținut", to: "/calendar", icon: CalendarDays },
-      { label: "Campanii plătite", to: "/campaigns", icon: Megaphone },
-      { label: "Sarcini", to: "/tasks", icon: ListTodo, badge: 4 },
+      { label: "Conținut", to: "/content", icon: CalendarDays },
       { label: "Aprobări", to: "/approvals", icon: ShieldCheck, badge: 3 },
+      { label: "Agenție", to: "/agency", icon: Building2 },
     ],
   },
-  {
-    heading: "Inteligență",
-    items: [
-      { label: "Performanță video", to: "/videos", icon: Video },
-      { label: "Bibliotecă de hook-uri", to: "/hooks", icon: Anchor },
-      { label: "Impact în afacere", to: "/impact", icon: TrendingUp },
-      { label: "Cameră de strategie AI", to: "/strategy", icon: Sparkles },
-      { label: "Rapoarte lunare", to: "/reports", icon: FileText },
-    ],
-  },
-  {
-    heading: "Bibliotecă",
-    items: [
-      { label: "Documente", to: "/documents", icon: FolderOpen },
-      { label: "Integrări", to: "/integrations", icon: Plug },
-    ],
-  },
-  {
-    heading: "Cont",
-    items: [
-      { label: "Facturare și plan", to: "/billing", icon: CreditCard },
-      { label: "Setări", to: "/settings", icon: Settings },
-    ],
-  },
+];
+
+// Full destination list for the command palette (⌘K) — the slim sidebar never
+// limits reach. Includes the sub-pages that now live inside workspaces/clients.
+export const allDestinations: NavItem[] = [
+  { label: "Astăzi", to: "/dashboard", icon: Target, end: true },
+  { label: "Clienți", to: "/clients", icon: Users },
+  { label: "Conținut", to: "/content", icon: CalendarDays },
+  { label: "Aprobări", to: "/approvals", icon: ShieldCheck },
+  { label: "Agenție", to: "/agency", icon: Building2 },
+  { label: "Calendar de conținut", to: "/calendar", icon: CalendarDays },
+  { label: "Sarcini", to: "/tasks", icon: ListTodo },
+  { label: "Bibliotecă de hook-uri", to: "/hooks", icon: Anchor },
+  { label: "Performanță video", to: "/videos", icon: Video },
+  { label: "Impact în afacere", to: "/impact", icon: TrendingUp },
+  { label: "Campanii plătite", to: "/campaigns", icon: Megaphone },
+  { label: "Documente", to: "/documents", icon: FolderOpen },
+  { label: "Rapoarte lunare", to: "/reports", icon: FileText },
+  { label: "Cameră de strategie AI", to: "/strategy", icon: Sparkles },
+  { label: "Integrări", to: "/integrations", icon: Plug },
+  { label: "Facturare și plan", to: "/billing", icon: CreditCard },
+  { label: "Setări", to: "/settings", icon: Settings },
 ];

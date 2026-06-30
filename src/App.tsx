@@ -15,7 +15,9 @@ const SignupPage = lazy(() => import("@/marketing/SignupPage"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 
 // App (authenticated) — lazy so the heavy charting/page code is split per route.
-const AgencyDashboard = lazy(() => import("@/pages/AgencyDashboard"));
+const Today = lazy(() => import("@/pages/Today"));
+const ContentWorkspace = lazy(() => import("@/pages/ContentWorkspace"));
+const AgencyWorkspace = lazy(() => import("@/pages/AgencyWorkspace"));
 const Clients = lazy(() => import("@/pages/Clients"));
 const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
 const ContentCalendar = lazy(() => import("@/pages/ContentCalendar"));
@@ -73,7 +75,9 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route path="dashboard" element={<AgencyDashboard />} />
+        <Route path="dashboard" element={<Today />} />
+        <Route path="content" element={<ContentWorkspace />} />
+        <Route path="agency" element={<AgencyWorkspace />} />
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<ClientDetail />} />
         <Route path="calendar" element={<ContentCalendar />} />

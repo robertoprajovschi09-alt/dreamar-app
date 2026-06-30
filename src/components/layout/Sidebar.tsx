@@ -57,9 +57,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-3">
         {navGroups.map((group) => (
           <div key={group.heading}>
-            <p className="px-3 pb-2 text-[10px] font-700 uppercase tracking-[0.16em] text-muted-foreground/70">
-              {group.heading}
-            </p>
+            {group.heading && (
+              <p className="px-3 pb-2 text-[10px] font-700 uppercase tracking-[0.16em] text-muted-foreground/70">
+                {group.heading}
+              </p>
+            )}
             <div className="space-y-0.5">
               {group.items.map((item) => (
                 <NavLink

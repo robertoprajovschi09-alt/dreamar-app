@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { navGroups } from "@/lib/nav";
+import { allDestinations } from "@/lib/nav";
 import { nicheLabels } from "@/data/sample";
 import { useClients } from "@/lib/clients";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ export function CommandPalette({ open, onClose, onNewClient, onShortcuts }: { op
       { id: "new-post", label: "Programează o postare", hint: "Acțiune", group: "Acțiuni", icon: Plus, run: go("/calendar") },
       { id: "shortcuts", label: "Scurtături de tastatură", hint: "?", group: "Acțiuni", icon: Keyboard, run: () => { onClose(); onShortcuts(); } },
     ];
-    const nav: Cmd[] = navGroups.flatMap((g) => g.items.map((it) => ({ id: "nav-" + it.to, label: it.label, hint: g.heading, group: "Navighează", icon: it.icon, run: go(it.to) })));
+    const nav: Cmd[] = allDestinations.map((it) => ({ id: "nav-" + it.to, label: it.label, group: "Navighează", icon: it.icon, run: go(it.to) }));
     const cli: Cmd[] = clients.map((c) => ({ id: "client-" + c.id, label: c.name, hint: nicheLabels[c.niche], group: "Clienți", icon: Users, run: go(`/clients/${c.id}`) }));
     return [...actions, ...nav, ...cli];
   }, [navigate, onClose, onNewClient, onShortcuts, clients]);
