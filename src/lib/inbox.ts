@@ -2,18 +2,18 @@ import { useMemo } from "react";
 import { useContent } from "./content";
 import { useCampaigns } from "./campaigns";
 import { useClients } from "./clients";
-import { CalendarClock, CalendarPlus, Clock, FileEdit, Send, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarClock, CalendarPlus, CheckCircle2, Clock, FileEdit, Send, Wallet, type LucideIcon } from "lucide-react";
 
-export type InboxKind = "changes" | "send" | "campaign" | "nocontent" | "awaiting";
+export type Severity = "red" | "amber" | "green" | "grey";
+export type InboxKind = "changes" | "send" | "campaign" | "nocontent" | "awaiting" | "approved";
 export type InboxItem = {
   id: string;
   kind: InboxKind;
-  tone: "danger" | "warning" | "primary" | "muted";
+  severity: Severity;
   icon: LucideIcon;
   title: string;
   subtitle: string;
   clientName: string;
-  group: "now" | "later";
   actionLabel: string;
   // Present only on actionable items. Runs the optimistic mutation.
   act?: () => Promise<{ error?: string }>;
@@ -22,9 +22,11 @@ export type InboxItem = {
 const eur = (n: number) => `€${Math.round(n).toLocaleString("ro-RO")}`;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const addDaysISO = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const RANK: Record<Severity, number> = { red: 0, amber: 1, green: 2, grey: 3 };
 
-// One normalized stream of everything that needs the owner. Home shows the top
-// of it; Inbox shows all of it. Derived purely from the data providers.
+// One prioritized stream of everything that needs (or rewards) the owner.
+// Home shows the top of it; Inbox shows all of it. Pure-derived for now —
+// the events/notifications + messages source plugs in here later.
 export function useInbox() {
   const { posts, requestApproval, loading: lc } = useContent();
   const { campaigns, loading: lk } = useCampaigns();
@@ -36,36 +38,37 @@ export function useInbox() {
     const today = todayISO();
     const soon = addDaysISO(7);
 
-    // Client asked for a change → revise & resend.
+    // 🔴 client asked for a change → revise & resend
     posts.filter((p) => p.approvalStatus === "approved_with_changes" || p.approvalStatus === "rejected").forEach((p) => {
-      items.push({ id: `ch-${p.id}`, kind: "changes", tone: "danger", icon: FileEdit, clientName: p.clientName, title: `${p.clientName} a cerut o schimbare`, subtitle: p.title, group: "now", actionLabel: "Retrimite", act: () => requestApproval(p) });
+      items.push({ id: `ch-${p.id}`, kind: "changes", severity: "red", icon: FileEdit, clientName: p.clientName, title: `${p.clientName} a cerut o schimbare`, subtitle: p.title, actionLabel: "Retrimite", act: () => requestApproval(p) });
     });
-
-    // Marked "for approval" in the calendar but not yet sent to the client.
+    // 🔴 marked "for approval" but not sent to the client yet
     posts.filter((p) => p.status === "approval" && !p.approvalStatus).forEach((p) => {
-      items.push({ id: `snd-${p.id}`, kind: "send", tone: "primary", icon: Send, clientName: p.clientName, title: "Trimite spre aprobare", subtitle: `${p.title} · ${p.clientName}`, group: "now", actionLabel: "Trimite", act: () => requestApproval(p) });
+      items.push({ id: `snd-${p.id}`, kind: "send", severity: "red", icon: Send, clientName: p.clientName, title: "Trimite spre aprobare", subtitle: `${p.title} · ${p.clientName}`, actionLabel: "Trimite", act: () => requestApproval(p) });
     });
-
-    // Campaigns over budget (now) / ending soon (later).
+    // 🟡 campaign over budget / ending soon
     campaigns.filter((c) => c.budget > 0 && c.spend > c.budget).forEach((c) => {
-      items.push({ id: `cob-${c.id}`, kind: "campaign", tone: "warning", icon: Wallet, clientName: c.clientName, title: `${c.name} a depășit bugetul`, subtitle: `${c.clientName} · ${eur(c.spend)} / ${eur(c.budget)}`, group: "now", actionLabel: "" });
+      items.push({ id: `cob-${c.id}`, kind: "campaign", severity: "amber", icon: Wallet, clientName: c.clientName, title: `${c.name} a depășit bugetul`, subtitle: `${c.clientName} · ${eur(c.spend)} / ${eur(c.budget)}`, actionLabel: "" });
     });
     campaigns.filter((c) => c.status === "active" && c.endDate && c.endDate >= today && c.endDate <= soon).forEach((c) => {
-      items.push({ id: `cend-${c.id}`, kind: "campaign", tone: "warning", icon: CalendarClock, clientName: c.clientName, title: `${c.name} se termină curând`, subtitle: `${c.clientName} · până la ${c.endDate}`, group: "later", actionLabel: "" });
+      items.push({ id: `cend-${c.id}`, kind: "campaign", severity: "amber", icon: CalendarClock, clientName: c.clientName, title: `${c.name} se termină curând`, subtitle: `${c.clientName} · până la ${c.endDate}`, actionLabel: "" });
     });
-
-    // Clients with nothing scheduled (match by id — names can change).
+    // 🟡 client with nothing scheduled (match by id)
     clients.filter((c) => !posts.some((p) => p.clientId === c.id && p.status === "scheduled")).forEach((c) => {
-      items.push({ id: `nc-${c.id}`, kind: "nocontent", tone: "muted", icon: CalendarPlus, clientName: c.name, title: `${c.name} — fără conținut programat`, subtitle: "Planifică-i săptămâna pe desktop", group: "later", actionLabel: "" });
+      items.push({ id: `nc-${c.id}`, kind: "nocontent", severity: "amber", icon: CalendarPlus, clientName: c.name, title: `${c.name} — fără conținut programat`, subtitle: "Planifică-i săptămâna pe desktop", actionLabel: "" });
     });
-
-    // Sent, waiting on the client (informational).
+    // 🟢 client approved content (a win + a nudge)
+    posts.filter((p) => p.approvalStatus === "approved").forEach((p) => {
+      items.push({ id: `ap-${p.id}`, kind: "approved", severity: "green", icon: CheckCircle2, clientName: p.clientName, title: `${p.clientName} a aprobat`, subtitle: `${p.title} · gata de programat`, actionLabel: "" });
+    });
+    // ⚪ sent, waiting on the client
     posts.filter((p) => p.approvalStatus === "pending").forEach((p) => {
-      items.push({ id: `aw-${p.id}`, kind: "awaiting", tone: "muted", icon: Clock, clientName: p.clientName, title: `Trimis lui ${p.clientName}`, subtitle: `${p.title} · așteaptă decizia`, group: "later", actionLabel: "" });
+      items.push({ id: `aw-${p.id}`, kind: "awaiting", severity: "grey", icon: Clock, clientName: p.clientName, title: `Trimis lui ${p.clientName}`, subtitle: `${p.title} · așteaptă decizia`, actionLabel: "" });
     });
 
-    const now = items.filter((i) => i.group === "now");
-    const later = items.filter((i) => i.group === "later");
-    return { items, now, later, count: now.length, loading };
+    const feed = items.slice().sort((a, b) => RANK[a.severity] - RANK[b.severity]);
+    const urgent = items.filter((i) => i.severity === "red").length;
+    const review = items.filter((i) => i.severity === "amber").length;
+    return { feed, items, urgent, review, count: urgent + review, loading };
   }, [posts, campaigns, clients, loading, requestApproval]);
 }

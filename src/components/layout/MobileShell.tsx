@@ -52,7 +52,7 @@ function MobileInner() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
         <ErrorBoundary key={tab}>
-          {tab === "home" && <MobileHome onOpenInbox={() => setTab("inbox")} onOpenClients={() => setTab("clients")} />}
+          {tab === "home" && <MobileHome onOpenInbox={() => setTab("inbox")} />}
           {tab === "inbox" && <MobileInbox />}
           {tab === "clients" && <MobileClients />}
           {tab === "account" && <MobileAccount />}
