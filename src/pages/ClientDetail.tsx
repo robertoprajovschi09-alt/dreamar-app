@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Panel, SectionCard, Badge, Button, Segmented, Input, Select } from "@/components/ui";
 import { Modal } from "@/components/overlay";
 import { Table, THead, TH, TR, TD } from "@/components/table";
@@ -10,11 +10,15 @@ import { clients as sampleClients, nicheLabels, videos, type Client, type Niche 
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace";
 import { useClients, type ClientPatch } from "@/lib/clients";
+import { useContent } from "@/lib/content";
+import { useCampaigns } from "@/lib/campaigns";
+import { useLibrary } from "@/lib/library";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { nicheSpec, type MetricField } from "@/lib/niches";
 import {
   ArrowLeft,
+  Coins,
   Copy,
   FileText,
   Loader2,
@@ -24,6 +28,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  Send,
   Sparkles,
   Target,
   Trash2,
@@ -31,31 +36,41 @@ import {
   Upload,
   UserPlus,
   Users,
+  Wallet,
   Wand2,
   X,
 } from "lucide-react";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
+const POST_STATUS_LABEL: Record<string, string> = {
+  idea: "Idee", script: "Scenariu", filming: "Filmare", editing: "Editare", approval: "Pentru aprobare",
+  approved: "Aprobat", scheduled: "Programat", published: "Publicat", analyzed: "Analizat",
+};
 const firstOfMonthISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ImpactRow = { source: string } & Record<string, any>;
 
-const tabs = ["Prezentare generală", "Conținut", "Impact în afacere", "Documente"] as const;
+const tabs = ["Prezentare", "Conținut", "Campanii", "Rezultate", "Raport", "Fișiere"] as const;
 const recTone = { repeat: "success", improve: "warning", stop: "danger" } as const;
 
 export default function ClientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const cl = useClients();
+  const content = useContent();
+  const camp = useCampaigns();
+  const lib = useLibrary();
   const ws = useWorkspace();
   const { push } = useToast();
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Prezentare generală");
+  const [tab, setTab] = useState<(typeof tabs)[number]>("Prezentare");
   const [newObj, setNewObj] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [brand, setBrand] = useState<BrandProfile | null>(null);
   const [impactRows, setImpactRows] = useState<ImpactRow[]>([]);
+  const [homeFields, setHomeFields] = useState({ goal: "", week: "", next: "" });
+  const [savingHome, setSavingHome] = useState(false);
 
   const liveClient = cl.live ? cl.getClient(id) : undefined;
 
@@ -66,11 +81,14 @@ export default function ClientDetail() {
     (async () => {
       const month = firstOfMonthISO();
       const [p, im] = await Promise.all([
-        supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at").eq("id", id).maybeSingle(),
+        supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at, monthly_lead_goal, week_summary, next_steps").eq("id", id).maybeSingle(),
         supabase!.from("business_impact_entries").select("source, calls_received, relevant_dms, bookings, appointments, orders, sales, viewings, contracts, revenue_estimate, qualitative_feedback, objections_heard").eq("client_id", id).eq("period_month", month),
       ]);
       if (!active) return;
-      if (p.data) setBrand({ brandVoice: p.data.brand_voice ?? "", audience: p.data.target_audience ?? "", goals: p.data.goals ?? [], brandProfile: p.data.brand_profile ?? {}, onboardedAt: p.data.onboarding_completed_at ?? null });
+      if (p.data) {
+        setBrand({ brandVoice: p.data.brand_voice ?? "", audience: p.data.target_audience ?? "", goals: p.data.goals ?? [], brandProfile: p.data.brand_profile ?? {}, onboardedAt: p.data.onboarding_completed_at ?? null });
+        setHomeFields({ goal: p.data.monthly_lead_goal != null ? String(p.data.monthly_lead_goal) : "", week: p.data.week_summary ?? "", next: p.data.next_steps ?? "" });
+      }
       setImpactRows((im.data ?? []) as ImpactRow[]);
     })();
     return () => { active = false; };
@@ -106,7 +124,29 @@ export default function ClientDetail() {
   const clientFeedback = cl.live ? cl.feedbackFor(client.id) : ws.feedbackFor(client.id);
   const det = cl.live ? cl.detailsFor(client.id) : undefined;
   const email = cl.live ? det?.email : `contact@${client.id}.ro`;
-  const clientVideos = videos.filter((v) => v.client === client.name);
+  const clientVideos = (cl.live ? lib.videos : videos).filter((v) => v.client === client.name);
+  const clientPosts = content.posts.filter((p) => p.clientId === client.id);
+  const clientCampaigns = camp.campaigns.filter((c) => c.clientId === client.id);
+
+  // Report figures (this month) — same numbers the client sees in their portal.
+  const repPick = (f: string) => { const cr = impactRows.find((r) => r.source === "client"); const ar = impactRows.find((r) => r.source === "agency"); return Number((cr?.[f] ?? ar?.[f]) ?? 0); };
+  const repLeads = repPick("calls_received") + repPick("relevant_dms") + repPick("bookings") + repPick("appointments") + repPick("viewings");
+  const repRevenue = repPick("revenue_estimate");
+  const repInvested = clientCampaigns.reduce((s, c) => s + c.spend, 0);
+  const monthLabel = new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+
+  async function saveHome() {
+    if (!supabase || !cl.live || savingHome) return;
+    setSavingHome(true);
+    const { error } = await supabase.from("clients").update({
+      monthly_lead_goal: homeFields.goal === "" ? null : Number(homeFields.goal),
+      week_summary: homeFields.week.trim() || null,
+      next_steps: homeFields.next.trim() || null,
+    }).eq("id", id);
+    setSavingHome(false);
+    if (error) { push({ tone: "danger", title: "Nu am putut salva", description: error.message }); return; }
+    push({ tone: "success", title: "Raport actualizat", description: "Clientul vede acum noile detalii în portal." });
+  }
 
   return (
     <>
@@ -149,7 +189,7 @@ export default function ClientDetail() {
       </Panel>
 
       {/* Overview tab — full client summary; other tabs swap to just their own content */}
-      {tab === "Prezentare generală" && (
+      {tab === "Prezentare" && (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SectionCard className="lg:col-span-2" title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client — persistă între reîncărcări">
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -197,14 +237,14 @@ export default function ClientDetail() {
       )}
 
       {/* Latest client feedback (from the client portal) */}
-      {tab === "Prezentare generală" && clientFeedback && (
+      {tab === "Prezentare" && clientFeedback && (
         <SectionCard title="Cel mai recent feedback de la client" subtitle="Preluat din portalul clientului" icon={Mail} action={<Badge tone="info" dot>Nou</Badge>}>
           <p className="rounded-xl border border-info/30 bg-info/[0.06] p-4 text-sm leading-relaxed text-foreground">"{clientFeedback}"</p>
         </SectionCard>
       )}
 
       {/* Brand profile — auto-filled by the client's portal onboarding */}
-      {tab === "Prezentare generală" && cl.live && (
+      {tab === "Prezentare" && cl.live && (
         <SectionCard
           title="Profil de brand"
           icon={Megaphone}
@@ -229,42 +269,112 @@ export default function ClientDetail() {
       )}
 
       {/* Tab content */}
-      {tab === "Prezentare generală" && (cl.live ? <NicheOverview clientId={client.id} niche={client.niche} /> : <NicheDashboard client={client} />)}
+      {tab === "Prezentare" && (cl.live ? <NicheOverview clientId={client.id} niche={client.niche} /> : <NicheDashboard client={client} />)}
 
       {tab === "Conținut" && (
-        <SectionCard title="Conținut recent" subtitle={`${clientVideos.length} videoclipuri pentru ${client.name}`}>
-          {clientVideos.length ? (
+        <SectionCard title="Conținut programat" subtitle={`${clientPosts.length} ${clientPosts.length === 1 ? "postare" : "postări"} pentru ${client.name}`} action={<Link to="/content" className="text-xs font-700 text-primary">Deschide calendarul</Link>}>
+          {clientPosts.length ? (
             <Table>
-              <THead>
-                <TH>Hook</TH>
-                <TH>Platformă</TH>
-                <TH>Dată</TH>
-                <TH className="text-right">Vizualizări</TH>
-                <TH>Scor AI</TH>
-                <TH>Acțiune</TH>
-              </THead>
+              <THead><TH>Titlu</TH><TH>Platformă</TH><TH>Dată</TH><TH>Status</TH></THead>
               <tbody>
-                {clientVideos.map((v) => (
-                  <TR key={v.id}>
-                    <TD className="max-w-[280px]"><p className="truncate font-600">{v.hook}</p><p className="text-xs text-muted-foreground">{v.format}</p></TD>
-                    <TD><Badge tone="neutral">{v.platform}</Badge></TD>
-                    <TD className="text-muted-foreground">{v.date}</TD>
-                    <TD className="text-right font-600">{formatNumber(v.views)}</TD>
-                    <TD><span className={`font-display font-800 ${v.aiScore >= 80 ? "text-success" : v.aiScore >= 60 ? "text-[hsl(var(--warning))]" : "text-danger"}`}>{v.aiScore}</span></TD>
-                    <TD><Badge tone={recTone[v.rec]}>{v.rec}</Badge></TD>
+                {clientPosts.slice().sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")).map((p) => (
+                  <TR key={p.id}>
+                    <TD className="max-w-[300px]"><p className="truncate font-600">{p.title}</p></TD>
+                    <TD>{p.platform ? <Badge tone="neutral">{p.platform}</Badge> : <span className="text-muted-foreground">—</span>}</TD>
+                    <TD className="text-muted-foreground">{p.date ?? "—"}</TD>
+                    <TD className="text-muted-foreground">{POST_STATUS_LABEL[p.status] ?? p.status}</TD>
                   </TR>
                 ))}
               </tbody>
             </Table>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun videoclip înregistrat.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun conținut. <Link to="/content" className="font-700 text-primary">Planifică în calendar</Link>.</p>
           )}
         </SectionCard>
       )}
 
-      {tab === "Impact în afacere" && <BusinessImpactTab live={cl.live} niche={client.niche} rows={impactRows} />}
+      {tab === "Campanii" && (
+        <SectionCard title="Campanii plătite" subtitle={`${clientCampaigns.length} pentru ${client.name}`} icon={Megaphone} action={<Link to="/campaigns" className="text-xs font-700 text-primary">Toate campaniile</Link>}>
+          {clientCampaigns.length ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {clientCampaigns.map((c) => {
+                const pacing = c.budget > 0 ? Math.min((c.spend / c.budget) * 100, 100) : 0;
+                const roas = c.spend > 0 ? c.revenue / c.spend : 0;
+                return (
+                  <div key={c.id} className="rounded-xl border border-border p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 truncate font-600">{c.name}</p>
+                      <Badge tone="neutral">{c.platform}</Badge>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="font-600">{formatCurrency(c.spend)} <span className="text-muted-foreground">/ {formatCurrency(c.budget)}</span></span>
+                      <span className="font-700 text-muted-foreground">ROAS {roas.toFixed(1)}×</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pacing}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">Nicio campanie pentru acest client. <Link to="/campaigns" className="font-700 text-primary">Creează una</Link>.</p>
+          )}
+        </SectionCard>
+      )}
 
-      {tab === "Documente" && (
+      {tab === "Rezultate" && (
+        <div className="space-y-4">
+          <BusinessImpactTab live={cl.live} niche={client.niche} rows={impactRows} />
+          <SectionCard title="Performanță conținut" subtitle={`${clientVideos.length} ${clientVideos.length === 1 ? "videoclip" : "videoclipuri"}`} icon={TrendingUp} action={<Link to="/videos" className="text-xs font-700 text-primary">Toate</Link>}>
+            {clientVideos.length ? (
+              <Table>
+                <THead><TH>Hook</TH><TH>Platformă</TH><TH>Dată</TH><TH className="text-right">Vizualizări</TH><TH>Scor AI</TH><TH>Acțiune</TH></THead>
+                <tbody>
+                  {clientVideos.map((v) => (
+                    <TR key={v.id}>
+                      <TD className="max-w-[280px]"><p className="truncate font-600">{v.hook}</p><p className="text-xs text-muted-foreground">{v.format}</p></TD>
+                      <TD><Badge tone="neutral">{v.platform}</Badge></TD>
+                      <TD className="text-muted-foreground">{v.date}</TD>
+                      <TD className="text-right font-600">{formatNumber(v.views)}</TD>
+                      <TD><span className={`font-display font-800 ${v.aiScore >= 80 ? "text-success" : v.aiScore >= 60 ? "text-[hsl(var(--warning))]" : "text-danger"}`}>{v.aiScore}</span></TD>
+                      <TD><Badge tone={recTone[v.rec]}>{v.rec}</Badge></TD>
+                    </TR>
+                  ))}
+                </tbody>
+              </Table>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun videoclip înregistrat.</p>
+            )}
+          </SectionCard>
+        </div>
+      )}
+
+      {tab === "Raport" && (
+        <div className="space-y-4">
+          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Exact ce vede clientul în portalul lui" icon={FileText}
+            action={<Button variant="primary" size="sm" onClick={() => push({ tone: "success", title: "Trimis clientului", description: `${client.name} vede raportul în portalul lui.` })}><Send className="h-4 w-4" /> Trimite clientului</Button>}>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ReportStat label="Lead-uri" value={String(repLeads)} icon={Users} />
+              <ReportStat label="Venit estimat" value={formatCurrency(repRevenue)} icon={TrendingUp} />
+              <ReportStat label="Investit în ads" value={formatCurrency(repInvested)} icon={Wallet} />
+              <ReportStat label="ROI" value={repInvested > 0 && repRevenue > 0 ? `${Math.round(repRevenue / repInvested)}×` : "—"} icon={Coins} />
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Mesajul pentru client" subtitle="În cuvinte simple — apare pe pagina lui de Acasă" icon={Wand2}>
+            <div className="space-y-4">
+              <ReportField label="Obiectivul lunii (nr. lead-uri)"><Input type="number" min={0} value={homeFields.goal} onChange={(e) => setHomeFields((f) => ({ ...f, goal: e.target.value }))} placeholder="ex. 40" /></ReportField>
+              <ReportField label="Ce s-a întâmplat"><textarea value={homeFields.week} onChange={(e) => setHomeFields((f) => ({ ...f, week: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Filmările despre albire au adus 9 programări noi." /></ReportField>
+              <ReportField label="Ce urmează"><textarea value={homeFields.next} onChange={(e) => setHomeFields((f) => ({ ...f, next: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Pregătim 4 postări noi și relansăm reclama." /></ReportField>
+              <div className="flex items-center justify-between gap-3">
+                {!cl.live && <p className="text-xs text-muted-foreground">Disponibil în contul real (live).</p>}
+                <Button variant="primary" className="ml-auto" disabled={savingHome || !cl.live} onClick={saveHome}>{savingHome && <Loader2 className="h-4 w-4 animate-spin" />} Salvează</Button>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      )}
+
+      {tab === "Fișiere" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[
             { name: `${client.name} Ghid de brand.pdf`, size: "4.2 MB" },
@@ -299,6 +409,18 @@ export default function ClientDetail() {
         }} />
     </>
   );
+}
+
+function ReportStat({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Users }) {
+  return (
+    <div className="rounded-xl bg-muted/40 p-4">
+      <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</p>
+      <p className="mt-1 font-display text-2xl font-800">{value}</p>
+    </div>
+  );
+}
+function ReportField({ label, children }: { label: string; children: ReactNode }) {
+  return <div><p className="mb-1.5 text-xs font-700 text-muted-foreground">{label}</p>{children}</div>;
 }
 
 function EditClientModal({ open, onClose, client, website, onSave, onArchive }: {
