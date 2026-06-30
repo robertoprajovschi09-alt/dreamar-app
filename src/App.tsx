@@ -5,6 +5,7 @@ import { ViewerShell } from "@/components/layout/ViewerShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { RequireAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { MarketingLayout } from "@/marketing/MarketingLayout";
 
 // Marketing (public)
@@ -13,6 +14,7 @@ const PricingPage = lazy(() => import("@/marketing/PricingPage"));
 const LoginPage = lazy(() => import("@/marketing/LoginPage"));
 const SignupPage = lazy(() => import("@/marketing/SignupPage"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
+const MobileShell = lazy(() => import("@/components/layout/MobileShell"));
 
 // App (authenticated) — lazy so the heavy charting/page code is split per route.
 const Today = lazy(() => import("@/pages/Today"));
@@ -48,11 +50,14 @@ const S = (el: React.ReactNode) => <Suspense fallback={<RouteFallback />}>{el}</
 // portal-only shell; everyone else gets the agency app.
 function GatedShell() {
   const { live, agencyReady, isViewer, isPlatformAdmin } = useWorkspace();
+  const isMobile = useIsMobile();
   if (live && !agencyReady) {
     return <div className="grid min-h-screen place-items-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" /></div>;
   }
   if (isPlatformAdmin) return <AdminShell />;
-  return isViewer ? <ViewerShell /> : <AppShell />;
+  if (isViewer) return <ViewerShell />;
+  // Agency owners on a phone get the native mobile product, not a shrunk desktop.
+  return isMobile ? S(<MobileShell />) : <AppShell />;
 }
 
 export default function App() {

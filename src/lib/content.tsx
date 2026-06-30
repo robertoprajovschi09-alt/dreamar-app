@@ -197,8 +197,9 @@ export function ContentProvider({ children }: { children: ReactNode }) {
       return { error: approvalErr };
     }
     // Keep the production stage in sync so the calendar shows "Pentru aprobare".
-    await supabase.from("content_posts").update({ status: "sent_for_approval" }).eq("id", post.id);
+    const { error: stErr } = await supabase.from("content_posts").update({ status: "sent_for_approval" }).eq("id", post.id);
     await reload();
+    if (stErr) return { error: stErr.message };
     return {};
   }, [live, agencyId, reload]);
 
