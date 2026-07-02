@@ -198,3 +198,96 @@ body {
     font-size: 16px;
   }
 }
+
+/* ── Marketing surface (Geist, editorial register) ─────────────────────────
+   Scoped to the public site so the app keeps its own type system. */
+.marketing-root,
+.marketing-root .font-display {
+  font-family: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+}
+.marketing-root h1,
+.marketing-root h2,
+.marketing-root .font-display {
+  letter-spacing: -0.03em;
+}
+/* Product shots stay in the PRODUCT's own type — real pixels, not restyled
+   marketing pixels (also avoids faux-bolding Geist above 600). */
+.marketing-root .shot {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+.marketing-root .shot .font-display {
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  letter-spacing: normal;
+}
+/* Keyboard focus is part of premium. */
+.marketing-root a:focus-visible,
+.marketing-root button:focus-visible,
+.marketing-root summary:focus-visible {
+  outline: 2px solid hsl(var(--ring) / 0.7);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Animated underline for text links. */
+.link-u {
+  position: relative;
+}
+.link-u::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+.link-u:hover::after {
+  transform: scaleX(1);
+}
+
+/* Scroll reveal — physical, quick, once. */
+.reveal {
+  opacity: 0;
+  transform: translateY(10px) scale(0.985);
+  transition: opacity 0.22s ease-out, transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The one liquid-glass element: the floating nav pill. Thin top highlight,
+   light blur, hairline border, almost-invisible shadow. */
+.glass-pill {
+  background: hsl(var(--background) / 0.72);
+  backdrop-filter: blur(10px) saturate(1.4);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  border: 1px solid hsl(var(--foreground) / 0.08);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--background) / 0.6),
+    0 1px 2px hsl(var(--foreground) / 0.04),
+    0 8px 24px -12px hsl(var(--foreground) / 0.12);
+}
+
+/* Apple-soft elevation for product shots. */
+.shot {
+  box-shadow: 0 1px 2px hsl(var(--foreground) / 0.04), 0 12px 32px -16px hsl(var(--foreground) / 0.1);
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.2s ease;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .shot:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 2px 4px hsl(var(--foreground) / 0.05), 0 20px 48px -20px hsl(var(--foreground) / 0.16);
+  }
+}

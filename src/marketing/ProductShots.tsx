@@ -7,7 +7,7 @@ import { Bolt, Building2, CalendarDays, Check, CheckSquare, ChevronRight, Clock,
  * No gradients, hairline borders, one accent.
  */
 
-const frame = "pointer-events-none select-none overflow-hidden rounded-2xl border border-border bg-card text-left shadow-soft";
+const frame = "shot select-none overflow-hidden rounded-2xl border border-border/70 bg-card text-left";
 
 /* ── The app, opened on Astăzi (hero) ────────────────────────────────────── */
 export function ShotApp() {
@@ -160,7 +160,7 @@ export function ShotApproval() {
 /* ── The client portal, on a phone ───────────────────────────────────────── */
 export function ShotPhone() {
   return (
-    <div className="pointer-events-none mx-auto w-[270px] select-none rounded-[2.2rem] border border-border bg-card p-2.5 shadow-soft" aria-hidden="true">
+    <div className="shot mx-auto w-[270px] select-none rounded-[2.2rem] border border-border/70 bg-card p-2.5" aria-hidden="true">
       <div className="overflow-hidden rounded-[1.7rem] border border-border/60">
         <div className="px-4 pb-4 pt-5">
           <p className="text-[10px] text-muted-foreground">Cabinet Smile · cu agenția ta</p>

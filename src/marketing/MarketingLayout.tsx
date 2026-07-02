@@ -1,16 +1,21 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import { Moon, Sun } from "lucide-react";
+
+/*
+ * Public-site chrome. One deliberate glass element — the floating nav pill —
+ * everything else flat, hairline, monochrome. The product screenshots carry
+ * the only color on the page.
+ */
 
 function Wordmark() {
   return (
-    <Link to="/" className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center rounded-lg bg-foreground text-background">
-        <span className="font-display text-base font-800">d</span>
+    <Link to="/" className="flex items-center gap-2 pl-1">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-foreground text-background">
+        <span className="font-display text-sm font-600">d</span>
       </span>
-      <span className="font-display text-[17px] font-800 tracking-tight">
+      <span className="font-display text-[15px] font-600 tracking-tight">
         drea<span className="text-muted-foreground">.mar</span>
       </span>
     </Link>
@@ -27,31 +32,32 @@ export function MarketingLayout() {
   const { theme, toggle } = useTheme();
   const { isAuthed } = useAuth();
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+    <div className="marketing-root min-h-screen bg-background text-foreground">
+      {/* Floating pill navigation */}
+      <header className="fixed inset-x-0 top-4 z-40 flex justify-center px-4">
+        <div className="glass-pill flex h-12 w-full max-w-2xl items-center justify-between gap-2 rounded-full pl-2 pr-1.5">
           <Wordmark />
-          <nav className="hidden items-center gap-7 md:flex">
+          <nav className="hidden items-center gap-6 md:flex">
             {navItems.map((n) => (
-              <a key={n.label} href={n.to} className="text-sm font-600 text-muted-foreground transition hover:text-foreground">
+              <a key={n.label} href={n.to} className="link-u text-[13px] font-500 text-muted-foreground transition hover:text-foreground">
                 {n.label}
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={toggle} className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:text-foreground" aria-label="Comută tema">
-              {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+          <div className="flex items-center gap-1">
+            <button onClick={toggle} className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition hover:text-foreground" aria-label="Comută tema">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             {isAuthed ? (
-              <Link to="/dashboard" className="rounded-lg bg-primary px-4 py-2 text-sm font-700 text-primary-foreground transition hover:brightness-110">
-                Deschide aplicația →
+              <Link to="/dashboard" className="rounded-full bg-foreground px-4 py-1.5 text-[13px] font-500 text-background transition duration-200 motion-safe:hover:-translate-y-px">
+                Deschide aplicația
               </Link>
             ) : (
               <>
-                <Link to="/login" className="hidden rounded-lg px-3 py-2 text-sm font-600 text-muted-foreground transition hover:text-foreground sm:block">
+                <Link to="/login" className="hidden px-2.5 py-1.5 text-[13px] font-500 text-muted-foreground transition hover:text-foreground sm:block">
                   Autentificare
                 </Link>
-                <Link to="/signup" className="rounded-lg bg-primary px-4 py-2 text-sm font-700 text-primary-foreground transition hover:brightness-110">
+                <Link to="/signup" className="rounded-full bg-foreground px-4 py-1.5 text-[13px] font-500 text-background transition duration-200 motion-safe:hover:-translate-y-px">
                   Începe gratuit
                 </Link>
               </>
@@ -62,45 +68,20 @@ export function MarketingLayout() {
 
       <Outlet />
 
-      <footer className="border-t border-border/70">
-        <div className="mx-auto max-w-6xl px-5 py-12">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <Wordmark />
-              <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-                Sistemul de operare al agenției tale — clienți, conținut, aprobări și rezultate, într-un singur loc.
-              </p>
-            </div>
-            <FooterCol title="Produs" links={[["Produs", "/#produs"], ["Portalul clientului", "/#clienti"], ["Prețuri", "/pricing"], ["Autentificare", "/login"]]} />
-            <FooterCol title="Companie" links={[["Despre noi", "/#"], ["Cariere", "/#"], ["Contact", "/#"], ["Blog", "/#"]]} />
-            <FooterCol title="Legal" links={[["Confidențialitate", "/#"], ["Termeni", "/#"], ["Securitate", "/#"], ["GDPR", "/#"]]} />
-          </div>
-          <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border/70 pt-6 text-xs text-muted-foreground sm:flex-row">
-            <span>© 2026 drea.mar — toate drepturile rezervate.</span>
-            <div className="flex items-center gap-4">
-              <span>Creat pentru agențiile din UE · Prețuri în EUR</span>
-              <Link to="/admin/login" className="transition hover:text-foreground">Admin</Link>
-            </div>
-          </div>
+      {/* Slim, single-row footer */}
+      <footer className="border-t border-border/50">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-6 py-12 text-sm md:flex-row">
+          <Wordmark />
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
+            <a href="/#produs" className="link-u transition hover:text-foreground">Produs</a>
+            <a href="/#clienti" className="link-u transition hover:text-foreground">Portalul clientului</a>
+            <Link to="/pricing" className="link-u transition hover:text-foreground">Prețuri</Link>
+            <Link to="/login" className="link-u transition hover:text-foreground">Autentificare</Link>
+            <Link to="/admin/login" className="link-u transition hover:text-foreground">Admin</Link>
+          </nav>
+          <p className="text-[13px] text-muted-foreground">© 2026 drea.mar · Prețuri în EUR</p>
         </div>
       </footer>
     </div>
   );
 }
-
-function FooterCol({ title, links }: { title: string; links: [string, string][] }) {
-  return (
-    <div>
-      <p className="text-xs font-700 uppercase tracking-wide text-muted-foreground/70">{title}</p>
-      <ul className="mt-3 space-y-2">
-        {links.map(([label, to]) => (
-          <li key={label}>
-            <a href={to} className="text-sm text-muted-foreground transition hover:text-foreground">{label}</a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export const marketingActiveClass = (isActive: boolean) => cn(isActive && "text-foreground");
