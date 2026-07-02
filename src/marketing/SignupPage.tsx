@@ -30,12 +30,12 @@ export default function SignupPage() {
     return (
       <AuthShell>
         <div className="text-center">
-          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400"><MailCheck className="h-6 w-6" /></span>
-          <h1 className="mt-4 font-display text-2xl font-800">Verifică-ți emailul</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Am trimis un link de confirmare la <span className="font-700 text-foreground">{email}</span>. Apasă pe el, apoi autentifică-te — spațiul tău de lucru <span className="font-700 text-foreground">{agency}</span> va fi gata.
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-foreground"><MailCheck className="h-6 w-6" /></span>
+          <h1 className="mt-5 font-display text-3xl font-600">Verifică-ți emailul</h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Am trimis un link de confirmare la <span className="font-600 text-foreground">{email}</span>. Apasă pe el, apoi autentifică-te — spațiul tău de lucru <span className="font-600 text-foreground">{agency}</span> va fi gata.
           </p>
-          <Link to="/login" className="mt-6 inline-block rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 px-5 py-2.5 text-sm font-700 text-white shadow-lg shadow-indigo-600/25">Mergi la autentificare</Link>
+          <Link to="/login" className="mt-7 inline-block rounded-full bg-foreground px-6 py-2.5 text-sm font-500 text-background transition duration-200 motion-safe:hover:-translate-y-0.5">Mergi la autentificare</Link>
         </div>
       </AuthShell>
     );
@@ -43,7 +43,7 @@ export default function SignupPage() {
 
   return (
     <AuthShell>
-      <h1 className="font-display text-2xl font-800">Începe perioada de probă gratuită</h1>
+      <h1 className="font-display text-3xl font-600">Începe gratuit</h1>
       <p className="mt-1 text-sm text-muted-foreground">14 zile gratuit. Fără card de credit.</p>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
@@ -62,18 +62,18 @@ export default function SignupPage() {
           <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm ring-focus" placeholder="Cel puțin 6 caractere" />
         </Field>
         {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-600 text-danger">{error}</p>}
-        <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-sm font-700 text-white shadow-lg shadow-indigo-600/25 transition hover:brightness-110 disabled:opacity-60">
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează contul și începe perioada de probă
+        <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-500 text-background transition duration-200 motion-safe:hover:-translate-y-0.5 disabled:opacity-60">
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează contul
         </button>
       </form>
 
       <ul className="mt-5 space-y-1.5">
         {["Spațiu de lucru privat gata în câteva secunde", "Până la 5 clienți în perioada de probă gratuită", "Anulezi oricând"].map((f) => (
-          <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3.5 w-3.5 text-success" /> {f}</li>
+          <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground"><Check className="h-3.5 w-3.5 text-foreground/40" /> {f}</li>
         ))}
       </ul>
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Ai deja un cont? <Link to="/login" className="font-700 text-indigo-600 hover:underline dark:text-indigo-400">Autentifică-te</Link>
+        Ai deja un cont? <Link to="/login" className="link-u font-500 text-foreground">Autentifică-te</Link>
       </p>
     </AuthShell>
   );

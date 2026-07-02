@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <h1 className="font-display text-2xl font-800">Bine ai revenit</h1>
+      <h1 className="font-display text-3xl font-600">Bine ai revenit</h1>
       <p className="mt-1 text-sm text-muted-foreground">Autentifică-te în spațiul de lucru al agenției tale.</p>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
@@ -37,9 +37,9 @@ export default function LoginPage() {
         {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-600 text-danger">{error}</p>}
         <div className="flex items-center justify-between text-xs">
           <label className="flex items-center gap-2 text-muted-foreground"><input type="checkbox" className="accent-[hsl(var(--primary))]" /> Ține-mă minte</label>
-          <a href="/#" className="font-600 text-indigo-600 hover:underline dark:text-indigo-400">Ai uitat parola?</a>
+          <a href="/#" className="link-u font-500 text-foreground">Ai uitat parola?</a>
         </div>
-        <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-sm font-700 text-white shadow-lg shadow-indigo-600/25 transition hover:brightness-110 disabled:opacity-60">
+        <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-500 text-background transition duration-200 motion-safe:hover:-translate-y-0.5 disabled:opacity-60">
           {busy && <Loader2 className="h-4 w-4 animate-spin" />} Autentificare
         </button>
       </form>
@@ -50,7 +50,7 @@ export default function LoginPage() {
         </p>
       )}
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Ești nou pe drea.mar? <Link to="/signup" className="font-700 text-indigo-600 hover:underline dark:text-indigo-400">Creează un cont</Link>
+        Ești nou pe drea.mar? <Link to="/signup" className="link-u font-500 text-foreground">Creează un cont</Link>
       </p>
     </AuthShell>
   );
