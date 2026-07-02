@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader, Button, Select, Panel, SectionCard, Badge, Input, Segmented } from "@/components/ui";
 import { Drawer, Modal } from "@/components/overlay";
 import { useToast } from "@/lib/toast";
@@ -7,7 +7,7 @@ import { useClients } from "@/lib/clients";
 import { useLibrary } from "@/lib/library";
 import { SkeletonRows } from "@/components/Skeleton";
 import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Clock, FileText, GripVertical, Loader2, Plus, Send, Sparkles, Trash2, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, lastClientId, rememberClient } from "@/lib/utils";
 
 const statusMeta: Record<UIPostStatus, { label: string; cls: string; dot: string }> = {
   idea: { label: "Idee", cls: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
@@ -40,12 +40,24 @@ const monthLabel = (y: number, m: number) => new Date(y, m, 1).toLocaleString("r
 
 export default function ContentCalendar() {
   const { push } = useToast();
-  const { posts, loading, live, createPost, updatePost, deletePost, requestApproval } = useContent();
+  const { posts: allPosts, loading, live, createPost, updatePost, deletePost, requestApproval } = useContent();
   const { clients } = useClients();
   const { hooks } = useLibrary();
+  // Posts hidden during their delete-undo window.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const deleteTimers = useRef(new Map<string, number>());
+  const posts = useMemo(() => (hiddenIds.size ? allPosts.filter((p) => !hiddenIds.has(p.id)) : allPosts), [allPosts, hiddenIds]);
 
   const today = useMemo(() => new Date(), []);
-  const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
+  // Sticky month: planning 2 months ahead shouldn't reset to today on every visit.
+  const [ym, setYm] = useState(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("dreamar-cal-ym") || "null");
+      if (saved && typeof saved.y === "number" && typeof saved.m === "number") return saved as { y: number; m: number };
+    } catch { /* ignore */ }
+    return { y: today.getFullYear(), m: today.getMonth() };
+  });
+  useEffect(() => { try { sessionStorage.setItem("dreamar-cal-ym", JSON.stringify(ym)); } catch { /* ignore */ } }, [ym]);
   const [client, setClient] = useState("all");
   const [platform, setPlatform] = useState("all");
   const [view, setView] = useState<"month" | "list">(() => (typeof window !== "undefined" && window.innerWidth < 640 ? "list" : "month"));
@@ -249,11 +261,27 @@ export default function ContentCalendar() {
           const res = await updatePost(selected.id, { status: s });
           if (res.error) push({ tone: "danger", title: "Nu s-a putut actualiza statusul", description: res.error });
         }}
-        onDelete={async () => {
+        onDelete={() => {
           if (!selected) return;
-          const res = await deletePost(selected.id);
-          if (res.error) { push({ tone: "danger", title: "Nu s-a putut șterge postarea", description: res.error }); return; }
-          setSelectedId(null); push({ tone: "warning", title: "Postare ștearsă" });
+          const id = selected.id;
+          const title = selected.title;
+          setSelectedId(null);
+          // Hide instantly; only delete in the DB after the undo window passes.
+          setHiddenIds((prev) => new Set(prev).add(id));
+          const timer = window.setTimeout(async () => {
+            deleteTimers.current.delete(id);
+            const res = await deletePost(id);
+            setHiddenIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+            if (res.error) push({ tone: "danger", title: "Nu s-a putut șterge postarea", description: res.error });
+          }, 5000);
+          deleteTimers.current.set(id, timer);
+          push({
+            tone: "warning", title: "Postare ștearsă", description: title,
+            action: { label: "Anulează", run: () => {
+              const t = deleteTimers.current.get(id);
+              if (t) { window.clearTimeout(t); deleteTimers.current.delete(id); setHiddenIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
+            } },
+          });
         }} />
     </>
   );
@@ -272,14 +300,14 @@ function PostComposer({ open, onClose, clients, hooks, defaultDate, onCreate }: 
   const [date, setDate] = useState(defaultDate);
   const [busy, setBusy] = useState(false);
   const [showHooks, setShowHooks] = useState(false);
-  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setTitle(""); setPlatform("Instagram"); setStatus("idea"); setDate(defaultDate); setShowHooks(false); } }, [open, clients, defaultDate]);
+  useEffect(() => { if (open) { setClientId(lastClientId(clients)); setTitle(""); setPlatform("Instagram"); setStatus("idea"); setDate(defaultDate); setShowHooks(false); } }, [open, clients, defaultDate]);
 
   async function submit() {
     if (!title.trim() || !clientId || busy) return;
     setBusy(true);
     const res = await onCreate({ clientId, title: title.trim(), platform, status, date });
     setBusy(false);
-    if (!res.error) onClose();
+    if (!res.error) { rememberClient(clientId); onClose(); }
   }
   const dateLabel = date ? new Date(date + "T00:00:00").toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" }) : "";
   return (

@@ -14,10 +14,18 @@ const TABS = [
 // Hooks as a writing aid. (Hooks becomes a composer drawer in a later phase.)
 export default function ContentWorkspace() {
   const [params, setParams] = useSearchParams();
-  const tab = TABS.some((t) => t.id === params.get("tab")) ? params.get("tab")! : "calendar";
+  // URL param wins; otherwise reopen on the last-used view (board people live in board).
+  const remembered = typeof window !== "undefined" ? localStorage.getItem("dreamar-content-tab") : null;
+  const tab = TABS.some((t) => t.id === params.get("tab"))
+    ? params.get("tab")!
+    : TABS.some((t) => t.id === remembered) ? remembered! : "calendar";
+  const switchTab = (v: string) => {
+    try { localStorage.setItem("dreamar-content-tab", v); } catch { /* ignore */ }
+    setParams({ tab: v }, { replace: true });
+  };
   return (
     <div className="space-y-4">
-      <Segmented value={tab} onChange={(v) => setParams({ tab: v }, { replace: true })} options={TABS.map((t) => ({ label: t.label, value: t.id }))} />
+      <Segmented value={tab} onChange={switchTab} options={TABS.map((t) => ({ label: t.label, value: t.id }))} />
       {tab === "board" ? <Tasks /> : tab === "hooks" ? <HookLibrary /> : <ContentCalendar />}
     </div>
   );

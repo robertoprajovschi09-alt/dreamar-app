@@ -28,3 +28,4 @@ supabase/.temp
 # dev screenshots
 Screenshot*.png
 tsconfig.tsbuildinfo
+.claude-flow/

@@ -13,13 +13,14 @@ const groups = [
   {
     title: "Mergi la — apasă G apoi…",
     items: [
-      { keys: ["G", "D"], label: "Tablou de bord" },
+      { keys: ["G", "D"], label: "Astăzi" },
       { keys: ["G", "C"], label: "Clienți" },
-      { keys: ["G", "V"], label: "Performanță video" },
-      { keys: ["G", "T"], label: "Sarcini" },
+      { keys: ["G", "N"], label: "Conținut (calendar)" },
+      { keys: ["G", "T"], label: "Conținut — board de sarcini" },
+      { keys: ["G", "H"], label: "Conținut — hook-uri" },
       { keys: ["G", "A"], label: "Aprobări" },
-      { keys: ["G", "R"], label: "Rapoarte lunare" },
-      { keys: ["G", "S"], label: "Cameră de strategie AI" },
+      { keys: ["G", "E"], label: "Agenție" },
+      { keys: ["G", "V"], label: "Performanță video" },
     ],
   },
 ];

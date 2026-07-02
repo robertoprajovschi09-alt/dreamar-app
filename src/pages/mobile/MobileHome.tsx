@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function MobileHome({ onOpenInbox }: { onOpenInbox: () => void }) {
+export function MobileHome({ onOpenInbox, onOpenClient }: { onOpenInbox: () => void; onOpenClient: (name: string) => void }) {
   const { profile } = useWorkspace();
   const { push } = useToast();
   const { feed, urgent, review, count, loading } = useInbox();
@@ -73,7 +73,7 @@ export function MobileHome({ onOpenInbox }: { onOpenInbox: () => void }) {
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           {top.map((item, i) => (
             <div key={item.id} className={cn(i > 0 && "border-t border-border/60")}>
-              <FeedRow item={item} busy={busy === item.id} onAct={item.act ? () => act(item) : undefined} onOpen={onOpenInbox} />
+              <FeedRow item={item} busy={busy === item.id} onAct={item.act ? () => act(item) : undefined} onOpen={() => onOpenClient(item.clientName)} />
             </div>
           ))}
           {feed.length > top.length && <button onClick={onOpenInbox} className="w-full border-t border-border/60 py-2.5 text-sm font-700 text-primary">Vezi tot ({feed.length})</button>}

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader, Button, Badge, SearchInput, Select, Panel, Segmented } from "@/components/ui";
 import { Table, THead, TH, TR, TD } from "@/components/table";
 import { SkeletonCard, SkeletonRows } from "@/components/Skeleton";
@@ -37,12 +37,17 @@ export default function Clients() {
   const { push } = useToast();
   const { clients, loading, archiveClient } = useClients();
   const { currentAgency } = useWorkspace();
-  const [view, setView] = useState<"grid" | "list">("grid");
-  const [niche, setNiche] = useState("all");
-  const [status, setStatus] = useState("all");
-  const [q, setQ] = useState("");
+  // Filters + search survive navigation — stop re-applying the same filter every visit.
+  const savedFilters = (() => { try { return JSON.parse(sessionStorage.getItem("dreamar-clients-filters") || "{}"); } catch { return {}; } })();
+  const [view, setView] = useState<"grid" | "list">(savedFilters.view === "list" ? "list" : "grid");
+  const [niche, setNiche] = useState<string>(savedFilters.niche ?? "all");
+  const [status, setStatus] = useState<string>(savedFilters.status ?? "all");
+  const [q, setQ] = useState<string>(savedFilters.q ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkObjectivesOpen, setBulkObjectivesOpen] = useState(false);
+  useEffect(() => {
+    try { sessionStorage.setItem("dreamar-clients-filters", JSON.stringify({ view, niche, status, q })); } catch { /* ignore */ }
+  }, [view, niche, status, q]);
 
   const planMax = PLAN_MAX[currentAgency.plan] ?? null;
   const filtered = clients.filter(

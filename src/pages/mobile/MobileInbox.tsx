@@ -5,7 +5,7 @@ import { FeedRow } from "@/components/mobile/FeedRow";
 import { SwipeRow } from "@/components/mobile/SwipeRow";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
-export function MobileInbox() {
+export function MobileInbox({ onOpenClient }: { onOpenClient: (name: string) => void }) {
   const { push } = useToast();
   const { feed, loading } = useInbox();
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function MobileInbox() {
                   <div className="rounded-2xl border border-border bg-card"><FeedRow item={item} busy={busy === item.id} onAct={() => act(item)} /></div>
                 </SwipeRow>
               ) : (
-                <div key={item.id} className="rounded-2xl border border-border bg-card"><FeedRow item={item} onOpen={() => undefined} /></div>
+                <div key={item.id} className="rounded-2xl border border-border bg-card"><FeedRow item={item} onOpen={() => onOpenClient(item.clientName)} /></div>
               ),
             )}
           </div>

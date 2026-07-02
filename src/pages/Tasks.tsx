@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader, Button, Badge, Panel, Avatar, Input, Select } from "@/components/ui";
 import { Modal } from "@/components/overlay";
 import { SkeletonCard } from "@/components/Skeleton";
@@ -8,7 +8,7 @@ import { useClients } from "@/lib/clients";
 import { supabase } from "@/lib/supabase";
 import { tasks as seed } from "@/data/sample";
 import { GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, lastClientId, rememberClient } from "@/lib/utils";
 
 const LIVE_COLS = [
   { key: "todo", title: "De făcut", tone: "neutral" },
@@ -26,6 +26,12 @@ const DEMO_COLS = [
 const prTone: Record<string, string> = { low: "neutral", medium: "warning", high: "danger", urgent: "danger" };
 const TASK_TYPES = ["planning", "scripting", "filming", "editing", "design", "reporting", "approval", "meeting", "other"];
 const PRIORITIES = ["low", "medium", "high", "urgent"];
+// Romanian labels for the raw DB enums shown in Selects + cards.
+const TYPE_LABEL: Record<string, string> = {
+  planning: "Planificare", scripting: "Scenariu", filming: "Filmare", editing: "Editare", design: "Design",
+  reporting: "Raportare", approval: "Aprobare", meeting: "Ședință", other: "Altele",
+};
+const PRIORITY_LABEL: Record<string, string> = { low: "Scăzută", medium: "Medie", high: "Ridicată", urgent: "Urgentă" };
 
 type Task = { id: string; title: string; client: string; clientId: string; type: string; priority: string; status: string; assignee: string; assignedTo: string; due: string; rawDeadline: string; overdue?: boolean };
 type TaskInput = { title: string; clientId: string; type: string; priority: string; deadline: string; assignedTo: string };
@@ -122,13 +128,28 @@ export default function Tasks() {
     return {};
   }
 
-  async function deleteTask(id: string, title: string) {
-    setTasks((prev) => prev.filter((x) => x.id !== id)); // optimistic
-    if (live && supabase) {
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
-      if (error) { push({ tone: "danger", title: "Sarcina nu a putut fi ștearsă", description: error.message }); void reload(); return; }
-    }
-    push({ tone: "warning", title: "Sarcină ștearsă", description: title });
+  // Deferred delete with undo: hide instantly, only hit the DB after the
+  // undo window passes. Recovering a mis-delete takes one tap, not a re-create.
+  const deleteTimers = useRef(new Map<string, number>());
+  function deleteTask(id: string, title: string) {
+    const snapshot = tasks.find((x) => x.id === id);
+    if (!snapshot) return;
+    setTasks((prev) => prev.filter((x) => x.id !== id));
+    const timer = window.setTimeout(async () => {
+      deleteTimers.current.delete(id);
+      if (live && supabase) {
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) { push({ tone: "danger", title: "Sarcina nu a putut fi ștearsă", description: error.message }); void reload(); }
+      }
+    }, 5000);
+    deleteTimers.current.set(id, timer);
+    push({
+      tone: "warning", title: "Sarcină ștearsă", description: title,
+      action: { label: "Anulează", run: () => {
+        const t = deleteTimers.current.get(id);
+        if (t) { window.clearTimeout(t); deleteTimers.current.delete(id); setTasks((prev) => [snapshot, ...prev]); }
+      } },
+    });
   }
 
   if (loading) return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>;
@@ -168,9 +189,9 @@ export default function Tasks() {
                   >
                     <div className="mb-2 flex items-center justify-between">
                       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      <Badge tone={prTone[t.priority] as any}>{t.priority}</Badge>
+                      <Badge tone={prTone[t.priority] as any}>{PRIORITY_LABEL[t.priority] ?? t.priority}</Badge>
                       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {t.type}
+                        {TYPE_LABEL[t.type] ?? t.type}
                         <button onClick={(e) => { e.stopPropagation(); deleteTask(t.id, t.title); }} className="opacity-0 transition hover:text-danger group-hover:opacity-100" title="Șterge sarcina"><Trash2 className="h-3.5 w-3.5" /></button>
                         <GripVertical className="h-3.5 w-3.5 opacity-40" />
                       </span>
@@ -219,7 +240,7 @@ function TaskComposer({ open, editing, onClose, clients, members, myId, onSubmit
   useEffect(() => {
     if (!open) return;
     if (editing) { setTitle(editing.title); setClientId(editing.clientId); setType(editing.type); setPriority(editing.priority); setDeadline(editing.rawDeadline); setAssignedTo(editing.assignedTo); setBusy(false); }
-    else { setTitle(""); setClientId(""); setType("other"); setPriority("medium"); setDeadline(""); setAssignedTo(myId); setBusy(false); }
+    else { setTitle(""); setClientId(lastClientId(clients)); setType("other"); setPriority("medium"); setDeadline(""); setAssignedTo(myId); setBusy(false); }
   }, [open, editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit() {
@@ -227,20 +248,20 @@ function TaskComposer({ open, editing, onClose, clients, members, myId, onSubmit
     setBusy(true);
     const res = await onSubmit({ title: title.trim(), clientId, type, priority, deadline, assignedTo });
     setBusy(false);
-    if (!res.error) onClose();
+    if (!res.error) { if (clientId) rememberClient(clientId); onClose(); }
   }
   return (
     <Modal open={open} onClose={onClose} title={editing ? "Editează sarcina" : "Sarcină nouă"} subtitle={editing ? "Actualizează această sarcină" : "Adaugă o sarcină pe board"} size="md"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim()} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} {editing ? "Salvează modificările" : "Creează sarcina"}</Button></>}>
       <div className="space-y-4">
-        <TField label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ex. Scrie scriptul pentru turul proprietății" /></TField>
+        <TField label="Titlu"><Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Scrie scriptul pentru turul proprietății" /></TField>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <TField label="Client (opțional)"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full"><option value="">Intern / niciunul</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></TField>
           <TField label="Termen limită (opțional)"><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></TField>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TField label="Tip"><Select value={type} onChange={(e) => setType(e.target.value)} className="w-full">{TASK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</Select></TField>
-          <TField label="Prioritate"><Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full">{PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}</Select></TField>
+          <TField label="Tip"><Select value={type} onChange={(e) => setType(e.target.value)} className="w-full">{TASK_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t] ?? t}</option>)}</Select></TField>
+          <TField label="Prioritate"><Select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full">{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p] ?? p}</option>)}</Select></TField>
         </div>
         {members.length > 1 && (
           <TField label="Responsabil"><Select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full"><option value="">Neasignat</option>{members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</Select></TField>

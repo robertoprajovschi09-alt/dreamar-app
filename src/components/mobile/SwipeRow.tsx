@@ -32,8 +32,11 @@ export function SwipeRow({ children, onSwipe, label = "Gata", onClick }: {
     if (startX.current == null) return;
     const passed = dx > THRESHOLD;
     startX.current = null;
-    if (passed && onSwipe) { setGone(true); window.setTimeout(() => onSwipe(), 170); }
-    else setDx(0);
+    if (passed && onSwipe) {
+      navigator.vibrate?.(35); // haptic confirmation — the action registered
+      setGone(true);
+      window.setTimeout(() => onSwipe(), 170);
+    } else setDx(0);
   }
 
   if (gone) return null;
@@ -44,7 +47,7 @@ export function SwipeRow({ children, onSwipe, label = "Gata", onClick }: {
       {onSwipe && (
         <div className="absolute inset-y-0 left-0 flex items-center bg-success pl-4 text-white" style={{ width: `${Math.max(dx, 0)}px`, opacity: progress }}>
           <Check className="h-5 w-5 shrink-0" />
-          {dx > 60 && <span className="ml-2 whitespace-nowrap text-sm font-700">{label}</span>}
+          {dx > 30 && <span className="ml-2 whitespace-nowrap text-sm font-700">{label}</span>}
         </div>
       )}
       <div

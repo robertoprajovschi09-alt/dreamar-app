@@ -105,7 +105,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
 
       {step === 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nume client" full><Input autoFocus placeholder="ex. Altmark Residences" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label="Nume client" full><Input autoFocus placeholder="ex. Altmark Residences" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && name.trim().length > 1) setStep(1); }} /></Field>
           <Field label="Oraș"><Input placeholder="Cluj-Napoca" value={city} onChange={(e) => setCity(e.target.value)} /></Field>
           <Field label="Website"><Input placeholder="example.ro" value={website} onChange={(e) => setWebsite(e.target.value)} /></Field>
           <Field label="Persoană de contact"><Input placeholder="Diana Pop" value={contact} onChange={(e) => setContact(e.target.value)} /></Field>
@@ -161,7 +161,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
             </div>
           </div>
           <Field label="Obiectivele lunii acesteia" full><textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Câte unul pe linie — ex. Generează 40 de lead-uri calificate, crește TikTok cu 15%…" /></Field>
-          <Field label="Vocea brandului" full><Input placeholder="Încrezătoare, caldă, premium…" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} /></Field>
+          <Field label="Vocea brandului" full><Input placeholder="Încrezătoare, caldă, premium…" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void create(); }} /></Field>
           <div className="flex items-center gap-2 rounded-lg bg-primary/[0.06] p-3 text-sm">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Un tablou de bord {niche ? nicheLabels[niche] : "personalizat"}, un calendar și un șablon de raport vor fi create automat.</span>

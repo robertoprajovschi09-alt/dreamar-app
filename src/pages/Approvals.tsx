@@ -134,7 +134,7 @@ export default function Approvals() {
         </>}>
         <div className="space-y-2">
           <p className="text-xs font-700 text-muted-foreground">Postare</p>
-          <Select value={sendId} onChange={(e) => setSendId(e.target.value)} className="w-full">
+          <Select autoFocus value={sendId} onChange={(e) => setSendId(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sendId && !busy) send(sendable.find((p) => p.id === sendId), () => setSendOpen(false)); }} className="w-full">
             {sendable.length === 0 && <option value="">Nicio postare disponibilă</option>}
             {sendable.map((p) => <option key={p.id} value={p.id}>{p.clientName} — {p.title}</option>)}
           </Select>

@@ -9,6 +9,15 @@ import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui";
 import { Check, ChevronsUpDown, LogOut, Sparkles, X } from "lucide-react";
 
+// Warm the lazy route chunk on hover so navigation feels instant.
+const PREFETCH: Record<string, () => void> = {
+  "/dashboard": () => void import("@/pages/Today"),
+  "/clients": () => void import("@/pages/Clients"),
+  "/content": () => void import("@/pages/ContentWorkspace"),
+  "/approvals": () => void import("@/pages/Approvals"),
+  "/agency": () => void import("@/pages/AgencyWorkspace"),
+};
+
 function Logo() {
   return (
     <Link to="/dashboard" className="flex items-center gap-2.5">
@@ -69,6 +78,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                   to={item.to}
                   end={item.end}
                   onClick={onClose}
+                  onMouseEnter={() => PREFETCH[item.to]?.()}
                   className={({ isActive }) =>
                     cn(
                       "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-600 transition",

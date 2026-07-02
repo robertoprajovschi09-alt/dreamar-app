@@ -10,7 +10,7 @@ import {
   type Campaign, type CampaignStatus, type CampaignPatch,
 } from "@/lib/campaigns";
 import { Megaphone, Plus, Loader2, Trash2, Wallet, TrendingUp, Target, Users, BarChart3 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, lastClientId, rememberClient } from "@/lib/utils";
 
 const STATUS: Record<CampaignStatus, { label: string; badge: "neutral" | "success" | "warning" | "info"; bar: string }> = {
   planning: { label: "Planificată", badge: "neutral", bar: "bg-muted-foreground/45" },
@@ -262,7 +262,7 @@ function CampaignComposer({ open, onClose, clients, onCreate }: {
     const today = new Date();
     const inMonth = new Date(); inMonth.setMonth(inMonth.getMonth() + 1);
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    setClientId(clients[0]?.id ?? ""); setName(""); setPlatform("Meta"); setObjective("Lead-uri");
+    setClientId(lastClientId(clients)); setName(""); setPlatform("Meta"); setObjective("Lead-uri");
     setStatus("active"); setStart(iso(today)); setEnd(iso(inMonth)); setBudget(""); setBusy(false);
   }, [open, clients]);
 
@@ -271,14 +271,14 @@ function CampaignComposer({ open, onClose, clients, onCreate }: {
     setBusy(true);
     const res = await onCreate({ clientId, name: name.trim(), platform, objective, status, startDate: start || null, endDate: end || null, budget: budget === "" ? 0 : Number(budget) });
     setBusy(false);
-    if (!res.error) onClose();
+    if (!res.error) { rememberClient(clientId); onClose(); }
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Campanie nouă" subtitle="Planifică o campanie plătită pentru un client" size="md"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !name.trim() || !clientId} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează campania</Button></>}>
       <div className="space-y-4">
-        <Field label="Nume campanie"><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="ex. Lansare primăvară — Meta" /></Field>
+        <Field label="Nume campanie"><Input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Lansare primăvară — Meta" /></Field>
         <Field label="Client"><Select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full">{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full">{CAMPAIGN_PLATFORMS.map((p) => <option key={p}>{p}</option>)}</Select></Field>
@@ -340,7 +340,7 @@ function CampaignDrawer({ campaign, onClose, onSave, onDelete }: {
         <Button variant="primary" size="sm" className="ml-auto" onClick={save}>Salvează</Button>
       </>}>
       {campaign && (
-        <div className="space-y-5">
+        <div className="space-y-5" onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save(); }}>
           {/* derived KPIs */}
           <div className="grid grid-cols-3 gap-2">
             {[["ROAS", `${roas.toFixed(1)}×`], ["CPL", liveLeads > 0 ? eur(cpl) : "—"], ["CTR", liveImp > 0 ? `${ctr.toFixed(1)}%` : "—"]].map(([l, v]) => (

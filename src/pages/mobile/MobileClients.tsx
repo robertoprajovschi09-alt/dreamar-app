@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useClients } from "@/lib/clients";
 import { useCampaigns } from "@/lib/campaigns";
 import { useToast } from "@/lib/toast";
@@ -8,12 +8,20 @@ import { ChevronRight, FileText, MessageCircle, Monitor, Search } from "lucide-r
 
 const eurK = (n: number) => (n >= 1000 ? `€${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `€${Math.round(n)}`);
 
-export function MobileClients() {
+export function MobileClients({ initialName, onConsumed }: { initialName?: string | null; onConsumed?: () => void }) {
   const { clients } = useClients();
   const { campaigns } = useCampaigns();
   const { push } = useToast();
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // A feed row asked for this client — open its sheet directly.
+  useEffect(() => {
+    if (!initialName) return;
+    const c = clients.find((x) => x.name === initialName);
+    if (c) setOpenId(c.id);
+    onConsumed?.();
+  }, [initialName, clients, onConsumed]);
 
   const list = clients.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
   const active = clients.find((c) => c.id === openId) ?? null;

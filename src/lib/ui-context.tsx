@@ -8,8 +8,11 @@ import { useTheme } from "@/lib/theme";
 type UICtx = { openNewClient: () => void; openCommand: () => void; openShortcuts: () => void };
 const Ctx = createContext<UICtx | null>(null);
 
+// Post-IA-redesign destinations: workspaces + their tabs. (Old /tasks, /reports,
+// /strategy shortcuts pointed at demoted or relocated pages.)
 const goMap: Record<string, string> = {
-  d: "/dashboard", c: "/clients", v: "/videos", t: "/tasks", a: "/approvals", r: "/reports", s: "/strategy",
+  d: "/dashboard", c: "/clients", n: "/content", t: "/content?tab=board", h: "/content?tab=hooks",
+  a: "/approvals", e: "/agency", v: "/videos",
 };
 
 function isTyping(el: EventTarget | null) {

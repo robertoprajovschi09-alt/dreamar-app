@@ -36,8 +36,11 @@ export default function MobileShell() {
 function MobileInner() {
   const [tab, setTab] = useState<Tab>("home");
   const [sheet, setSheet] = useState(false);
+  // Set when a feed row wants to open a client — consumed by the Clienți tab.
+  const [focusClient, setFocusClient] = useState<string | null>(null);
   const { count } = useInbox();
   const location = useLocation();
+  const openClient = (name: string) => { setFocusClient(name); setTab("clients"); };
 
   // Deep links / programmatic navigation (g-shortcuts) land on the right tab.
   useEffect(() => {
@@ -52,9 +55,9 @@ function MobileInner() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
         <ErrorBoundary key={tab}>
-          {tab === "home" && <MobileHome onOpenInbox={() => setTab("inbox")} />}
-          {tab === "inbox" && <MobileInbox />}
-          {tab === "clients" && <MobileClients />}
+          {tab === "home" && <MobileHome onOpenInbox={() => setTab("inbox")} onOpenClient={openClient} />}
+          {tab === "inbox" && <MobileInbox onOpenClient={openClient} />}
+          {tab === "clients" && <MobileClients initialName={focusClient} onConsumed={() => setFocusClient(null)} />}
           {tab === "account" && <MobileAccount />}
         </ErrorBoundary>
       </main>

@@ -15,6 +15,8 @@ export type InboxItem = {
   subtitle: string;
   clientName: string;
   actionLabel: string;
+  // Optional deadline (ISO date) — sorts sooner-first within the same severity.
+  due?: string;
   // Present only on actionable items. Runs the optimistic mutation.
   act?: () => Promise<{ error?: string }>;
 };
@@ -51,7 +53,7 @@ export function useInbox() {
       items.push({ id: `cob-${c.id}`, kind: "campaign", severity: "amber", icon: Wallet, clientName: c.clientName, title: `${c.name} a depășit bugetul`, subtitle: `${c.clientName} · ${eur(c.spend)} / ${eur(c.budget)}`, actionLabel: "" });
     });
     campaigns.filter((c) => c.status === "active" && c.endDate && c.endDate >= today && c.endDate <= soon).forEach((c) => {
-      items.push({ id: `cend-${c.id}`, kind: "campaign", severity: "amber", icon: CalendarClock, clientName: c.clientName, title: `${c.name} se termină curând`, subtitle: `${c.clientName} · până la ${c.endDate}`, actionLabel: "" });
+      items.push({ id: `cend-${c.id}`, kind: "campaign", severity: "amber", icon: CalendarClock, clientName: c.clientName, title: `${c.name} se termină curând`, subtitle: `${c.clientName} · până la ${c.endDate}`, due: c.endDate!, actionLabel: "" });
     });
     // 🟡 client with nothing scheduled (match by id)
     clients.filter((c) => !posts.some((p) => p.clientId === c.id && p.status === "scheduled")).forEach((c) => {
@@ -66,7 +68,8 @@ export function useInbox() {
       items.push({ id: `aw-${p.id}`, kind: "awaiting", severity: "grey", icon: Clock, clientName: p.clientName, title: `Trimis lui ${p.clientName}`, subtitle: `${p.title} · așteaptă decizia`, actionLabel: "" });
     });
 
-    const feed = items.slice().sort((a, b) => RANK[a.severity] - RANK[b.severity]);
+    // Severity first; within a band, the item with the nearest deadline wins.
+    const feed = items.slice().sort((a, b) => (RANK[a.severity] - RANK[b.severity]) || (a.due ?? "9999").localeCompare(b.due ?? "9999"));
     const urgent = items.filter((i) => i.severity === "red").length;
     const review = items.filter((i) => i.severity === "amber").length;
     return { feed, items, urgent, review, count: urgent + review, loading };

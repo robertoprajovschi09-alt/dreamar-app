@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Input, Select, Panel } from "@/components/ui";
 import { useWorkspace } from "@/lib/workspace";
 import { useToast } from "@/lib/toast";
@@ -27,11 +27,18 @@ export default function ClientOnboarding() {
     ];
   }, [viewerNiche]);
 
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
-  const [objectives, setObjectives] = useState<string[]>([]);
+  // Draft survives a refresh/closed tab — clients abandon mid-wizard and should
+  // land back exactly where they left off, not at step 1.
+  const draftKey = `dreamar-onboarding-${viewerClientId || "self"}`;
+  const draft = (() => { try { return JSON.parse(localStorage.getItem(draftKey) || "null"); } catch { return null; } })();
+  const [step, setStep] = useState<number>(Math.min(draft?.step ?? 0, 4));
+  const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});
+  const [objectives, setObjectives] = useState<string[]>(draft?.objectives ?? []);
   const [customObj, setCustomObj] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(draftKey, JSON.stringify({ step, answers, objectives })); } catch { /* ignore */ }
+  }, [draftKey, step, answers, objectives]);
 
   const setText = (id: string, v: string) => setAnswers((a) => ({ ...a, [id]: v }));
   const toggleChip = (id: string, opt: string) =>
@@ -59,6 +66,18 @@ export default function ClientOnboarding() {
     if (step === 1) return has("primary_goal");
     return true; // niche specifics + final touches are optional
   })();
+
+  // Arrow-key navigation between steps (ignored while typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.key === "ArrowRight" && canNext && !isLast) setStep((s) => Math.min(steps.length - 1, s + 1));
+      if (e.key === "ArrowLeft" && step > 0) setStep((s) => Math.max(0, s - 1));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   async function submit() {
     setSubmitting(true);
@@ -93,6 +112,7 @@ export default function ClientOnboarding() {
       push({ tone: "danger", title: "Nu am putut salva", description: error.message });
       return;
     }
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
     push({ tone: "success", title: "Gata! 🎉", description: "Agenția ta are acum tot ce îi trebuie ca să înceapă." });
     refreshViewer();
   }

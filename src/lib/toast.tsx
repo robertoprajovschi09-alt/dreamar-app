@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Check, Info, X, AlertTriangle } from "lucide-react";
 
 type ToastTone = "success" | "info" | "warning" | "danger";
-type Toast = { id: number; title: string; description?: string; tone: ToastTone };
+type ToastAction = { label: string; run: () => void };
+type Toast = { id: number; title: string; description?: string; tone: ToastTone; action?: ToastAction; duration?: number };
 type Ctx = { push: (t: Omit<Toast, "id">) => void };
 
 const ToastCtx = createContext<Ctx | null>(null);
@@ -22,7 +23,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const push = (t: Omit<Toast, "id">) => {
     const id = counter++;
     setToasts((prev) => [...prev, { ...t, id }]);
-    window.setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), 3600);
+    // Toasts with an action (e.g. Undo) linger longer so the user can catch them.
+    window.setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), t.duration ?? (t.action ? 5200 : 3600));
   };
 
   return (
@@ -41,6 +43,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   <p className="text-sm font-700">{t.title}</p>
                   {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
                 </div>
+                {t.action && (
+                  <button
+                    onClick={() => { t.action!.run(); setToasts((prev) => prev.filter((x) => x.id !== t.id)); }}
+                    className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-700 text-primary transition hover:bg-primary/20"
+                  >
+                    {t.action.label}
+                  </button>
+                )}
                 <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="text-muted-foreground hover:text-foreground">
                   <X className="h-3.5 w-3.5" />
                 </button>

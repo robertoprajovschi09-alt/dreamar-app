@@ -20,9 +20,14 @@ export function WeeklyPulse({ open, onClose, clientId, agencyId, onSaved }: {
   const [improve, setImprove] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Start from last month's answers — most clients report similar numbers,
+  // so editing beats typing from zero.
   useEffect(() => {
-    if (open) { setClosed(0); setRevenue(""); setQuality(""); setSat(0); setImprove(""); setSaving(false); }
-  }, [open]);
+    if (!open) return;
+    let last: { closed?: number; revenue?: string; quality?: string; sat?: number } = {};
+    try { last = JSON.parse(localStorage.getItem(`dreamar-pulse-${clientId}`) || "{}"); } catch { /* ignore */ }
+    setClosed(last.closed ?? 0); setRevenue(last.revenue ?? ""); setQuality(last.quality ?? ""); setSat(last.sat ?? 0); setImprove(""); setSaving(false);
+  }, [open, clientId]);
 
   async function save() {
     if (saving || !supabase) return;
@@ -38,6 +43,7 @@ export function WeeklyPulse({ open, onClose, clientId, agencyId, onSaved }: {
     const { error } = await supabase.from("business_impact_entries").upsert(row, { onConflict: "client_id,period_month,source" }).select();
     setSaving(false);
     if (error) { push({ tone: "danger", title: "Nu am putut trimite", description: error.message }); return; }
+    try { localStorage.setItem(`dreamar-pulse-${clientId}`, JSON.stringify({ closed, revenue, quality, sat })); } catch { /* ignore */ }
     push({ tone: "success", title: "Mulțumim", description: "Echipa ta a primit rezultatele." });
     onSaved();
   }

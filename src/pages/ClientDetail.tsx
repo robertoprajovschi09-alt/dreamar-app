@@ -63,7 +63,12 @@ export default function ClientDetail() {
   const lib = useLibrary();
   const ws = useWorkspace();
   const { push } = useToast();
-  const [tab, setTab] = useState<(typeof tabs)[number]>("Prezentare");
+  // Reopen each client on the tab you were working in (e.g. Raport during report week).
+  const [tab, setTab] = useState<(typeof tabs)[number]>(() => {
+    const saved = sessionStorage.getItem(`dreamar-client-tab-${id}`);
+    return (tabs as readonly string[]).includes(saved ?? "") ? (saved as (typeof tabs)[number]) : "Prezentare";
+  });
+  useEffect(() => { try { sessionStorage.setItem(`dreamar-client-tab-${id}`, tab); } catch { /* ignore */ } }, [id, tab]);
   const [newObj, setNewObj] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -204,6 +209,14 @@ export default function ClientDetail() {
             ))}
             {objectives.length === 0 && <li className="col-span-2 rounded-lg border border-dashed border-border px-3 py-3 text-center text-sm text-muted-foreground">Încă niciun obiectiv — adaugă unul mai jos.</li>}
           </ul>
+          {objectives.length === 0 && nicheSpec(client.niche).objectivePresets.length > 0 && (
+            <button
+              onClick={() => nicheSpec(client.niche).objectivePresets.slice(0, 3).forEach((o) => addObjective(client.id, o))}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-700 text-primary transition hover:bg-primary/20"
+            >
+              <Wand2 className="h-3.5 w-3.5" /> Sugerează obiective pentru {nicheLabels[client.niche]}
+            </button>
+          )}
           <form
             className="mt-3 flex items-center gap-2"
             onSubmit={(e) => { e.preventDefault(); if (newObj.trim()) { addObjective(client.id, newObj.trim()); setNewObj(""); } }}
@@ -392,7 +405,7 @@ export default function ClientDetail() {
         </div>
       )}
 
-      <InvitePortalModal open={inviteOpen} onClose={() => setInviteOpen(false)} clientId={client.id} clientName={client.name} live={cl.live} />
+      <InvitePortalModal open={inviteOpen} onClose={() => setInviteOpen(false)} clientId={client.id} clientName={client.name} live={cl.live} defaultEmail={det?.email ?? ""} />
 
       <EditClientModal open={editOpen} onClose={() => setEditOpen(false)} client={client} website={det?.website ?? ""}
         onSave={async (patch) => {
@@ -482,11 +495,13 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
   );
 }
 
-function InvitePortalModal({ open, onClose, clientId, clientName, live }: { open: boolean; onClose: () => void; clientId: string; clientName: string; live: boolean }) {
+function InvitePortalModal({ open, onClose, clientId, clientName, live, defaultEmail = "" }: { open: boolean; onClose: () => void; clientId: string; clientName: string; live: boolean; defaultEmail?: string }) {
   const { push } = useToast();
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ email: string; password: string | null; existing: boolean } | null>(null);
+  // Prefill with the client's contact email — most invites go there anyway.
+  useEffect(() => { if (open && !result) setEmail((cur) => cur || defaultEmail); }, [open, defaultEmail, result]);
 
   function close() { onClose(); setTimeout(() => { setEmail(""); setResult(null); setBusy(false); }, 200); }
 
@@ -515,6 +530,15 @@ function InvitePortalModal({ open, onClose, clientId, clientName, live }: { open
                 <Row label="Email" value={result.email} />
                 <Row label="Parolă temporară" value={result.password ?? "—"} />
               </div>
+              <Button
+                variant="outline" size="sm" className="w-full"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(`Email: ${result.email}\nParolă: ${result.password ?? "—"}`);
+                  push({ tone: "success", title: "Copiat", description: "Email + parolă — gata de trimis clientului." });
+                }}
+              >
+                <Copy className="h-4 w-4" /> Copiază tot (email + parolă)
+              </Button>
               <p className="text-xs text-muted-foreground">Poate schimba parola după autentificare.</p>
             </>
           )}
