@@ -180,16 +180,28 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       let rows = first.data ?? [];
       if (rows.length === 0) {
         // No agency membership — a client VIEWER (linked via client_users) must
-        // NOT trigger agency provisioning. Check that before creating anything.
+        // NOT trigger agency provisioning. A viewer can have MULTIPLE links
+        // (invited to a second client) and links to archived clients, so never
+        // use maybeSingle() here: with >1 row it errors, cu.data comes back
+        // null, and the invited client would fall through into agency
+        // provisioning. Pick the newest non-archived link instead.
         const cu = await supabase!
           .from("client_users")
-          .select("client_id, client:clients(name, niche, onboarding_completed_at, agency:agencies(name))")
+          .select("client_id, created_at, client:clients(name, niche, onboarding_completed_at, archived_at, agency:agencies(name))")
           .eq("profile_id", user.id)
-          .maybeSingle();
-        if (cu.data) {
+          .order("created_at", { ascending: false });
+        if (cu.error) {
+          // Same rule as the membership read: an error is NOT "no viewer" —
+          // provisioning here would hand an invited client a whole agency.
+          console.error("[workspace] viewer read failed:", cu.error.message);
+          if (active) setAgencyReady(true);
+          return;
+        }
+        const links = cu.data ?? [];
+        if (links.length > 0) {
           if (!active) return;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const c: any = cu.data;
+          const c: any = links.find((l: any) => !l.client?.archived_at) ?? links[0];
           setViewer({ clientId: c.client_id, clientName: c.client?.name ?? "Brandul tău", agencyName: c.client?.agency?.name ?? "", niche: c.client?.niche ?? "custom", onboardedAt: c.client?.onboarding_completed_at ?? null });
           setProfileState((p) => ({ ...p, name: user.name, email: user.email, role: "Vizualizator client" }));
           setAgencyReady(true);
