@@ -10,7 +10,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // Respect a harness/CI-assigned port; fall back to Vite's default.
+    port: Number(process.env.PORT) || 5173,
     host: true,
   },
 });

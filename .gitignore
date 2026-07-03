@@ -29,3 +29,5 @@ supabase/.temp
 Screenshot*.png
 tsconfig.tsbuildinfo
 .claude-flow/
+vite.config.js
+vite.config.d.ts
