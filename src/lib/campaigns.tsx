@@ -23,6 +23,8 @@ export type Campaign = {
   conversions: number;
   revenue: number;
   notes: string;
+  // Last results update — drives the "stale campaign" weekly signal.
+  updatedAt: string | null;
 };
 
 export type NewCampaignInput = {
@@ -45,7 +47,7 @@ const platformToDb = (p: string): string => {
   return hit ? hit[0] : p.toLowerCase();
 };
 
-const CV = "id, client_id, name, platform, objective, status, start_date, end_date, budget, spend, impressions, clicks, leads, conversions, revenue, notes, client:clients(name)";
+const CV = "id, client_id, name, platform, objective, status, start_date, end_date, budget, spend, impressions, clicks, leads, conversions, revenue, notes, updated_at, client:clients(name)";
 const num = (v: unknown) => Number(v ?? 0);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,16 +64,17 @@ function mapRow(r: any): Campaign {
     endDate: r.end_date ?? null,
     budget: num(r.budget), spend: num(r.spend), impressions: num(r.impressions), clicks: num(r.clicks),
     leads: num(r.leads), conversions: num(r.conversions), revenue: num(r.revenue), notes: r.notes ?? "",
+    updatedAt: r.updated_at ?? null,
   };
 }
 
 // Demo data (sample mode only — never seeded into the live DB).
 const SAMPLE_CAMPAIGNS: Campaign[] = [
-  { id: "c1", clientId: "altmark", clientName: "Altmark Residences", name: "Lansare primăvară — Meta", platform: "Meta", objective: "Lead-uri", status: "active", startDate: "2026-05-15", endDate: "2026-07-15", budget: 6000, spend: 3250, impressions: 421000, clicks: 8400, leads: 137, conversions: 9, revenue: 43000, notes: "" },
-  { id: "c2", clientId: "altmark", clientName: "Altmark Residences", name: "Google Search — Cluj", platform: "Google", objective: "Trafic", status: "active", startDate: "2026-06-01", endDate: "2026-08-31", budget: 4500, spend: 1480, impressions: 96000, clicks: 5200, leads: 64, conversions: 4, revenue: 19000, notes: "" },
-  { id: "c3", clientId: "auralux", clientName: "AuraLux Beauty", name: "TikTok Spark Ads", platform: "TikTok", objective: "Notorietate", status: "active", startDate: "2026-06-10", endDate: "2026-07-10", budget: 2500, spend: 1820, impressions: 612000, clicks: 14300, leads: 41, conversions: 22, revenue: 7600, notes: "" },
-  { id: "c4", clientId: "ironpeak", clientName: "IronPeak Gym", name: "Promo abonamente — Meta", platform: "Meta", objective: "Vânzări", status: "completed", startDate: "2026-04-01", endDate: "2026-05-31", budget: 3000, spend: 3000, impressions: 280000, clicks: 9100, leads: 210, conversions: 88, revenue: 21120, notes: "" },
-  { id: "c5", clientId: "verde", clientName: "Verde Bistro", name: "Retargeting Q3", platform: "Meta", objective: "Reactivare", status: "planning", startDate: "2026-07-01", endDate: "2026-09-30", budget: 2000, spend: 0, impressions: 0, clicks: 0, leads: 0, conversions: 0, revenue: 0, notes: "" },
+  { id: "c1", clientId: "altmark", clientName: "Altmark Residences", name: "Lansare primăvară — Meta", platform: "Meta", objective: "Lead-uri", status: "active", startDate: "2026-05-15", endDate: "2026-07-15", budget: 6000, spend: 3250, impressions: 421000, clicks: 8400, leads: 137, conversions: 9, revenue: 43000, notes: "", updatedAt: null },
+  { id: "c2", clientId: "altmark", clientName: "Altmark Residences", name: "Google Search — Cluj", platform: "Google", objective: "Trafic", status: "active", startDate: "2026-06-01", endDate: "2026-08-31", budget: 4500, spend: 1480, impressions: 96000, clicks: 5200, leads: 64, conversions: 4, revenue: 19000, notes: "", updatedAt: null },
+  { id: "c3", clientId: "auralux", clientName: "AuraLux Beauty", name: "TikTok Spark Ads", platform: "TikTok", objective: "Notorietate", status: "active", startDate: "2026-06-10", endDate: "2026-07-10", budget: 2500, spend: 1820, impressions: 612000, clicks: 14300, leads: 41, conversions: 22, revenue: 7600, notes: "", updatedAt: null },
+  { id: "c4", clientId: "ironpeak", clientName: "IronPeak Gym", name: "Promo abonamente — Meta", platform: "Meta", objective: "Vânzări", status: "completed", startDate: "2026-04-01", endDate: "2026-05-31", budget: 3000, spend: 3000, impressions: 280000, clicks: 9100, leads: 210, conversions: 88, revenue: 21120, notes: "", updatedAt: null },
+  { id: "c5", clientId: "verde", clientName: "Verde Bistro", name: "Retargeting Q3", platform: "Meta", objective: "Reactivare", status: "planning", startDate: "2026-07-01", endDate: "2026-09-30", budget: 2000, spend: 0, impressions: 0, clicks: 0, leads: 0, conversions: 0, revenue: 0, notes: "", updatedAt: null },
 ];
 
 type CampaignsCtx = {
@@ -118,7 +121,7 @@ export function CampaignsProvider({ children }: { children: ReactNode }) {
     if (!live || !supabase || !agencyId) {
       const id = "demo-c-" + ++demoSeq;
       const clientName = clients.find((c) => c.id === input.clientId)?.name ?? input.clientId;
-      setCampaigns((prev) => [{ id, clientId: input.clientId, clientName, name: input.name, platform: input.platform, objective: input.objective, status: input.status, startDate: input.startDate, endDate: input.endDate, budget: input.budget, spend: 0, impressions: 0, clicks: 0, leads: 0, conversions: 0, revenue: 0, notes: "" }, ...prev]);
+      setCampaigns((prev) => [{ id, clientId: input.clientId, clientName, name: input.name, platform: input.platform, objective: input.objective, status: input.status, startDate: input.startDate, endDate: input.endDate, budget: input.budget, spend: 0, impressions: 0, clicks: 0, leads: 0, conversions: 0, revenue: 0, notes: "", updatedAt: null }, ...prev]);
       return {};
     }
     const { error } = await supabase.from("campaigns").insert({

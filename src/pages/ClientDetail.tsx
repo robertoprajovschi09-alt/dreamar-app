@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useEffect, useState, type ReactNode } from "react";
 import { Panel, SectionCard, Badge, Button, Segmented, Input, Select } from "@/components/ui";
 import { Modal } from "@/components/overlay";
@@ -69,6 +69,12 @@ export default function ClientDetail() {
     return (tabs as readonly string[]).includes(saved ?? "") ? (saved as (typeof tabs)[number]) : "Prezentare";
   });
   useEffect(() => { try { sessionStorage.setItem(`dreamar-client-tab-${id}`, tab); } catch { /* ignore */ } }, [id, tab]);
+  // Deep link (?tab=Raport) from the weekly queues overrides the remembered tab.
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && (tabs as readonly string[]).includes(t)) setTab(t as (typeof tabs)[number]);
+  }, [searchParams]);
   const [newObj, setNewObj] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -364,7 +370,14 @@ export default function ClientDetail() {
       {tab === "Raport" && (
         <div className="space-y-4">
           <SectionCard title={`Raport · ${monthLabel}`} subtitle="Exact ce vede clientul în portalul lui" icon={FileText}
-            action={<Button variant="primary" size="sm" onClick={() => push({ tone: "success", title: "Trimis clientului", description: `${client.name} vede raportul în portalul lui.` })}><Send className="h-4 w-4" /> Trimite clientului</Button>}>
+            action={<Button variant="primary" size="sm" onClick={async () => {
+              // Record the send — the weekly "Rapoarte de trimis" queue reads this stamp.
+              if (cl.live && supabase) {
+                const { error } = await supabase.from("clients").update({ report_sent_at: new Date().toISOString() }).eq("id", id);
+                if (error) { push({ tone: "danger", title: "Nu am putut marca trimiterea", description: error.message }); return; }
+              }
+              push({ tone: "success", title: "Trimis clientului", description: `${client.name} vede raportul în portalul lui.` });
+            }}><Send className="h-4 w-4" /> Trimite clientului</Button>}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <ReportStat label="Lead-uri" value={String(repLeads)} icon={Users} />
               <ReportStat label="Venit estimat" value={formatCurrency(repRevenue)} icon={TrendingUp} />

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Button, Select, Panel, SectionCard, Badge, Input, Segmented } from "@/components/ui";
 import { Drawer, Modal } from "@/components/overlay";
 import { useToast } from "@/lib/toast";
@@ -73,6 +74,13 @@ export default function ContentCalendar() {
     () => [...new Set([...clients.map((c) => c.name), ...posts.map((p) => p.clientName)])].sort(),
     [clients, posts]
   );
+
+  // Deep link (?client=Name) from the weekly queues pre-filters the calendar.
+  const [params] = useSearchParams();
+  const clientParam = params.get("client");
+  useEffect(() => {
+    if (clientParam && clientNames.includes(clientParam)) setClient(clientParam);
+  }, [clientParam, clientNames]);
 
   const matches = (p: ContentPost) =>
     (client === "all" || p.clientName === client) && (platform === "all" || p.platform === platform);

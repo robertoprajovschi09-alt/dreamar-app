@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Button, Panel, SectionCard, Input, Select, Badge } from "@/components/ui";
 import { PageSkeleton } from "@/components/Skeleton";
 import { Bars } from "@/components/charts";
@@ -45,7 +46,13 @@ export default function BusinessImpact() {
   const [saving, setSaving] = useState(false);
   const period = firstOfMonthISO();
 
-  useEffect(() => { if (live && !clientId && clients.length) setClientId(clients[0].id); }, [live, clients, clientId]);
+  // Deep link (?client=id) from the weekly queues wins over the default pick.
+  const [params] = useSearchParams();
+  useEffect(() => {
+    if (!live || clientId || !clients.length) return;
+    const p = params.get("client");
+    setClientId(p && clients.some((c) => c.id === p) ? p : clients[0].id);
+  }, [live, clients, clientId, params]);
 
   useEffect(() => {
     if (!live) { setLoading(false); return; }
