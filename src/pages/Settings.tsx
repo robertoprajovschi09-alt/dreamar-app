@@ -198,7 +198,12 @@ function TeamTab() {
     setMembers((p) => p.filter((x) => x.id !== m.id));
     if (live && supabase) {
       const { error } = await supabase.from("agency_members").delete().eq("id", m.id);
-      if (error) { push({ tone: "danger", title: "Nu s-a putut elimina", description: error.message }); reload(); return; }
+      if (error) {
+        setMembers((p) => (p.some((x) => x.id === m.id) ? p : [...p, m])); // roll back
+        push({ tone: "danger", title: "Nu s-a putut elimina", description: error.message });
+        reload();
+        return;
+      }
     }
     push({ tone: "warning", title: "Membru eliminat", description: m.name });
   }
@@ -244,7 +249,7 @@ function InviteMemberModal({ open, onClose, live, onInvited }: { open: boolean; 
   function close() { setEmail(""); setRole("agency_team_member"); setResult(null); onClose(); }
 
   async function submit() {
-    if (!email.trim()) return;
+    if (!email.trim() || busy) return;
     if (!live || !supabase) { push({ tone: "info", title: "Doar în spațiul de lucru live", description: "Invitațiile în echipă necesită un spațiu de lucru Supabase live." }); return; }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("invite-team-member", { body: { email: email.trim(), role } });

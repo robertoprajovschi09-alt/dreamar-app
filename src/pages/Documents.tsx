@@ -97,6 +97,7 @@ export default function Documents() {
       return;
     }
     const folderId = activeFolder === "all" ? null : activeFolder;
+    let okCount = 0;
     for (const file of Array.from(files)) {
       setUploading({ name: file.name, pct: 40 });
       const path = `${agencyId}/_agency/${crypto.randomUUID()}`;
@@ -105,9 +106,10 @@ export default function Documents() {
       setUploading({ name: file.name, pct: 85 });
       const ins = await supabase.from("documents").insert({ agency_id: agencyId, folder_id: folderId, storage_path: path, filename: file.name, mime_type: file.type || null, size_bytes: file.size });
       if (ins.error) { push({ tone: "danger", title: "Nu s-a putut salva fișierul", description: ins.error.message }); await storageRemove("documents", path); continue; }
+      okCount++;
     }
     setUploading(null);
-    push({ tone: "success", title: "Încărcare finalizată", description: `${files.length} ${files.length === 1 ? "fișier încărcat" : "fișiere încărcate"}` });
+    if (okCount > 0) push({ tone: "success", title: "Încărcare finalizată", description: `${okCount} din ${files.length} ${files.length === 1 ? "fișier" : "fișiere"}` });
     await reload();
   }
 
@@ -158,17 +160,28 @@ export default function Documents() {
     await reload();
   }
 
+  const savingDoc = { current: false };
   async function saveDoc() {
-    if (!selected) return;
+    if (!selected || savingDoc.current) return;
+    savingDoc.current = true;
     const name = editName.trim() || selected.name;
     const folderId = editFolderId || null;
     const tags = editTags.split(",").map((t) => t.trim()).filter(Boolean);
     const id = selected.id;
+    const prevDoc = docs.find((d) => d.id === id);
     setDocs((p) => p.map((d) => (d.id === id ? { ...d, name, folderId, tags } : d)));
     setSelected(null);
     if (live && supabase) {
       const { error } = await supabase.from("documents").update({ filename: name, folder_id: folderId, tags }).eq("id", id);
-      if (error) { push({ tone: "danger", title: "Nu s-au putut salva modificările", description: error.message }); await reload(); return; }
+      savingDoc.current = false;
+      if (error) {
+        if (prevDoc) setDocs((p) => p.map((d) => (d.id === id ? prevDoc : d)));
+        push({ tone: "danger", title: "Nu s-au putut salva modificările", description: error.message });
+        await reload();
+        return;
+      }
+    } else {
+      savingDoc.current = false;
     }
     push({ tone: "success", title: "Fișier actualizat", description: name });
   }

@@ -71,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: error?.message };
         },
         signUp: async ({ email, password, name, agency }) => {
-          localStorage.setItem(PENDING_AGENCY_KEY, agency); // provisioned on first authed load
+          // Keyed per email: an abandoned signup on a shared browser must not
+          // name the NEXT user's agency (cross-user leak via localStorage).
+          localStorage.setItem(`${PENDING_AGENCY_KEY}:${email.trim().toLowerCase()}`, agency); // provisioned on first authed load
           const { data, error } = await supabase!.auth.signUp({
             email, password, options: { data: { full_name: name } },
           });

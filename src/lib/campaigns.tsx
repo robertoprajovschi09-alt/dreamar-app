@@ -136,6 +136,7 @@ export function CampaignsProvider({ children }: { children: ReactNode }) {
   }, [live, agencyId, reload, clients]);
 
   const updateCampaign = useCallback(async (id: string, patch: CampaignPatch) => {
+    const snapshot = campaigns.find((c) => c.id === id);
     setCampaigns((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
     if (!live || !supabase) return {};
     const db: Record<string, unknown> = {};
@@ -154,9 +155,14 @@ export function CampaignsProvider({ children }: { children: ReactNode }) {
     if (patch.revenue !== undefined) db.revenue = patch.revenue;
     if (patch.notes !== undefined) db.notes = patch.notes || null;
     const { error } = await supabase.from("campaigns").update(db).eq("id", id);
-    if (error) { console.error("[campaigns] update failed:", error.message); return { error: error.message }; }
+    if (error) {
+      // Roll the optimistic change back — the screen must not lie about saved data.
+      if (snapshot) setCampaigns((prev) => prev.map((c) => (c.id === id ? snapshot : c)));
+      console.error("[campaigns] update failed:", error.message);
+      return { error: error.message };
+    }
     return {};
-  }, [live]);
+  }, [live, campaigns]);
 
   const deleteCampaign = useCallback(async (id: string) => {
     setCampaigns((prev) => prev.filter((c) => c.id !== id));

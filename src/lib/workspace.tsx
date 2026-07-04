@@ -218,7 +218,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           setAgencyReady(true);
           return;
         }
-        const pending = localStorage.getItem(PENDING_AGENCY_KEY) || `${user.name}'s Agency`;
+        const pendingKey = `${PENDING_AGENCY_KEY}:${(user.email || "").trim().toLowerCase()}`;
+        const pending = localStorage.getItem(pendingKey) || localStorage.getItem(PENDING_AGENCY_KEY) || `${user.name}'s Agency`;
         const { error: rpcErr } = await supabase!.rpc("create_agency_with_owner", { p_name: pending, p_slug: slugify(pending) });
         if (rpcErr) {
           // Keep the pending name so a reload can retry; don't mark "ready with no agency" silently failed.
@@ -226,6 +227,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           if (active) setAgencyReady(true);
           return;
         }
+        localStorage.removeItem(pendingKey);
         localStorage.removeItem(PENDING_AGENCY_KEY);
         const re = await loadRows();
         rows = re.data ?? [];
@@ -264,7 +266,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // so the topbar never flashes a previous session's identity.
   useEffect(() => {
     if (!liveMode || !user) return;
-    setProfileState((p) => ({ ...p, name: user.name, email: user.email, role: "Proprietar agenție" }));
+    // Only sync identity here — the ROLE is owned by the membership effect
+    // (viewer/admin roles were being overwritten back to "Proprietar agenție").
+    setProfileState((p) => ({ ...p, name: user.name, email: user.email }));
   }, [liveMode, user?.id, user?.name, user?.email]);
 
   // Persist everything that should survive reloads.

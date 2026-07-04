@@ -256,6 +256,7 @@ function CampaignComposer({ open, onClose, clients, onCreate }: {
   const [end, setEnd] = useState("");
   const [budget, setBudget] = useState("");
   const [busy, setBusy] = useState(false);
+  const { push } = useToast();
 
   useEffect(() => {
     if (!open) return;
@@ -268,8 +269,11 @@ function CampaignComposer({ open, onClose, clients, onCreate }: {
 
   async function submit() {
     if (!name.trim() || !clientId || busy) return;
+    const budgetNum = budget === "" ? 0 : Number(budget);
+    if (!Number.isFinite(budgetNum) || budgetNum < 0) { push({ tone: "danger", title: "Buget invalid", description: "Introdu un număr pozitiv." }); return; }
+    if (start && end && start > end) { push({ tone: "danger", title: "Date invalide", description: "Data de început e după cea de sfârșit." }); return; }
     setBusy(true);
-    const res = await onCreate({ clientId, name: name.trim(), platform, objective, status, startDate: start || null, endDate: end || null, budget: budget === "" ? 0 : Number(budget) });
+    const res = await onCreate({ clientId, name: name.trim(), platform, objective, status, startDate: start || null, endDate: end || null, budget: budgetNum });
     setBusy(false);
     if (!res.error) { rememberClient(clientId); onClose(); }
   }
@@ -314,14 +318,16 @@ function CampaignDrawer({ campaign, onClose, onSave, onDelete }: {
     });
   }, [campaign]);
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
-  const numOr = (s: string) => (s === "" ? 0 : Number(s));
+  const numOr = (s: string) => { const n = Number(s); return s === "" || !Number.isFinite(n) || n < 0 ? 0 : n; };
 
   const liveSpend = numOr(f.spend), liveRevenue = numOr(f.revenue), liveLeads = numOr(f.leads), liveImp = numOr(f.impressions), liveClicks = numOr(f.clicks);
   const roas = liveSpend > 0 ? liveRevenue / liveSpend : 0;
   const cpl = liveLeads > 0 ? liveSpend / liveLeads : 0;
   const ctr = liveImp > 0 ? (liveClicks / liveImp) * 100 : 0;
 
+  const { push } = useToast();
   function save() {
+    if (f.start && f.end && f.start > f.end) { push({ tone: "danger", title: "Date invalide", description: "Data de început e după cea de sfârșit." }); return; }
     onSave({
       name: f.name, platform: f.platform, objective: f.objective, status: f.status as CampaignStatus,
       startDate: f.start || null, endDate: f.end || null,

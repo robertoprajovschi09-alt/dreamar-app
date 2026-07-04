@@ -61,6 +61,15 @@ export const trafficVeracity = [
   { name: "Rece", value: 18 },
 ];
 
+// How the agency is paid by this client. "barter" and "comision" clients have
+// no fixed monthly retainer (retainer is hidden for them in the UI).
+export type BillingType = "retainer" | "barter" | "comision";
+export const billingTypeLabels: Record<BillingType, string> = {
+  retainer: "Retainer",
+  barter: "Barter",
+  comision: "Comision",
+};
+
 export type Client = {
   id: string;
   name: string;
@@ -68,7 +77,11 @@ export type Client = {
   city: string;
   contact: string;
   retainer: number;
-  status: "active" | "paused" | "onboarding";
+  billingType?: BillingType;
+  deliverables?: number; // livrabile pe lună
+  phone?: string;
+  notes?: string;
+  status: "active" | "paused";
   health: number;
   risk: Risk;
   platforms: string[];
@@ -82,7 +95,7 @@ export const clients: Client[] = [
   { id: "ironpeak", name: "IronPeak Gym", niche: "fitness_gym", city: "Brașov", contact: "Vlad Dima", retainer: 1300, status: "active", health: 91, risk: "low", platforms: ["Instagram", "TikTok", "YouTube"], trend: 18 },
   { id: "lumen", name: "Lumen Lounge", niche: "lounge", city: "Constanța", contact: "Sofia Marin", retainer: 1100, status: "paused", health: 48, risk: "high", platforms: ["Instagram"], trend: -9 },
   { id: "auralux", name: "AuraLux Beauty", niche: "beauty", city: "Iași", contact: "Elena Radu", retainer: 1450, status: "active", health: 79, risk: "low", platforms: ["Instagram", "TikTok"], trend: 8 },
-  { id: "drivex", name: "DriveX Motors", niche: "auto", city: "Oradea", contact: "Paul Crisan", retainer: 2100, status: "onboarding", health: 55, risk: "medium", platforms: ["Facebook", "YouTube"], trend: 0 },
+  { id: "drivex", name: "DriveX Motors", niche: "auto", city: "Oradea", contact: "Paul Crisan", retainer: 2100, status: "active", health: 55, risk: "medium", platforms: ["Facebook", "YouTube"], trend: 0 },
   { id: "mareluna", name: "Mare Luna Hotel", niche: "hotel", city: "Mamaia", contact: "Irina Voicu", retainer: 2800, status: "active", health: 83, risk: "low", platforms: ["Instagram", "Facebook"], trend: 11 },
   { id: "maple", name: "Maple Market", niche: "local_store", city: "Sibiu", contact: "Ana Dragoș", retainer: 1200, status: "active", health: 77, risk: "low", platforms: ["Instagram", "TikTok"], trend: 14 },
 ];

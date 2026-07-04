@@ -40,11 +40,20 @@ export function ClientApprovals({ onChange }: { onChange?: () => void }) {
   useEffect(() => { void load(); }, [load]);
 
   async function approve(p: Pending) {
+    if (busy) return; // one decision at a time — double-tap fires twice otherwise
+    setBusy(true);
     setItems((prev) => prev.filter((x) => x.approvalId !== p.approvalId));
     if (supabase) {
       const { error } = await supabase.from("approvals").update({ status: "approved" }).eq("id", p.approvalId);
-      if (error) { push({ tone: "danger", title: "Nu am putut salva", description: error.message }); void load(); return; }
+      if (error) {
+        setItems((prev) => (prev.some((x) => x.approvalId === p.approvalId) ? prev : [p, ...prev])); // roll back
+        setBusy(false);
+        push({ tone: "danger", title: "Nu am putut salva", description: error.message });
+        void load();
+        return;
+      }
     }
+    setBusy(false);
     push({ tone: "success", title: "Aprobat", description: p.title }); onChange?.();
   }
 

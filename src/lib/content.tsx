@@ -131,8 +131,9 @@ export function ContentProvider({ children }: { children: ReactNode }) {
       scheduled_date: input.date,
     }).select("id").single();
     if (error) return { error: error.message };
+    if (!data?.id) return { error: "Postarea nu a fost creată." };
     await reload();
-    return { id: data?.id as string };
+    return { id: data.id as string };
   }, [live, agencyId, reload, clients]);
 
   const updatePost = useCallback(async (id: string, patch: Partial<{ title: string; status: UIPostStatus; date: string | null; script: string; approvalStatus: string | null; platform: string; notes: string }>) => {
@@ -178,7 +179,9 @@ export function ContentProvider({ children }: { children: ReactNode }) {
 
     let approvalErr: string | undefined;
     if (row && row.status !== "pending") {
-      const { error } = await supabase.from("approvals").update({ status: "pending", comments: null, change_requests: null }).eq("id", row.id);
+      // Reset the clock too — a resend is a fresh request; stale requested_at
+      // makes the weekly "stuck >48h" queue flag it immediately.
+      const { error } = await supabase.from("approvals").update({ status: "pending", requested_at: new Date().toISOString(), comments: null, change_requests: null }).eq("id", row.id);
       approvalErr = error?.message;
     } else if (!row) {
       const { data: u } = await supabase.auth.getUser();
@@ -189,6 +192,8 @@ export function ContentProvider({ children }: { children: ReactNode }) {
       approvalErr = error?.message;
     }
     if (approvalErr) {
+      // Revert the optimistic move before reloading, in case reload fails.
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
       await reload();
       // Friendly message for the plan feature gate (enforce_approval_workflow_feature).
       if (/approval_workflow|plan_feature_required/i.test(approvalErr)) {

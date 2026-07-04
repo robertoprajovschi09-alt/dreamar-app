@@ -51,9 +51,6 @@ export default function LandingPage() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-6">
             <Link to="/signup" className={ctaDark}>Începe gratuit</Link>
-            <Link to="/pricing" className="link-u text-sm font-500 text-muted-foreground transition hover:text-foreground">
-              Vezi prețurile
-            </Link>
           </div>
           <p className="mt-5 text-xs text-muted-foreground/80">14 zile gratuit · Fără card · Anulezi oricând</p>
         </Reveal>
@@ -201,7 +198,6 @@ export default function LandingPage() {
             </div>
             <div className="mt-8 flex items-center gap-6">
               <Link to="/signup" className={ctaDark}>Începe gratuit</Link>
-              <Link to="/pricing" className="link-u text-sm font-500 text-muted-foreground transition hover:text-foreground">Compară planurile</Link>
             </div>
           </Reveal>
         </div>

@@ -5,7 +5,7 @@ import { useTheme } from "@/lib/theme";
 import { useToast } from "@/lib/toast";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
-import { ChevronDown, CreditCard, LogOut, Moon, Sun, User, Users } from "lucide-react";
+import { ChevronDown, LogOut, Moon, Sun, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function UserMenu() {
@@ -27,7 +27,6 @@ export function UserMenu() {
 
   const items = [
     { icon: User, label: "Profil", run: go("/settings") },
-    { icon: CreditCard, label: "Facturare și plan", run: go("/billing") },
     { icon: Users, label: "Schimbă agenția", run: () => { setOpen(false); push({ tone: "info", title: "Schimbă agenția", description: "Folosește comutatorul de spațiu de lucru din partea de sus a barei laterale." }); } },
   ];
 

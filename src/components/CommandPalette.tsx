@@ -5,7 +5,7 @@ import { allDestinations } from "@/lib/nav";
 import { nicheLabels } from "@/data/sample";
 import { useClients } from "@/lib/clients";
 import { cn } from "@/lib/utils";
-import { CornerDownLeft, FileText, Keyboard, Plus, Search, Sparkles, UserPlus, Users } from "lucide-react";
+import { CornerDownLeft, FileText, Keyboard, Plus, Search, UserPlus, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type Cmd = { id: string; label: string; hint?: string; group: string; icon: LucideIcon; run: () => void };
@@ -22,7 +22,6 @@ export function CommandPalette({ open, onClose, onNewClient, onShortcuts }: { op
     const actions: Cmd[] = [
       { id: "new-client", label: "Adaugă un client nou", hint: "Acțiune", group: "Acțiuni", icon: UserPlus, run: () => { onClose(); onNewClient(); } },
       { id: "new-report", label: "Generează raportul lunar", hint: "Acțiune", group: "Acțiuni", icon: FileText, run: go("/reports") },
-      { id: "strategy", label: "Întreabă Camera de strategie AI", hint: "Acțiune", group: "Acțiuni", icon: Sparkles, run: go("/strategy") },
       { id: "new-post", label: "Programează o postare", hint: "Acțiune", group: "Acțiuni", icon: Plus, run: go("/calendar") },
       { id: "shortcuts", label: "Scurtături de tastatură", hint: "?", group: "Acțiuni", icon: Keyboard, run: () => { onClose(); onShortcuts(); } },
     ];
@@ -48,19 +47,10 @@ export function CommandPalette({ open, onClose, onNewClient, onShortcuts }: { op
 
   if (!open) return null;
 
-  const ask = q.trim();
-  const baseGroups = filtered.reduce<Record<string, Cmd[]>>((acc, c) => {
+  const groups = filtered.reduce<Record<string, Cmd[]>>((acc, c) => {
     (acc[c.group] ??= []).push(c);
     return acc;
   }, {});
-  // AI quick-ask: when the query reads like a question, route it into the Strategy Room.
-  const groups: Record<string, Cmd[]> = {};
-  if (ask.length > 1) {
-    groups["Întreabă drea.mar AI"] = [
-      { id: "ask-ai", label: `Întreabă AI: “${ask}”`, hint: "Cameră de strategie", group: "Întreabă drea.mar AI", icon: Sparkles, run: () => { onClose(); navigate("/strategy", { state: { ask } }); } },
-    ];
-  }
-  Object.assign(groups, baseGroups);
   // flat order matching render for keyboard nav
   const flat = Object.values(groups).flat();
 

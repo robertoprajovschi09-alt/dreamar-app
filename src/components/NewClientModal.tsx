@@ -3,7 +3,7 @@ import { Modal } from "@/components/overlay";
 import { Button, Input } from "@/components/ui";
 import { useToast } from "@/lib/toast";
 import { useClients } from "@/lib/clients";
-import { nicheLabels, type Niche } from "@/data/sample";
+import { nicheLabels, billingTypeLabels, type Niche, type BillingType } from "@/data/sample";
 import { cn } from "@/lib/utils";
 import {
   Building2,
@@ -43,21 +43,22 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
-  const [website, setWebsite] = useState("");
-  const [contact, setContact] = useState("");
+  const [phone, setPhone] = useState("");
   const [retainer, setRetainer] = useState("");
+  const [billingType, setBillingType] = useState<BillingType>("retainer");
+  const [deliverables, setDeliverables] = useState("");
   const [niche, setNiche] = useState<Niche | null>(null);
   const [picked, setPicked] = useState<string[]>(["Instagram"]);
   const [objectives, setObjectives] = useState("");
-  const [brandVoice, setBrandVoice] = useState("");
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
   function reset() {
     setStep(0);
-    setName(""); setCity(""); setWebsite(""); setContact(""); setRetainer("");
+    setName(""); setCity(""); setPhone(""); setRetainer(""); setBillingType("retainer"); setDeliverables("");
     setNiche(null);
     setPicked(["Instagram"]);
-    setObjectives(""); setBrandVoice("");
+    setObjectives(""); setNotes("");
     setBusy(false);
   }
   function close() {
@@ -66,17 +67,25 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
   }
   async function create() {
     if (!niche || busy) return;
+    const retainerNum = billingType === "retainer" && retainer ? Number(retainer) : null;
+    if (retainerNum !== null && (!Number.isFinite(retainerNum) || retainerNum < 0)) {
+      push({ tone: "danger", title: "Retainer invalid", description: "Introdu un număr pozitiv (lei)." });
+      return;
+    }
+    const delNum = deliverables ? Number(deliverables) : null;
     setBusy(true);
     const res = await createClient({
       name: name.trim(),
       niche,
       city: city.trim(),
-      website: website.trim(),
-      contact: contact.trim(),
-      retainer: retainer ? Number(retainer) : null,
+      phone: phone.trim(),
+      contact: phone.trim(),
+      retainer: retainerNum,
+      billingType,
+      deliverables: delNum && Number.isFinite(delNum) ? delNum : null,
+      notes: notes.trim(),
       platforms: picked,
       objectives: objectives.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
-      brandVoice: brandVoice.trim(),
     });
     setBusy(false);
     if (res.error) {
@@ -107,9 +116,16 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nume client" full><Input autoFocus placeholder="ex. Altmark Residences" value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && name.trim().length > 1) setStep(1); }} /></Field>
           <Field label="Oraș"><Input placeholder="Cluj-Napoca" value={city} onChange={(e) => setCity(e.target.value)} /></Field>
-          <Field label="Website"><Input placeholder="example.ro" value={website} onChange={(e) => setWebsite(e.target.value)} /></Field>
-          <Field label="Persoană de contact"><Input placeholder="Diana Pop" value={contact} onChange={(e) => setContact(e.target.value)} /></Field>
-          <Field label="Retainer lunar (€)"><Input type="number" placeholder="1500" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
+          <Field label="Telefon"><Input placeholder="07xx xxx xxx" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+          <Field label="Tip colaborare">
+            <select value={billingType} onChange={(e) => setBillingType(e.target.value as BillingType)} className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm ring-focus">
+              {(Object.keys(billingTypeLabels) as BillingType[]).map((k) => <option key={k} value={k}>{billingTypeLabels[k]}</option>)}
+            </select>
+          </Field>
+          {billingType === "retainer"
+            ? <Field label="Retainer lunar (lei)"><Input type="number" placeholder="2000" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
+            : <Field label="Retainer lunar (lei)"><Input disabled placeholder="—" value="" /></Field>}
+          <Field label="Livrabile pe lună"><Input type="number" placeholder="8" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
         </div>
       )}
 
@@ -161,7 +177,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
             </div>
           </div>
           <Field label="Obiectivele lunii acesteia" full><textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Câte unul pe linie — ex. Generează 40 de lead-uri calificate, crește TikTok cu 15%…" /></Field>
-          <Field label="Vocea brandului" full><Input placeholder="Încrezătoare, caldă, premium…" value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void create(); }} /></Field>
+          <Field label="Notițe" full><Input placeholder="Detalii interne despre client…" value={notes} onChange={(e) => setNotes(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void create(); }} /></Field>
           <div className="flex items-center gap-2 rounded-lg bg-primary/[0.06] p-3 text-sm">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Un tablou de bord {niche ? nicheLabels[niche] : "personalizat"}, un calendar și un șablon de raport vor fi create automat.</span>

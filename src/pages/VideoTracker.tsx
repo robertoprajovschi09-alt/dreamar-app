@@ -200,7 +200,7 @@ function LogVideoComposer({ open, onClose, clients, onCreate }: {
   async function submit() {
     if (!hook.trim() || !clientId || busy) return;
     setBusy(true);
-    const res = await onCreate({ clientId, hook: hook.trim(), platform, date: date || null, format: format.trim(), views: views ? Number(views) : 0, aiScore: aiScore ? Number(aiScore) : null, rec });
+    const res = await onCreate({ clientId, hook: hook.trim(), platform, date: date || null, format: format.trim(), views: Number.isFinite(Number(views)) && views ? Number(views) : 0, aiScore: aiScore && Number.isFinite(Number(aiScore)) ? Number(aiScore) : null, rec });
     setBusy(false);
     if (!res.error) onClose();
   }
@@ -240,7 +240,7 @@ function EditVideoModal({ open, onClose, video, onSave }: {
     });
   }, [open, video]);
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
-  const numOr = (s: string) => (s === "" ? 0 : Number(s));
+  const numOr = (s: string) => { const n = Number(s); return s === "" || !Number.isFinite(n) ? 0 : n; };
   async function save() {
     if (busy) return;
     setBusy(true);

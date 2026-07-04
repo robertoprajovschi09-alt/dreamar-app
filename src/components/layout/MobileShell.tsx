@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { ClientsProvider } from "@/lib/clients";
 import { ContentProvider } from "@/lib/content";
 import { LibraryProvider } from "@/lib/library";
-import { CampaignsProvider } from "@/lib/campaigns";
 import { UIProvider } from "@/lib/ui-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useInbox } from "@/lib/inbox";
@@ -22,11 +21,9 @@ export default function MobileShell() {
     <ClientsProvider>
       <ContentProvider>
         <LibraryProvider>
-          <CampaignsProvider>
-            <UIProvider>
-              <MobileInner />
-            </UIProvider>
-          </CampaignsProvider>
+          <UIProvider>
+            <MobileInner />
+          </UIProvider>
         </LibraryProvider>
       </ContentProvider>
     </ClientsProvider>
@@ -46,8 +43,7 @@ function MobileInner() {
   useEffect(() => {
     const p = location.pathname;
     if (p.startsWith("/clients")) setTab("clients");
-    else if (p.startsWith("/approvals")) setTab("inbox");
-    else if (p.startsWith("/settings") || p.startsWith("/billing") || p.startsWith("/agency") || p.startsWith("/integrations")) setTab("account");
+    else if (p.startsWith("/settings") || p.startsWith("/agency") || p.startsWith("/integrations")) setTab("account");
     else if (p.startsWith("/dashboard")) setTab("home");
   }, [location.pathname]);
 

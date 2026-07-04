@@ -12,7 +12,7 @@ const Ctx = createContext<UICtx | null>(null);
 // /strategy shortcuts pointed at demoted or relocated pages.)
 const goMap: Record<string, string> = {
   d: "/dashboard", c: "/clients", n: "/content", t: "/content?tab=board", h: "/content?tab=hooks",
-  a: "/approvals", e: "/agency", v: "/videos",
+  e: "/agency", v: "/videos",
 };
 
 function isTyping(el: EventTarget | null) {

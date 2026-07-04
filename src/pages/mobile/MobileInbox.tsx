@@ -18,7 +18,7 @@ export function MobileInbox({ onOpenClient }: { onOpenClient: (name: string) => 
     try {
       const res = await item.act?.();
       if (res?.error) push({ tone: "danger", title: "Nu a mers", description: res.error });
-      else push({ tone: "success", title: item.kind === "changes" ? "Retrimis" : "Trimis clientului" });
+      else push({ tone: "success", title: "Gata" });
     } finally {
       inFlight.current.delete(item.id);
       setBusy((b) => (b === item.id ? null : b));

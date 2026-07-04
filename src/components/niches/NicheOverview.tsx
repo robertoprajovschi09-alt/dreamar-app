@@ -182,7 +182,7 @@ function ItemModal({ cfg, clientId, niche, agencyId, item, onClose, onSaved }: {
         <div className="grid grid-cols-2 gap-3">
           {cfg.fields.map((f) => (
             <div key={f.key}>
-              <p className="mb-1.5 text-xs font-700 text-muted-foreground">{f.label}{f.type === "money" ? " (€)" : ""}</p>
+              <p className="mb-1.5 text-xs font-700 text-muted-foreground">{f.label}{f.type === "money" ? " (lei)" : ""}</p>
               {f.type === "select" ? (
                 <Select value={attrs[f.key]} onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}>
                   <option value="">—</option>

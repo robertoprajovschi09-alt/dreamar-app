@@ -45,7 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
                 {t.action && (
                   <button
-                    onClick={() => { t.action!.run(); setToasts((prev) => prev.filter((x) => x.id !== t.id)); }}
+                    onClick={() => { setToasts((prev) => { if (!prev.some((x) => x.id === t.id)) return prev; t.action!.run(); return prev.filter((x) => x.id !== t.id); }); }}
                     className="shrink-0 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-700 text-primary transition hover:bg-primary/20"
                   >
                     {t.action.label}

@@ -10,7 +10,6 @@ import { MarketingLayout } from "@/marketing/MarketingLayout";
 
 // Marketing (public)
 const LandingPage = lazy(() => import("@/marketing/LandingPage"));
-const PricingPage = lazy(() => import("@/marketing/PricingPage"));
 const LoginPage = lazy(() => import("@/marketing/LoginPage"));
 const SignupPage = lazy(() => import("@/marketing/SignupPage"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
@@ -23,17 +22,13 @@ const AgencyWorkspace = lazy(() => import("@/pages/AgencyWorkspace"));
 const Clients = lazy(() => import("@/pages/Clients"));
 const ClientDetail = lazy(() => import("@/pages/ClientDetail"));
 const ContentCalendar = lazy(() => import("@/pages/ContentCalendar"));
-const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
-const Approvals = lazy(() => import("@/pages/Approvals"));
 const VideoTracker = lazy(() => import("@/pages/VideoTracker"));
 const HookLibrary = lazy(() => import("@/pages/HookLibrary"));
 const BusinessImpact = lazy(() => import("@/pages/BusinessImpact"));
-const StrategyRoom = lazy(() => import("@/pages/StrategyRoom"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const Integrations = lazy(() => import("@/pages/Integrations"));
-const Billing = lazy(() => import("@/pages/Billing"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const ClientPortal = lazy(() => import("@/pages/ClientPortal"));
 
@@ -66,7 +61,6 @@ export default function App() {
       {/* ---- Public marketing site ---- */}
       <Route element={<MarketingLayout />}>
         <Route index element={S(<LandingPage />)} />
-        <Route path="pricing" element={S(<PricingPage />)} />
       </Route>
       <Route path="login" element={S(<LoginPage />)} />
       <Route path="signup" element={S(<SignupPage />)} />
@@ -86,17 +80,13 @@ export default function App() {
         <Route path="clients" element={<Clients />} />
         <Route path="clients/:id" element={<ClientDetail />} />
         <Route path="calendar" element={<ContentCalendar />} />
-        <Route path="campaigns" element={<Campaigns />} />
         <Route path="tasks" element={<Tasks />} />
-        <Route path="approvals" element={<Approvals />} />
         <Route path="videos" element={<VideoTracker />} />
         <Route path="hooks" element={<HookLibrary />} />
         <Route path="impact" element={<BusinessImpact />} />
-        <Route path="strategy" element={<StrategyRoom />} />
         <Route path="reports" element={<Reports />} />
         <Route path="documents" element={<Documents />} />
         <Route path="integrations" element={<Integrations />} />
-        <Route path="billing" element={<Billing />} />
         {/* Admin is no longer part of the agency app — platform admins reach it
             via the footer → /admin/login, which renders the standalone AdminShell.
             Any stray agency user hitting /admin is bounced to their dashboard. */}

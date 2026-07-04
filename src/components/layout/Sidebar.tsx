@@ -7,14 +7,13 @@ import { useClients } from "@/lib/clients";
 import { useToast } from "@/lib/toast";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui";
-import { Check, ChevronsUpDown, LogOut, Sparkles, X } from "lucide-react";
+import { Check, ChevronsUpDown, LogOut, X } from "lucide-react";
 
 // Warm the lazy route chunk on hover so navigation feels instant.
 const PREFETCH: Record<string, () => void> = {
   "/dashboard": () => void import("@/pages/Week"),
   "/clients": () => void import("@/pages/Clients"),
   "/content": () => void import("@/pages/ContentWorkspace"),
-  "/approvals": () => void import("@/pages/Approvals"),
   "/agency": () => void import("@/pages/AgencyWorkspace"),
 };
 
@@ -28,7 +27,7 @@ function Logo() {
         <p className="font-display text-[17px] font-800 tracking-tight">
           drea<span className="text-primary">.mar</span>
         </p>
-        <p className="mt-0.5 text-[10px] font-600 uppercase tracking-[0.18em] text-muted-foreground">Platforma agențiilor</p>
+        <p className="mt-0.5 text-[10px] font-600 uppercase tracking-[0.18em] text-muted-foreground">DR DREAM OPS</p>
       </div>
     </Link>
   );
@@ -40,13 +39,11 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { live } = useWorkspace();
   const { clients } = useClients();
 
-  // In live mode show the real Clients count and hide the sample Tasks/
-  // Approvals badges (those pages aren't wired to live data yet).
+  // In live mode show the real Clients count; sample badges are demo-only.
   function badgeFor(item: NavItem): string | number | undefined {
     if (!live) return item.badge;
     if (item.to === "/clients") return clients.length || undefined;
-    if (item.to === "/tasks" || item.to === "/approvals") return undefined;
-    return item.badge;
+    return undefined;
   }
 
   return (
@@ -109,19 +106,6 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         ))}
       </nav>
 
-      {/* Upgrade card */}
-      <div className="px-3 pb-3">
-        <div className="gradient-hero relative overflow-hidden rounded-xl p-4 text-white">
-          <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-white/10 blur-xl" />
-          <Sparkles className="h-5 w-5" />
-          <p className="mt-2 text-sm font-700">Deblochează Camera de strategie AI</p>
-          <p className="mt-0.5 text-[11px] text-white/70">Treci la planul Unlimited pentru rapoarte personalizate cu brandul tău și monitorizarea concurenței.</p>
-          <button onClick={() => { onClose?.(); navigate("/billing"); }} className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-xs font-700 text-[hsl(252_70%_30%)] transition hover:bg-white/90">
-            Schimbă planul
-          </button>
-        </div>
-      </div>
-
       <div className="border-t border-sidebar-border px-3 py-3">
         <button onClick={() => { signOut(); navigate("/login"); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-600 text-muted-foreground transition hover:bg-muted hover:text-foreground">
           <LogOut className="h-[18px] w-[18px]" />
@@ -161,7 +145,6 @@ function AgencySwitcher() {
         )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-700">{currentAgency.name}</span>
-          <span className="block text-[11px] text-muted-foreground">{currentAgency.plan}</span>
         </span>
         <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
       </button>
@@ -172,13 +155,12 @@ function AgencySwitcher() {
           {agencies.map((a) => (
             <button
               key={a.id}
-              onClick={() => { switchAgency(a.id); setOpen(false); if (a.id !== currentAgency.id) push({ tone: "info", title: `Ai trecut la ${a.name}`, description: a.plan }); }}
+              onClick={() => { switchAgency(a.id); setOpen(false); if (a.id !== currentAgency.id) push({ tone: "info", title: `Ai trecut la ${a.name}` }); }}
               className={cn("flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition", a.id === currentAgency.id ? "bg-sidebar-accent" : "hover:bg-muted")}
             >
               <span className={cn("grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br text-[10px] font-800 text-white", a.gradient)}>{a.initials}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-600">{a.name}</span>
-                <span className="block text-[10px] text-muted-foreground">{a.plan}</span>
               </span>
               {a.id === currentAgency.id && <Check className="h-4 w-4 text-primary" />}
             </button>

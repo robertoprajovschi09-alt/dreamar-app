@@ -4,18 +4,17 @@ import { PageHeader, Button, Badge, SearchInput, Select, Panel, Segmented } from
 import { Table, THead, TH, TR, TD } from "@/components/table";
 import { SkeletonCard, SkeletonRows } from "@/components/Skeleton";
 import { BulkObjectivesModal } from "@/components/BulkObjectivesModal";
-import { nicheLabels, type Client } from "@/data/sample";
+import { nicheLabels, billingTypeLabels, type Client } from "@/data/sample";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useUI } from "@/lib/ui-context";
 import { useToast } from "@/lib/toast";
 import { useClients } from "@/lib/clients";
-import { useWorkspace } from "@/lib/workspace";
-import { Archive, ArrowDownRight, ArrowUpRight, Check, Download, MapPin, Plus, Target, Users, X } from "lucide-react";
+import { Archive, Check, Download, MapPin, Plus, Target, Users, X } from "lucide-react";
 
-const statusTone = { active: "success", paused: "warning", onboarding: "info" } as const;
-const PLAN_MAX: Record<string, number | null> = {
-  "Starter Agency": 5, "Growth Agency": 15, "Unlimited Agency": null, "White Label Pro": null,
-};
+const statusTone = { active: "success", paused: "warning" } as const;
+const statusLabel = { active: "Activ", paused: "În pauză" } as const;
+// Retainer clients show their monthly fee; barter/comision show the deal type.
+const retainerText = (c: Client) => (c.billingType && c.billingType !== "retainer" ? billingTypeLabels[c.billingType] : formatCurrency(c.retainer));
 
 function Box({ checked, onClick, className }: { checked: boolean; onClick: (e: React.MouseEvent) => void; className?: string }) {
   return (
@@ -36,7 +35,6 @@ export default function Clients() {
   const { openNewClient } = useUI();
   const { push } = useToast();
   const { clients, loading, archiveClient } = useClients();
-  const { currentAgency } = useWorkspace();
   // Filters + search survive navigation — stop re-applying the same filter every visit.
   const savedFilters = (() => { try { return JSON.parse(sessionStorage.getItem("dreamar-clients-filters") || "{}"); } catch { return {}; } })();
   const [view, setView] = useState<"grid" | "list">(savedFilters.view === "list" ? "list" : "grid");
@@ -49,7 +47,6 @@ export default function Clients() {
     try { sessionStorage.setItem("dreamar-clients-filters", JSON.stringify({ view, niche, status, q })); } catch { /* ignore */ }
   }, [view, niche, status, q]);
 
-  const planMax = PLAN_MAX[currentAgency.plan] ?? null;
   const filtered = clients.filter(
     (c) =>
       (niche === "all" || c.niche === niche) &&
@@ -95,7 +92,7 @@ export default function Clients() {
 
   return (
     <>
-      <PageHeader title="Clienți" subtitle={`${clients.length}${planMax ? ` din ${planMax}` : ""} ${(planMax ?? clients.length) === 1 ? "client" : "clienți"} · ${currentAgency.plan}`}>
+      <PageHeader title="Clienți" subtitle={`${clients.length} ${clients.length === 1 ? "client" : "clienți"}`}>
         <Button variant="primary" onClick={openNewClient}>
           <Plus className="h-4 w-4" /> Adaugă client
         </Button>
@@ -109,7 +106,7 @@ export default function Clients() {
         </Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="all">Toate stările</option>
-          <option value="active">Activ</option><option value="paused">În pauză</option><option value="onboarding">Onboarding</option>
+          <option value="active">Activ</option><option value="paused">În pauză</option>
         </Select>
         <div className="sm:ml-auto">
           <Segmented value={view} onChange={setView} options={[{ label: "Grilă", value: "grid" }, { label: "Listă", value: "list" }]} />
@@ -151,9 +148,7 @@ export default function Clients() {
               <TH>Nișă</TH>
               <TH>Oraș</TH>
               <TH>Retainer</TH>
-              <TH>Sănătate</TH>
               <TH>Status</TH>
-              <TH>Tendință</TH>
             </THead>
             <tbody>
               {filtered.map((c) => (
@@ -162,14 +157,8 @@ export default function Clients() {
                   <TD><Link to={`/clients/${c.id}`} className="flex items-center gap-3"><Avatar2 name={c.name} /><span className="font-600">{c.name}</span></Link></TD>
                   <TD><Badge tone="primary">{nicheLabels[c.niche]}</Badge></TD>
                   <TD className="text-muted-foreground">{c.city}</TD>
-                  <TD className="font-600">{formatCurrency(c.retainer)}</TD>
-                  <TD><Badge tone={c.risk === "high" ? "danger" : c.risk === "medium" ? "warning" : "success"} dot>{c.health}</Badge></TD>
-                  <TD><Badge tone={statusTone[c.status]}>{c.status}</Badge></TD>
-                  <TD>
-                    <span className={`inline-flex items-center gap-0.5 font-700 ${c.trend >= 0 ? "text-success" : "text-danger"}`}>
-                      {c.trend >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}{Math.abs(c.trend)}%
-                    </span>
-                  </TD>
+                  <TD className="font-600">{retainerText(c)}</TD>
+                  <TD><Badge tone={statusTone[c.status]}>{statusLabel[c.status]}</Badge></TD>
                 </TR>
               ))}
             </tbody>
@@ -218,7 +207,7 @@ function ClientCard({ c, selected, onToggle }: { c: Client; selected: boolean; o
               <p className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" /> {c.city}</p>
             </div>
           </div>
-          <Badge tone={statusTone[c.status]}>{c.status}</Badge>
+          <Badge tone={statusTone[c.status]}>{statusLabel[c.status]}</Badge>
         </div>
 
         <div className="mt-4 flex items-center gap-2">
@@ -226,10 +215,9 @@ function ClientCard({ c, selected, onToggle }: { c: Client; selected: boolean; o
           {c.platforms.slice(0, 3).map((p) => <span key={p} className="rounded-md bg-muted px-2 py-1 text-[10px] font-600 text-muted-foreground">{p}</span>)}
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center">
-          <Mini label="Retainer" value={`€${(c.retainer / 1000).toFixed(1)}k`} />
-          <Mini label="Sănătate" value={String(c.health)} tone={c.risk} />
-          <Mini label="Tendință" value={`${c.trend >= 0 ? "+" : ""}${c.trend}%`} tone={c.trend >= 0 ? "low" : "high"} />
+        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4 text-center">
+          <Mini label={c.billingType && c.billingType !== "retainer" ? "Colaborare" : "Retainer"} value={retainerText(c)} />
+          <Mini label="Livrabile / lună" value={c.deliverables ? String(c.deliverables) : "—"} />
         </div>
       </Panel>
     </Link>

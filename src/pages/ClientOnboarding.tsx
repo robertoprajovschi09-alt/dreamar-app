@@ -29,7 +29,7 @@ export default function ClientOnboarding() {
 
   // Draft survives a refresh/closed tab — clients abandon mid-wizard and should
   // land back exactly where they left off, not at step 1.
-  const draftKey = `dreamar-onboarding-${viewerClientId || "self"}`;
+  const draftKey = `dreamar-onboarding-${viewerClientId || "self"}-${viewerNiche}`;
   const draft = (() => { try { return JSON.parse(localStorage.getItem(draftKey) || "null"); } catch { return null; } })();
   const [step, setStep] = useState<number>(Math.min(draft?.step ?? 0, 4));
   const [answers, setAnswers] = useState<Answers>(draft?.answers ?? {});

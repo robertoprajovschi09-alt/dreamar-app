@@ -23,14 +23,14 @@ export function WeeklyPulse({ open, onClose, clientId, agencyId, onSaved }: {
   // Start from last month's answers — most clients report similar numbers,
   // so editing beats typing from zero.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !clientId) return;
     let last: { closed?: number; revenue?: string; quality?: string; sat?: number } = {};
     try { last = JSON.parse(localStorage.getItem(`dreamar-pulse-${clientId}`) || "{}"); } catch { /* ignore */ }
     setClosed(last.closed ?? 0); setRevenue(last.revenue ?? ""); setQuality(last.quality ?? ""); setSat(last.sat ?? 0); setImprove(""); setSaving(false);
   }, [open, clientId]);
 
   async function save() {
-    if (saving || !supabase) return;
+    if (saving || !supabase || !clientId || !agencyId) return;
     setSaving(true);
     const row = {
       agency_id: agencyId, client_id: clientId, period_month: firstOfMonthISO(), source: "client",

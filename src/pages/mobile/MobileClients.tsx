@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
 import { useClients } from "@/lib/clients";
-import { useCampaigns } from "@/lib/campaigns";
 import { useToast } from "@/lib/toast";
 import { Modal } from "@/components/overlay";
-import { nicheLabels } from "@/data/sample";
+import { nicheLabels, billingTypeLabels } from "@/data/sample";
+import { formatCurrency } from "@/lib/utils";
 import { ChevronRight, FileText, MessageCircle, Monitor, Search } from "lucide-react";
-
-const eurK = (n: number) => (n >= 1000 ? `€${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `€${Math.round(n)}`);
 
 export function MobileClients({ initialName, onConsumed }: { initialName?: string | null; onConsumed?: () => void }) {
   const { clients } = useClients();
-  const { campaigns } = useCampaigns();
   const { push } = useToast();
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -25,7 +22,6 @@ export function MobileClients({ initialName, onConsumed }: { initialName?: strin
 
   const list = clients.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
   const active = clients.find((c) => c.id === openId) ?? null;
-  const spendFor = (name: string) => campaigns.filter((c) => c.clientName === name).reduce((s, c) => s + c.spend, 0);
 
   return (
     <div className="space-y-4">
@@ -53,8 +49,8 @@ export function MobileClients({ initialName, onConsumed }: { initialName?: strin
         {active && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Cheltuieli ads</p><p className="mt-0.5 font-display text-lg font-800">{eurK(spendFor(active.name))}</p></div>
-              <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Retainer</p><p className="mt-0.5 font-display text-lg font-800">{active.retainer ? `€${active.retainer}` : "—"}</p></div>
+              <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{(active.billingType ?? "retainer") === "retainer" ? "Retainer" : "Colaborare"}</p><p className="mt-0.5 font-display text-lg font-800">{(active.billingType ?? "retainer") === "retainer" ? (active.retainer ? formatCurrency(active.retainer) : "—") : billingTypeLabels[active.billingType ?? "retainer"]}</p></div>
+              <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Livrabile / lună</p><p className="mt-0.5 font-display text-lg font-800">{active.deliverables ? String(active.deliverables) : "—"}</p></div>
             </div>
             <button onClick={() => push({ tone: "info", title: "Trimite raportul", description: "Confirmă din profilul clientului pe desktop." })} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-700 text-primary-foreground transition active:scale-[0.99]"><FileText className="h-4 w-4" /> Trimite raportul</button>
             <button onClick={() => push({ tone: "info", title: "Mesaje — în curând" })} className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-700"><MessageCircle className="h-4 w-4" /> Mesaj</button>

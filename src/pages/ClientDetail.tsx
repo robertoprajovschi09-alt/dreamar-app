@@ -3,23 +3,19 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Panel, SectionCard, Badge, Button, Segmented, Input, Select } from "@/components/ui";
 import { Modal } from "@/components/overlay";
 import { Table, THead, TH, TR, TD } from "@/components/table";
-import { RadialScore } from "@/components/charts";
 import { NicheDashboard } from "@/components/niches";
 import NicheOverview from "@/components/niches/NicheOverview";
-import { clients as sampleClients, nicheLabels, videos, type Client, type Niche } from "@/data/sample";
+import { clients as sampleClients, nicheLabels, billingTypeLabels, videos, type Client, type Niche, type BillingType } from "@/data/sample";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace";
 import { useClients, type ClientPatch } from "@/lib/clients";
 import { useContent } from "@/lib/content";
-import { useCampaigns } from "@/lib/campaigns";
 import { useLibrary } from "@/lib/library";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { nicheSpec, type MetricField } from "@/lib/niches";
 import {
   ArrowLeft,
-  Coins,
-  Copy,
   FileText,
   Loader2,
   Mail,
@@ -29,14 +25,11 @@ import {
   Phone,
   Plus,
   Send,
-  Sparkles,
   Target,
   Trash2,
   TrendingUp,
   Upload,
-  UserPlus,
   Users,
-  Wallet,
   Wand2,
   X,
 } from "lucide-react";
@@ -51,7 +44,7 @@ type BrandProfile = { brandVoice: string; audience: string; goals: string[]; bra
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ImpactRow = { source: string } & Record<string, any>;
 
-const tabs = ["Prezentare", "Conținut", "Campanii", "Rezultate", "Raport", "Fișiere"] as const;
+const tabs = ["Prezentare", "Conținut", "Rezultate", "Raport", "Fișiere"] as const;
 const recTone = { repeat: "success", improve: "warning", stop: "danger" } as const;
 
 export default function ClientDetail() {
@@ -59,7 +52,6 @@ export default function ClientDetail() {
   const navigate = useNavigate();
   const cl = useClients();
   const content = useContent();
-  const camp = useCampaigns();
   const lib = useLibrary();
   const ws = useWorkspace();
   const { push } = useToast();
@@ -76,7 +68,6 @@ export default function ClientDetail() {
     if (t && (tabs as readonly string[]).includes(t)) setTab(t as (typeof tabs)[number]);
   }, [searchParams]);
   const [newObj, setNewObj] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [brand, setBrand] = useState<BrandProfile | null>(null);
   const [impactRows, setImpactRows] = useState<ImpactRow[]>([]);
@@ -137,13 +128,11 @@ export default function ClientDetail() {
   const email = cl.live ? det?.email : `contact@${client.id}.ro`;
   const clientVideos = (cl.live ? lib.videos : videos).filter((v) => v.client === client.name);
   const clientPosts = content.posts.filter((p) => p.clientId === client.id);
-  const clientCampaigns = camp.campaigns.filter((c) => c.clientId === client.id);
 
-  // Report figures (this month) — same numbers the client sees in their portal.
+  // Report figures (this month).
   const repPick = (f: string) => { const cr = impactRows.find((r) => r.source === "client"); const ar = impactRows.find((r) => r.source === "agency"); return Number((cr?.[f] ?? ar?.[f]) ?? 0); };
   const repLeads = repPick("calls_received") + repPick("relevant_dms") + repPick("bookings") + repPick("appointments") + repPick("viewings");
   const repRevenue = repPick("revenue_estimate");
-  const repInvested = clientCampaigns.reduce((s, c) => s + c.spend, 0);
   const monthLabel = new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
 
   async function saveHome() {
@@ -177,20 +166,21 @@ export default function ClientDetail() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl font-800">{client.name}</h1>
                 <Badge tone="primary">{nicheLabels[client.niche]}</Badge>
-                <Badge tone={client.status === "active" ? "success" : "warning"}>{client.status}</Badge>
+                <Badge tone={client.status === "active" ? "success" : "warning"}>{client.status === "active" ? "Activ" : "În pauză"}</Badge>
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 {client.city && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{client.city}</span>}
-                {client.contact && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{client.contact}</span>}
+                {(client.phone || client.contact) && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{client.phone || client.contact}</span>}
                 {email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{email}</span>}
-                {client.retainer > 0 && <span>· {formatCurrency(client.retainer)}/lună retainer</span>}
+                {(client.billingType ?? "retainer") === "retainer"
+                  ? client.retainer > 0 && <span>· {formatCurrency(client.retainer)}/lună</span>
+                  : <span>· {billingTypeLabels[client.billingType ?? "retainer"]}</span>}
+                {client.deliverables ? <span>· {client.deliverables} livrabile/lună</span> : null}
               </div>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" /> Editează</Button>
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" /> Invită în portal</Button>
-            <Link to="/strategy" className="w-full sm:w-auto"><Button variant="primary" className="w-full"><Sparkles className="h-4 w-4" /> Întreabă AI</Button></Link>
+            <Button variant="primary" className="w-full sm:w-auto" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" /> Editează</Button>
           </div>
         </div>
 
@@ -201,8 +191,8 @@ export default function ClientDetail() {
 
       {/* Overview tab — full client summary; other tabs swap to just their own content */}
       {tab === "Prezentare" && (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SectionCard className="lg:col-span-2" title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client — persistă între reîncărcări">
+      <div className="grid grid-cols-1 gap-4">
+        <SectionCard title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client — persistă între reîncărcări">
           <ul className="grid gap-2 sm:grid-cols-2">
             {objectives.map((o, i) => (
               <li key={`${o}-${i}`} className="group flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
@@ -245,13 +235,6 @@ export default function ClientDetail() {
             );
           })()}
         </SectionCard>
-        <SectionCard title="Scor de sănătate" icon={Sparkles}>
-          {cl.live && client.health === 0 ? (
-            <div className="grid h-[150px] place-items-center px-4 text-center text-xs text-muted-foreground">Scorul de sănătate apare după ce evaluarea AI rulează pe o lună întreagă de activitate.</div>
-          ) : (
-            <RadialScore value={client.health} label={`risc ${client.risk}`} height={150} />
-          )}
-        </SectionCard>
       </div>
       )}
 
@@ -267,8 +250,7 @@ export default function ClientDetail() {
         <SectionCard
           title="Profil de brand"
           icon={Megaphone}
-          subtitle={brand?.onboardedAt ? `Completat de client · ${new Date(brand.onboardedAt).toLocaleDateString("ro-RO", { day: "numeric", month: "short", year: "numeric" })}` : "Se completează automat când clientul finalizează onboarding-ul din portal"}
-          action={<Badge tone={brand?.onboardedAt ? "success" : "neutral"} dot>{brand?.onboardedAt ? "Onboarding finalizat" : "În așteptarea clientului"}</Badge>}
+          subtitle="Vocea brandului, publicul și ce vinde clientul — pentru echipă"
         >
           {brand && (brand.brandVoice || brand.audience || brand.goals.length || Object.keys(brand.brandProfile).length) ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -280,8 +262,7 @@ export default function ClientDetail() {
           ) : (
             <div className="rounded-xl border border-dashed border-border p-6 text-center">
               <p className="text-sm font-600">Încă niciun profil de brand</p>
-              <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">Invită clientul în portalul lui — onboarding-ul completează vocea brandului, publicul, obiectivele, ce vinde și multe altele, ca echipa ta să nu fie nevoită s-o facă.</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" /> Invită în portal</Button>
+              <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">Notează vocea brandului, publicul și ce vinde clientul din Editează, ca să le ai la îndemână.</p>
             </div>
           )}
         </SectionCard>
@@ -308,34 +289,6 @@ export default function ClientDetail() {
             </Table>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun conținut. <Link to="/content" className="font-700 text-primary">Planifică în calendar</Link>.</p>
-          )}
-        </SectionCard>
-      )}
-
-      {tab === "Campanii" && (
-        <SectionCard title="Campanii plătite" subtitle={`${clientCampaigns.length} pentru ${client.name}`} icon={Megaphone} action={<Link to="/campaigns" className="text-xs font-700 text-primary">Toate campaniile</Link>}>
-          {clientCampaigns.length ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {clientCampaigns.map((c) => {
-                const pacing = c.budget > 0 ? Math.min((c.spend / c.budget) * 100, 100) : 0;
-                const roas = c.spend > 0 ? c.revenue / c.spend : 0;
-                return (
-                  <div key={c.id} className="rounded-xl border border-border p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 flex-1 truncate font-600">{c.name}</p>
-                      <Badge tone="neutral">{c.platform}</Badge>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="font-600">{formatCurrency(c.spend)} <span className="text-muted-foreground">/ {formatCurrency(c.budget)}</span></span>
-                      <span className="font-700 text-muted-foreground">ROAS {roas.toFixed(1)}×</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${pacing}%` }} /></div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">Nicio campanie pentru acest client. <Link to="/campaigns" className="font-700 text-primary">Creează una</Link>.</p>
           )}
         </SectionCard>
       )}
@@ -378,11 +331,9 @@ export default function ClientDetail() {
               }
               push({ tone: "success", title: "Trimis clientului", description: `${client.name} vede raportul în portalul lui.` });
             }}><Send className="h-4 w-4" /> Trimite clientului</Button>}>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               <ReportStat label="Lead-uri" value={String(repLeads)} icon={Users} />
               <ReportStat label="Venit estimat" value={formatCurrency(repRevenue)} icon={TrendingUp} />
-              <ReportStat label="Investit în ads" value={formatCurrency(repInvested)} icon={Wallet} />
-              <ReportStat label="ROI" value={repInvested > 0 && repRevenue > 0 ? `${Math.round(repRevenue / repInvested)}×` : "—"} icon={Coins} />
             </div>
           </SectionCard>
 
@@ -418,8 +369,6 @@ export default function ClientDetail() {
         </div>
       )}
 
-      <InvitePortalModal open={inviteOpen} onClose={() => setInviteOpen(false)} clientId={client.id} clientName={client.name} live={cl.live} defaultEmail={det?.email ?? ""} />
-
       <EditClientModal open={editOpen} onClose={() => setEditOpen(false)} client={client} website={det?.website ?? ""}
         onSave={async (patch) => {
           const res = await cl.updateClient(client.id, patch);
@@ -428,10 +377,12 @@ export default function ClientDetail() {
           return res;
         }}
         onArchive={async () => {
+          // Leave the page first — archiving removes the client from state and
+          // this detail page would flash "client negăsit" before navigating.
+          navigate("/clients");
           const res = await cl.archiveClient(client.id);
           if (res.error) { push({ tone: "danger", title: "Arhivarea nu a reușit", description: res.error }); return; }
           push({ tone: "warning", title: "Client arhivat", description: client.name });
-          navigate("/clients");
         }} />
     </>
   );
@@ -457,22 +408,41 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
   const [niche, setNiche] = useState<Niche>("custom");
   const [city, setCity] = useState("");
   const [web, setWeb] = useState("");
-  const [contact, setContact] = useState("");
+  const [phone, setPhone] = useState("");
   const [retainer, setRetainer] = useState("");
-  const [status, setStatus] = useState<Client["status"]>("onboarding");
+  const [billingType, setBillingType] = useState<BillingType>("retainer");
+  const [deliverables, setDeliverables] = useState("");
+  const [notes, setNotes] = useState("");
+  const [status, setStatus] = useState<Client["status"]>("active");
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [archiving, setArchiving] = useState(false);
   useEffect(() => {
     if (!open) return;
-    setName(client.name); setNiche(client.niche); setCity(client.city); setWeb(website); setContact(client.contact);
-    setRetainer(client.retainer ? String(client.retainer) : ""); setStatus(client.status); setPlatforms(client.platforms);
+    setName(client.name); setNiche(client.niche); setCity(client.city); setWeb(website);
+    setPhone(client.phone || client.contact || "");
+    setRetainer(client.retainer ? String(client.retainer) : "");
+    setBillingType(client.billingType ?? "retainer");
+    setDeliverables(client.deliverables ? String(client.deliverables) : "");
+    setNotes(client.notes ?? "");
+    setStatus(client.status); setPlatforms(client.platforms);
   }, [open, client, website]);
 
   async function save() {
     if (!name.trim() || busy) return;
+    const retNum = retainer ? Number(retainer) : null;
+    if (billingType === "retainer" && retNum !== null && (!Number.isFinite(retNum) || retNum < 0)) {
+      return; // ignore an invalid retainer rather than saving garbage
+    }
+    const delNum = deliverables ? Number(deliverables) : null;
     setBusy(true);
-    const res = await onSave({ name: name.trim(), niche, city: city.trim(), website: web.trim(), contact: contact.trim(), retainer: retainer ? Number(retainer) : null, status, platforms });
+    const res = await onSave({
+      name: name.trim(), niche, city: city.trim(), website: web.trim(),
+      phone: phone.trim(), contact: phone.trim(),
+      retainer: billingType === "retainer" ? retNum : null,
+      billingType, deliverables: delNum && Number.isFinite(delNum) ? delNum : null,
+      notes: notes.trim(), status, platforms,
+    });
     setBusy(false);
     if (!res.error) onClose();
   }
@@ -489,11 +459,13 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
           <Field label="Nume client"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Nișă"><Select value={niche} onChange={(e) => setNiche(e.target.value as Niche)} className="w-full">{(Object.keys(nicheLabels) as Niche[]).map((k) => <option key={k} value={k}>{nicheLabels[k]}</option>)}</Select></Field>
           <Field label="Oraș"><Input value={city} onChange={(e) => setCity(e.target.value)} /></Field>
-          <Field label="Website"><Input value={web} onChange={(e) => setWeb(e.target.value)} /></Field>
-          <Field label="Persoană de contact"><Input value={contact} onChange={(e) => setContact(e.target.value)} /></Field>
-          <Field label="Retainer lunar (€)"><Input type="number" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
-          <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value as Client["status"])} className="w-full"><option value="active">Activ</option><option value="paused">În pauză</option><option value="onboarding">Onboarding</option></Select></Field>
+          <Field label="Telefon"><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+          <Field label="Tip colaborare"><Select value={billingType} onChange={(e) => setBillingType(e.target.value as BillingType)} className="w-full">{(Object.keys(billingTypeLabels) as BillingType[]).map((k) => <option key={k} value={k}>{billingTypeLabels[k]}</option>)}</Select></Field>
+          {billingType === "retainer" && <Field label="Retainer lunar (lei)"><Input type="number" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>}
+          <Field label="Livrabile pe lună"><Input type="number" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
+          <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value as Client["status"])} className="w-full"><option value="active">Activ</option><option value="paused">În pauză</option></Select></Field>
         </div>
+        <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii interne despre client…" /></Field>
         <div>
           <p className="mb-1.5 text-xs font-700 text-muted-foreground">Platforme</p>
           <div className="flex flex-wrap gap-2">
@@ -504,64 +476,6 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
           </div>
         </div>
       </div>
-    </Modal>
-  );
-}
-
-function InvitePortalModal({ open, onClose, clientId, clientName, live, defaultEmail = "" }: { open: boolean; onClose: () => void; clientId: string; clientName: string; live: boolean; defaultEmail?: string }) {
-  const { push } = useToast();
-  const [email, setEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ email: string; password: string | null; existing: boolean } | null>(null);
-  // Prefill with the client's contact email — most invites go there anyway.
-  useEffect(() => { if (open && !result) setEmail((cur) => cur || defaultEmail); }, [open, defaultEmail, result]);
-
-  function close() { onClose(); setTimeout(() => { setEmail(""); setResult(null); setBusy(false); }, 200); }
-
-  async function invite() {
-    if (!email.trim() || busy) return;
-    if (!live || !supabase) { push({ tone: "info", title: "Doar workspace live", description: "Invitațiile în portal necesită un workspace Supabase live." }); return; }
-    setBusy(true);
-    const { data, error } = await supabase.functions.invoke("invite-client-viewer", { body: { clientId, email: email.trim() } });
-    setBusy(false);
-    if (error || data?.error) { push({ tone: "danger", title: "Invitarea nu a reușit", description: data?.error ?? error?.message }); return; }
-    setResult({ email: data.email, password: data.password, existing: data.existing });
-    push({ tone: "success", title: data.existing ? "Acces la portal acordat" : "Client invitat", description: clientName });
-  }
-
-  return (
-    <Modal open={open} onClose={close} title="Invită clientul în portal" subtitle={`Oferă unei persoane de contact de la ${clientName} acces la aprobări + rezultate`} size="sm"
-      footer={result ? <Button variant="primary" className="ml-auto" onClick={close}>Gata</Button> : <><Button variant="ghost" onClick={close}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !email.trim()} onClick={invite}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Trimite invitația</Button></>}>
-      {result ? (
-        <div className="space-y-3 text-sm">
-          {result.existing ? (
-            <p className="rounded-lg bg-success/10 p-3 text-success">{result.email} avea deja un cont — acum are acces la portalul pentru {clientName}. Se poate autentifica ca de obicei.</p>
-          ) : (
-            <>
-              <p className="text-muted-foreground">Trimite-i clientului aceste date de autentificare. Va ajunge direct în portalul lui.</p>
-              <div className="rounded-lg border border-border p-3">
-                <Row label="Email" value={result.email} />
-                <Row label="Parolă temporară" value={result.password ?? "—"} />
-              </div>
-              <Button
-                variant="outline" size="sm" className="w-full"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(`Email: ${result.email}\nParolă: ${result.password ?? "—"}`);
-                  push({ tone: "success", title: "Copiat", description: "Email + parolă — gata de trimis clientului." });
-                }}
-              >
-                <Copy className="h-4 w-4" /> Copiază tot (email + parolă)
-              </Button>
-              <p className="text-xs text-muted-foreground">Poate schimba parola după autentificare.</p>
-            </>
-          )}
-        </div>
-      ) : (
-        <div>
-          <p className="mb-1.5 text-xs font-700 text-muted-foreground">Email de contact al clientului</p>
-          <Input autoFocus type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contact@client.com" onKeyDown={(e) => { if (e.key === "Enter") invite(); }} />
-        </div>
-      )}
     </Modal>
   );
 }
@@ -598,7 +512,7 @@ function BusinessImpactTab({ live, niche, rows }: { live: boolean; niche: Niche;
   if (!live) {
     return (
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[{ l: "Apeluri primite", v: "42" }, { l: "Rezervări", v: "26" }, { l: "Impact pe venituri", v: "€38.2K" }, { l: "DM-uri relevante", v: "138" }].map((m) => (
+        {[{ l: "Apeluri primite", v: "42" }, { l: "Rezervări", v: "26" }, { l: "Impact pe venituri", v: "38.200 lei" }, { l: "DM-uri relevante", v: "138" }].map((m) => (
           <Panel key={m.l} className="p-5"><p className="text-xs text-muted-foreground">{m.l}</p><p className="mt-1 font-display text-2xl font-800">{m.v}</p></Panel>
         ))}
       </div>
@@ -610,7 +524,7 @@ function BusinessImpactTab({ live, niche, rows }: { live: boolean; niche: Niche;
     ? `Clientul a raportat singur aceste cifre pentru ${monthName}.`
     : any
     ? `Cifre introduse de agenție pentru ${monthName}.`
-    : `Încă niciun impact raportat pentru ${monthName} — clientul îl poate trimite din portalul lui sau îl poți adăuga tu în Impact în afacere.`;
+    : `Încă niciun impact raportat pentru ${monthName} — îl poți adăuga tu în Impact în afacere.`;
 
   return (
     <div className="space-y-4">
@@ -632,18 +546,6 @@ function BusinessImpactTab({ live, niche, rows }: { live: boolean; niche: Niche;
         <p className="text-sm text-muted-foreground">{status}</p>
         <Link to="/impact"><Button variant="primary" size="sm">Deschide Impact în afacere</Button></Link>
       </Panel>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  const { push } = useToast();
-  return (
-    <div className="flex items-center justify-between gap-3 py-1">
-      <span className="text-xs font-700 text-muted-foreground">{label}</span>
-      <span className="flex items-center gap-1.5 font-mono text-xs">{value}
-        <button onClick={() => { navigator.clipboard?.writeText(value); push({ tone: "success", title: "Copiat" }); }} className="text-muted-foreground hover:text-foreground"><Copy className="h-3 w-3" /></button>
-      </span>
     </div>
   );
 }

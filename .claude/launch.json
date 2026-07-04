@@ -7,13 +7,6 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5173,
       "autoPort": true
-    },
-    {
-      "name": "parc-auto-yanis",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev", "--port", "4923", "--strictPort"],
-      "cwd": "/Users/mxrcash2025/Desktop/claude code/PROJECTS/parc-auto-yanis",
-      "port": 4923
     }
   ]
 }

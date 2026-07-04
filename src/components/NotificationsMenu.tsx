@@ -27,8 +27,6 @@ function timeAgo(iso: string): string {
 
 // Demo-only notifications (live mode reads the real `notifications` table).
 const sampleNotes: Note[] = [
-  { id: 1, icon: ShieldAlert, tone: TONE.warning, title: "Aprobare în așteptare", desc: "Altmark — scriptul așteaptă aprobarea clientului", time: "1h", to: "/approvals" },
-  { id: 2, icon: TrendingDown, tone: TONE.danger, title: "Scor de sănătate în scădere", desc: "Lumen Lounge a scăzut la 48 (risc ridicat)", time: "2h", to: "/clients/lumen" },
   { id: 3, icon: MessageCircle, tone: TONE.info, title: "Comentariu cu intenție de cumpărare", desc: "Verde Bistro — solicitare de rezervare", time: "4h", to: "/clients/verde" },
   { id: 4, icon: FileText, tone: TONE.success, title: "Raport gata", desc: "Raportul IronPeak pe mai a fost generat", time: "1z", to: "/reports" },
 ];

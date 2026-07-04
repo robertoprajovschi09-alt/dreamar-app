@@ -5,12 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number, currency = "EUR") {
-  return new Intl.NumberFormat("en-IE", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
+// All money in the app is Romanian lei. Formats "3.000 lei" (ro-RO grouping).
+export function formatCurrency(value: number) {
+  const n = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: value % 1 === 0 ? 0 : 2 }).format(value);
+  return `${n} lei`;
 }
 
 export function formatNumber(value: number) {

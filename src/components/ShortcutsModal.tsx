@@ -18,7 +18,6 @@ const groups = [
       { keys: ["G", "N"], label: "Conținut (calendar)" },
       { keys: ["G", "T"], label: "Conținut — board de sarcini" },
       { keys: ["G", "H"], label: "Conținut — hook-uri" },
-      { keys: ["G", "A"], label: "Aprobări" },
       { keys: ["G", "E"], label: "Agenție" },
       { keys: ["G", "V"], label: "Performanță video" },
     ],

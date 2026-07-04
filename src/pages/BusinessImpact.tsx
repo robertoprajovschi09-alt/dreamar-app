@@ -30,7 +30,7 @@ const DEMO_TREND = [
 
 const firstOfMonthISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 const num = (s: string) => (s ? Number(s) : 0);
-const eurK = (v: number) => (v >= 1000 ? `€${Math.round(v / 1000)}k` : `€${v}`);
+const leiK = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k lei` : `${v} lei`);
 
 export default function BusinessImpact() {
   const { push } = useToast();
@@ -121,7 +121,7 @@ export default function BusinessImpact() {
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Panel className="p-5"><Euro className="h-5 w-5 text-success" /><p className="mt-2 font-display text-2xl font-800">{eurK(num(revenue))}</p><p className="text-xs text-muted-foreground">Venituri atribuite</p></Panel>
+        <Panel className="p-5"><Euro className="h-5 w-5 text-success" /><p className="mt-2 font-display text-2xl font-800">{leiK(num(revenue))}</p><p className="text-xs text-muted-foreground">Venituri atribuite</p></Panel>
         <Panel className="p-5"><ShoppingBag className="h-5 w-5 text-primary" /><p className="mt-2 font-display text-2xl font-800">{num(form.sales)}</p><p className="text-xs text-muted-foreground">Vânzări luna aceasta</p></Panel>
         <Panel className="p-5"><Phone className="h-5 w-5 text-info" /><p className="mt-2 font-display text-2xl font-800">{inbound}</p><p className="text-xs text-muted-foreground">Contacte primite</p></Panel>
         <Panel className="p-5"><CalendarCheck className="h-5 w-5 text-[hsl(var(--warning))]" /><p className="mt-2 font-display text-2xl font-800">{num(form.viewings)}</p><p className="text-xs text-muted-foreground">Vizionări programate</p></Panel>
@@ -140,7 +140,7 @@ export default function BusinessImpact() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
-              <p className="mb-1 text-xs font-700 text-muted-foreground">Estimare venituri (€)</p>
+              <p className="mb-1 text-xs font-700 text-muted-foreground">Estimare venituri (lei)</p>
               <Input type="number" value={revenue} onChange={(e) => setRevenue(e.target.value)} placeholder="0" />
             </div>
             <div>
@@ -154,9 +154,9 @@ export default function BusinessImpact() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Tendință impact venituri" subtitle="mii €">
+        <SectionCard title="Tendință impact venituri" subtitle="mii lei">
           {trend.length > 0 ? (
-            <Bars data={trend} keys={[{ key: "revenue", name: "Venituri (€k)" }]} height={200} prefix="€" />
+            <Bars data={trend} keys={[{ key: "revenue", name: "Venituri (k lei)" }]} height={200} />
           ) : (
             <div className="grid h-[200px] place-items-center text-center text-sm text-muted-foreground">Salvează o lună pentru a începe tendința.</div>
           )}

@@ -24,8 +24,6 @@ function Wordmark() {
 
 const navItems = [
   { label: "Produs", to: "/#produs" },
-  { label: "Portalul clientului", to: "/#clienti" },
-  { label: "Prețuri", to: "/pricing" },
 ];
 
 export function MarketingLayout() {
@@ -74,12 +72,10 @@ export function MarketingLayout() {
           <Wordmark />
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-muted-foreground">
             <a href="/#produs" className="link-u transition hover:text-foreground">Produs</a>
-            <a href="/#clienti" className="link-u transition hover:text-foreground">Portalul clientului</a>
-            <Link to="/pricing" className="link-u transition hover:text-foreground">Prețuri</Link>
             <Link to="/login" className="link-u transition hover:text-foreground">Autentificare</Link>
             <Link to="/admin/login" className="link-u transition hover:text-foreground">Admin</Link>
           </nav>
-          <p className="text-[13px] text-muted-foreground">© 2026 drea.mar · Prețuri în EUR</p>
+          <p className="text-[13px] text-muted-foreground">© 2026 drea.mar</p>
         </div>
       </footer>
     </div>
