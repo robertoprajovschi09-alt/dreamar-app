@@ -65,6 +65,7 @@ function mapRow(r: any): Client {
     retainer: Number(r.monthly_retainer ?? 0),
     billingType: (r.billing_type ?? "retainer") as BillingType,
     deliverables: r.monthly_deliverables ?? 0,
+    clipBuffer: r.clip_buffer ?? 0,
     phone: r.contact_phone ?? "",
     notes: r.notes ?? "",
     // "onboarding" is retired — treat any legacy row as active.
@@ -93,7 +94,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     // until the health-score function + view are wired in.
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, niche, city, contact_person, contact_email, contact_phone, website, monthly_retainer, billing_type, monthly_deliverables, notes, status, platforms, objectives, feedback")
+      .select("id, name, niche, city, contact_person, contact_email, contact_phone, website, monthly_retainer, billing_type, monthly_deliverables, clip_buffer, notes, status, platforms, objectives, feedback")
       .eq("agency_id", agencyId)
       .is("archived_at", null)
       .order("created_at", { ascending: false });

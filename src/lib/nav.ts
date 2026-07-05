@@ -29,7 +29,7 @@ export type NavGroup = { heading?: string; items: NavItem[] };
 export const navGroups: NavGroup[] = [
   {
     items: [
-      { label: "Săptămâna", to: "/dashboard", icon: Target, end: true },
+      { label: "Azi", to: "/dashboard", icon: Target, end: true },
       { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
       { label: "Conținut", to: "/content", icon: CalendarDays },
       { label: "Agenție", to: "/agency", icon: Building2 },
@@ -40,7 +40,7 @@ export const navGroups: NavGroup[] = [
 // Full destination list for the command palette (⌘K) — the slim sidebar never
 // limits reach. Includes the sub-pages that now live inside workspaces/clients.
 export const allDestinations: NavItem[] = [
-  { label: "Săptămâna", to: "/dashboard", icon: Target, end: true },
+  { label: "Azi", to: "/dashboard", icon: Target, end: true },
   { label: "Clienți", to: "/clients", icon: Users },
   { label: "Conținut", to: "/content", icon: CalendarDays },
   { label: "Agenție", to: "/agency", icon: Building2 },
