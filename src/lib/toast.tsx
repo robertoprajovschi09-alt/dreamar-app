@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={{ push }}>
       {children}
       {createPortal(
-        <div className="fixed bottom-5 right-5 z-[200] flex w-[340px] max-w-[92vw] flex-col gap-2">
+        <div className="fixed right-5 z-[200] flex w-[340px] max-w-[92vw] flex-col gap-2 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-5">
           {toasts.map((t) => {
             const M = toneMeta[t.tone];
             return (
