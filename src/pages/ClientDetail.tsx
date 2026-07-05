@@ -16,15 +16,17 @@ import { supabase } from "@/lib/supabase";
 import { nicheSpec, type MetricField } from "@/lib/niches";
 import {
   ArrowLeft,
+  Copy,
+  Download,
   FileText,
   Loader2,
   Mail,
   MapPin,
   Megaphone,
+  Minus,
   Pencil,
   Phone,
   Plus,
-  Send,
   Target,
   Trash2,
   TrendingUp,
@@ -33,6 +35,8 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import { downloadReportImage, buildReportText } from "@/lib/reportImage";
+import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clientcounters";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
 const POST_STATUS_LABEL: Record<string, string> = {
@@ -71,7 +75,7 @@ export default function ClientDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [brand, setBrand] = useState<BrandProfile | null>(null);
   const [impactRows, setImpactRows] = useState<ImpactRow[]>([]);
-  const [homeFields, setHomeFields] = useState({ goal: "", week: "", next: "" });
+  const [homeFields, setHomeFields] = useState({ reach: "", dmLeads: "", week: "", next: "" });
   const [savingHome, setSavingHome] = useState(false);
 
   const liveClient = cl.live ? cl.getClient(id) : undefined;
@@ -83,13 +87,13 @@ export default function ClientDetail() {
     (async () => {
       const month = firstOfMonthISO();
       const [p, im] = await Promise.all([
-        supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at, monthly_lead_goal, week_summary, next_steps").eq("id", id).maybeSingle(),
+        supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at, report_reach, report_dm_leads, week_summary, next_steps").eq("id", id).maybeSingle(),
         supabase!.from("business_impact_entries").select("source, calls_received, relevant_dms, bookings, appointments, orders, sales, viewings, contracts, revenue_estimate, qualitative_feedback, objections_heard").eq("client_id", id).eq("period_month", month),
       ]);
       if (!active) return;
       if (p.data) {
         setBrand({ brandVoice: p.data.brand_voice ?? "", audience: p.data.target_audience ?? "", goals: p.data.goals ?? [], brandProfile: p.data.brand_profile ?? {}, onboardedAt: p.data.onboarding_completed_at ?? null });
-        setHomeFields({ goal: p.data.monthly_lead_goal != null ? String(p.data.monthly_lead_goal) : "", week: p.data.week_summary ?? "", next: p.data.next_steps ?? "" });
+        setHomeFields({ reach: p.data.report_reach != null ? String(p.data.report_reach) : "", dmLeads: p.data.report_dm_leads != null ? String(p.data.report_dm_leads) : "", week: p.data.week_summary ?? "", next: p.data.next_steps ?? "" });
       }
       setImpactRows((im.data ?? []) as ImpactRow[]);
     })();
@@ -129,23 +133,31 @@ export default function ClientDetail() {
   const clientVideos = (cl.live ? lib.videos : videos).filter((v) => v.client === client.name);
   const clientPosts = content.posts.filter((p) => p.clientId === client.id);
 
-  // Report figures (this month).
-  const repPick = (f: string) => { const cr = impactRows.find((r) => r.source === "client"); const ar = impactRows.find((r) => r.source === "agency"); return Number((cr?.[f] ?? ar?.[f]) ?? 0); };
-  const repLeads = repPick("calls_received") + repPick("relevant_dms") + repPick("bookings") + repPick("appointments") + repPick("viewings");
-  const repRevenue = repPick("revenue_estimate");
+  // Report figures (this month). Published posts are counted straight from the
+  // calendar for the current month.
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const publishedThisMonth = clientPosts.filter((p) => p.status === "published" && p.date && p.date.slice(0, 7) === monthKey).length;
   const monthLabel = new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
+  const isBarter = (client.billingType ?? "retainer") === "barter";
+
+  const reportData = {
+    clientName: client.name, monthLabel, published: publishedThisMonth,
+    reach: Number(homeFields.reach) || 0, dmLeads: Number(homeFields.dmLeads) || 0,
+    week: homeFields.week, next: homeFields.next,
+  };
 
   async function saveHome() {
     if (!supabase || !cl.live || savingHome) return;
     setSavingHome(true);
     const { error } = await supabase.from("clients").update({
-      monthly_lead_goal: homeFields.goal === "" ? null : Number(homeFields.goal),
+      report_reach: homeFields.reach === "" ? null : Number(homeFields.reach),
+      report_dm_leads: homeFields.dmLeads === "" ? null : Number(homeFields.dmLeads),
       week_summary: homeFields.week.trim() || null,
       next_steps: homeFields.next.trim() || null,
     }).eq("id", id);
     setSavingHome(false);
     if (error) { push({ tone: "danger", title: "Nu am putut salva", description: error.message }); return; }
-    push({ tone: "success", title: "Raport actualizat", description: "Clientul vede acum noile detalii în portal." });
+    push({ tone: "success", title: "Raport salvat" });
   }
 
   return (
@@ -320,36 +332,29 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {tab === "Raport" && (
+      {tab === "Raport" && (isBarter ? (
+        <BarterCounters clientId={client.id} />
+      ) : (
         <div className="space-y-4">
-          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Exact ce vede clientul în portalul lui" icon={FileText}
-            action={<Button variant="primary" size="sm" onClick={async () => {
-              // Record the send — the weekly "Rapoarte de trimis" queue reads this stamp.
-              if (cl.live && supabase) {
-                const { error } = await supabase.from("clients").update({ report_sent_at: new Date().toISOString() }).eq("id", id);
-                if (error) { push({ tone: "danger", title: "Nu am putut marca trimiterea", description: error.message }); return; }
-              }
-              push({ tone: "success", title: "Trimis clientului", description: `${client.name} vede raportul în portalul lui.` });
-            }}><Send className="h-4 w-4" /> Trimite clientului</Button>}>
-            <div className="grid grid-cols-2 gap-3">
-              <ReportStat label="Lead-uri" value={String(repLeads)} icon={Users} />
-              <ReportStat label="Venit estimat" value={formatCurrency(repRevenue)} icon={TrendingUp} />
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Mesajul pentru client" subtitle="În cuvinte simple — apare pe pagina lui de Acasă" icon={Wand2}>
+          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Rezumatul lunii — descarcă-l ca imagine sau copiază textul" icon={FileText}>
             <div className="space-y-4">
-              <ReportField label="Obiectivul lunii (nr. lead-uri)"><Input type="number" min={0} value={homeFields.goal} onChange={(e) => setHomeFields((f) => ({ ...f, goal: e.target.value }))} placeholder="ex. 40" /></ReportField>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <ReportStat label="Postări publicate" value={String(publishedThisMonth)} icon={FileText} />
+                <ReportField label="Reach total"><Input type="number" min={0} value={homeFields.reach} onChange={(e) => setHomeFields((f) => ({ ...f, reach: e.target.value }))} placeholder="ex. 42000" /></ReportField>
+                <ReportField label="Lead-uri DM și WhatsApp"><Input type="number" min={0} value={homeFields.dmLeads} onChange={(e) => setHomeFields((f) => ({ ...f, dmLeads: e.target.value }))} placeholder="ex. 18" /></ReportField>
+              </div>
               <ReportField label="Ce s-a întâmplat"><textarea value={homeFields.week} onChange={(e) => setHomeFields((f) => ({ ...f, week: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Filmările despre albire au adus 9 programări noi." /></ReportField>
               <ReportField label="Ce urmează"><textarea value={homeFields.next} onChange={(e) => setHomeFields((f) => ({ ...f, next: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Pregătim 4 postări noi și relansăm reclama." /></ReportField>
-              <div className="flex items-center justify-between gap-3">
-                {!cl.live && <p className="text-xs text-muted-foreground">Disponibil în contul real (live).</p>}
-                <Button variant="primary" className="ml-auto" disabled={savingHome || !cl.live} onClick={saveHome}>{savingHome && <Loader2 className="h-4 w-4 animate-spin" />} Salvează</Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="primary" disabled={savingHome || !cl.live} onClick={saveHome}>{savingHome && <Loader2 className="h-4 w-4 animate-spin" />} Salvează</Button>
+                <Button variant="outline" onClick={() => { void navigator.clipboard?.writeText(buildReportText(reportData)); push({ tone: "success", title: "Text copiat", description: "Gata de trimis pe WhatsApp." }); }}><Copy className="h-4 w-4" /> Copiază text</Button>
+                <Button variant="outline" onClick={() => { void downloadReportImage(reportData); push({ tone: "success", title: "Imagine generată", description: "Raportul s-a descărcat." }); }}><Download className="h-4 w-4" /> Descarcă imagine</Button>
+                {!cl.live && <p className="text-xs text-muted-foreground">Salvarea e disponibilă în contul live.</p>}
               </div>
             </div>
           </SectionCard>
         </div>
-      )}
+      ))}
 
       {tab === "Fișiere" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -398,6 +403,31 @@ function ReportStat({ label, value, icon: Icon }: { label: string; value: string
 }
 function ReportField({ label, children }: { label: string; children: ReactNode }) {
   return <div><p className="mb-1.5 text-xs font-700 text-muted-foreground">{label}</p>{children}</div>;
+}
+
+// Barter clients (Super Pasta) track deliverables instead of a money report.
+function BarterCounters({ clientId }: { clientId: string }) {
+  const { values, bump } = useClientCounters(clientId);
+  return (
+    <SectionCard title="Barter — livrabile" subtitle="Progresul înțelegerii, nu retainer" icon={FileText}
+      action={<Badge tone="warning" dot>Termen: {BARTER_DEADLINE}</Badge>}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {BARTER_COUNTERS.map((c) => {
+          const n = values[c.key] ?? 0;
+          return (
+            <div key={c.key} className="rounded-xl border border-border p-4 text-center">
+              <p className="text-xs font-600 text-muted-foreground">{c.label}</p>
+              <div className="mt-3 flex items-center justify-center gap-3">
+                <button onClick={() => bump(c.key, c.label, -1)} disabled={n === 0} aria-label="Scade" className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"><Minus className="h-4 w-4" /></button>
+                <span className="min-w-[2ch] font-display text-3xl font-800">{n}</span>
+                <button onClick={() => bump(c.key, c.label, 1)} aria-label="Crește" className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted"><Plus className="h-4 w-4" /></button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </SectionCard>
+  );
 }
 
 function EditClientModal({ open, onClose, client, website, onSave, onArchive }: {
