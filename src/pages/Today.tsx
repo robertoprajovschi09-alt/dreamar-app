@@ -229,8 +229,8 @@ function ClipBuffer({ active, clips, onClient, onNewClient }: { active: Client[]
 }
 
 /* ── 3 · De filmat ───────────────────────────────────────────────────────── */
-// The pipeline's to_film clips, grouped by client. The checkbox moves a clip to
-// Filmat (it leaves the list); the quick-add creates a new to_film clip.
+// The pipeline's to_film clips, ordered by film day: today ("azi") first, then
+// overdue ("restant"), then undated, then future. Checkbox moves a clip to Filmat.
 function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
   clips: Clip[];
   clients: { id: string; name: string }[];
@@ -242,17 +242,19 @@ function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
   const [qTitle, setQTitle] = useState("");
   const submit = () => { if (qTitle.trim()) { onCreate(qClient || null, qTitle.trim()); setQTitle(""); } };
 
-  const groups = useMemo(() => {
-    const m = new Map<string, { key: string; name: string; items: Clip[] }>();
-    clips.forEach((c) => {
-      if (c.state !== "to_film") return;
-      const key = c.clientId ?? "";
-      if (!m.has(key)) m.set(key, { key, name: c.clientId ? (c.clientName || "Client") : "Fără client", items: [] });
-      m.get(key)!.items.push(c);
-    });
-    return [...m.values()].sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : a.name.localeCompare(b.name)));
-  }, [clips]);
-  const openCount = groups.reduce((s, g) => s + g.items.length, 0);
+  const todayStr = isoOf(new Date());
+  const ordered = useMemo(() => {
+    const rank = (c: Clip) => (c.filmDate === todayStr ? 0 : c.filmDate && c.filmDate < todayStr ? 1 : !c.filmDate ? 2 : 3);
+    return clips.filter((c) => c.state === "to_film")
+      .sort((a, b) => rank(a) - rank(b) || (a.filmDate ?? "9999").localeCompare(b.filmDate ?? "9999") || a.clientName.localeCompare(b.clientName));
+  }, [clips, todayStr]);
+  const openCount = ordered.length;
+  const filmTag = (c: Clip) => {
+    if (c.filmDate === todayStr) return <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-700 text-primary">azi</span>;
+    if (c.filmDate && c.filmDate < todayStr) return <span className="shrink-0 rounded-full bg-danger/15 px-2 py-0.5 text-[10px] font-700 text-danger">restant</span>;
+    if (c.filmDate) return <span className="shrink-0 text-[11px] font-600 text-muted-foreground">{new Date(c.filmDate + "T00:00:00").toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}</span>;
+    return null;
+  };
 
   return (
     <Section icon={Film} tone="text-muted-foreground" title="De filmat" right={openCount ? countPill(openCount) : null}>
@@ -265,16 +267,15 @@ function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
       </div>
       {openCount === 0 ? (
         <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Lista ta de filmări. Adaugă mai sus ce ai de filmat.</p>
-      ) : groups.map((g) => (
-        <div key={g.key}>
-          <p className="border-t border-border/60 bg-muted/20 px-4 py-1.5 text-[11px] font-700 uppercase tracking-wide text-muted-foreground">{g.name}</p>
-          {g.items.map((c) => (
-            <div key={c.id} className="group flex items-center gap-3 border-t border-border/60 px-4 py-3">
-              <Checkbox checked={false} onChange={() => onFilmed(c.id)} label={`Marchează „${c.title}” ca filmat`} />
-              <span className="min-w-0 flex-1 truncate text-sm font-600">{c.title}</span>
-              <button onClick={() => onDelete(c.id)} aria-label="Șterge" className="text-muted-foreground opacity-60 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
-            </div>
-          ))}
+      ) : ordered.map((c) => (
+        <div key={c.id} className="group flex items-center gap-3 border-t border-border/60 px-4 py-3">
+          <Checkbox checked={false} onChange={() => onFilmed(c.id)} label={`Marchează „${c.title}” ca filmat`} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-600">{c.title}</span>
+            <span className="block truncate text-xs text-muted-foreground">{c.clientId ? c.clientName : "Fără client"}</span>
+          </span>
+          {filmTag(c)}
+          <button onClick={() => onDelete(c.id)} aria-label="Șterge" className="text-muted-foreground opacity-60 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
         </div>
       ))}
     </Section>

@@ -21,7 +21,7 @@ export const HELP: Record<HelpKey, { title: string; short: string; body: string 
   pipeline: {
     title: "Pipeline",
     short: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat.",
-    body: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat. Clipurile gata de postat ale unui client sunt cele din Editat. Ce programezi aici apare în Azi și în Calendar.",
+    body: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat. Clipurile gata de postat ale unui client sunt cele din Editat. Un clip poate primi o zi de filmare, care apare în Calendar. Ce programezi aici apare în Azi și în Calendar.",
   },
   bani: {
     title: "Bani",
@@ -30,8 +30,8 @@ export const HELP: Record<HelpKey, { title: string; short: string; body: string 
   },
   calendar: {
     title: "Calendar",
-    short: "Aceleași clipuri din Pipeline, văzute pe zile.",
-    body: "Aceleași clipuri din Pipeline, văzute pe zile. Ce muți aici se mută și acolo.",
+    short: "Filmările și postările clipurilor, văzute pe zile.",
+    body: "Filmările și postările clipurilor, văzute pe zile. Ce muți aici se mută și în clip. Filmările au contur, postările sunt pline. Fiecare client are calendarul lui, plus cel general.",
   },
   scripturi: {
     title: "Scripturi",

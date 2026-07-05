@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace";
 import { useClients, type ClientPatch } from "@/lib/clients";
 import { useClips, clipStateLabel } from "@/lib/clips";
+import { CalendarView } from "@/pages/ContentCalendar";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
 import { nicheSpec } from "@/lib/niches";
@@ -39,7 +40,7 @@ import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clien
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
 
-const tabs = ["Prezentare", "Conținut", "Rezultate", "Fișiere"] as const;
+const tabs = ["Prezentare", "Conținut", "Calendar", "Rezultate", "Fișiere"] as const;
 
 export default function ClientDetail() {
   const { id = "" } = useParams();
@@ -305,6 +306,12 @@ export default function ClientDetail() {
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun clip. <Link to="/pipeline" className="font-700 text-primary">Adaugă în Pipeline</Link>.</p>
           )}
+        </SectionCard>
+      )}
+
+      {activeTab === "Calendar" && (
+        <SectionCard title="Calendar" subtitle={`Filmările și postările lui ${client.name}`}>
+          <CalendarView lockedClientId={client.id} />
         </SectionCard>
       )}
 

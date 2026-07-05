@@ -5,8 +5,8 @@ import { useClients } from "./clients";
 
 /*
  * The clip - the central object of the app. A single 6-state pipeline is the one
- * source of truth; the content calendar is just a view over the scheduled/posted
- * clips. Nothing else keeps its own copy of this data.
+ * source of truth; the content calendar is just a view over each clip's optional
+ * film day and post day. Nothing else keeps its own copy of this data.
  */
 
 export type ClipState = "idea" | "to_film" | "filmed" | "edited" | "scheduled" | "posted";
@@ -31,7 +31,8 @@ export type Clip = {
   title: string;
   state: ClipState;
   platform: string;          // proper-cased label, "" if none
-  scheduledDate: string | null; // yyyy-mm-dd (only for scheduled/posted)
+  scheduledDate: string | null; // yyyy-mm-dd post day (only for scheduled/posted)
+  filmDate: string | null;      // yyyy-mm-dd film day (optional; set in idea/to_film/filmed)
   assigned: string;
   notes: string;
   finalLink: string;
@@ -43,6 +44,7 @@ export type NewClipInput = {
   state: ClipState;
   platform?: string;
   scheduledDate?: string | null;
+  filmDate?: string | null;
   notes?: string;
   finalLink?: string;
 };
@@ -58,19 +60,19 @@ const platformDb = (p?: string) => (p ? p.toLowerCase() : null);
 // data in the sandbox. Dates around the prototype "today" (early July 2026).
 let demoSeq = 0;
 const SAMPLE_CLIPS: Clip[] = [
-  { id: "c1", clientId: "altmark", clientName: "Altmark Residences", title: "Idee: tur apartament nou", state: "idea", platform: "TikTok", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c2", clientId: "verde", clientName: "Verde Bistro", title: "Idee: meniu de vară", state: "idea", platform: "Instagram", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c3", clientId: "ironpeak", clientName: "IronPeak Gym", title: "De filmat: transformare client", state: "to_film", platform: "Instagram", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c4", clientId: "altmark", clientName: "Altmark Residences", title: "De filmat: open house", state: "to_film", platform: "YouTube", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c5", clientId: "smile", clientName: "SmileLab Clinic", title: "Filmat: mituri albire", state: "filmed", platform: "Instagram", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c6", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: glass skin", state: "edited", platform: "TikTok", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c7", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: promo luciu păr", state: "edited", platform: "Instagram", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c8", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: rutină de seară", state: "edited", platform: "TikTok", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c9", clientId: "ironpeak", clientName: "IronPeak Gym", title: "Editat: Q&A antrenor", state: "edited", platform: "TikTok", scheduledDate: null, assigned: "", notes: "", finalLink: "" },
-  { id: "c10", clientId: "altmark", clientName: "Altmark Residences", title: "Programat: Sky 2 camere", state: "scheduled", platform: "TikTok", scheduledDate: "2026-07-08", assigned: "", notes: "", finalLink: "" },
-  { id: "c11", clientId: "verde", clientName: "Verde Bistro", title: "Programat: scenetă meniu", state: "scheduled", platform: "Instagram", scheduledDate: "2026-07-11", assigned: "", notes: "", finalLink: "" },
-  { id: "c12", clientId: "mareluna", clientName: "Mare Luna Hotel", title: "Postat: dezvăluire suită", state: "posted", platform: "Instagram", scheduledDate: "2026-07-01", assigned: "", notes: "", finalLink: "" },
-  { id: "c13", clientId: "drivex", clientName: "DriveX Motors", title: "Postat: noutăți în stoc", state: "posted", platform: "Facebook", scheduledDate: "2026-06-28", assigned: "", notes: "", finalLink: "" },
+  { id: "c1", clientId: "altmark", clientName: "Altmark Residences", title: "Idee: tur apartament nou", state: "idea", platform: "TikTok", scheduledDate: null, filmDate: "2026-07-07", assigned: "", notes: "", finalLink: "" },
+  { id: "c2", clientId: "verde", clientName: "Verde Bistro", title: "Idee: meniu de vară", state: "idea", platform: "Instagram", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c3", clientId: "ironpeak", clientName: "IronPeak Gym", title: "De filmat: transformare client", state: "to_film", platform: "Instagram", scheduledDate: null, filmDate: "2026-07-05", assigned: "", notes: "", finalLink: "" },
+  { id: "c4", clientId: "altmark", clientName: "Altmark Residences", title: "De filmat: open house", state: "to_film", platform: "YouTube", scheduledDate: null, filmDate: "2026-07-03", assigned: "", notes: "", finalLink: "" },
+  { id: "c5", clientId: "smile", clientName: "SmileLab Clinic", title: "Filmat: mituri albire", state: "filmed", platform: "Instagram", scheduledDate: null, filmDate: "2026-07-02", assigned: "", notes: "", finalLink: "" },
+  { id: "c6", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: glass skin", state: "edited", platform: "TikTok", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c7", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: promo luciu păr", state: "edited", platform: "Instagram", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c8", clientId: "auralux", clientName: "AuraLux Beauty", title: "Editat: rutină de seară", state: "edited", platform: "TikTok", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c9", clientId: "ironpeak", clientName: "IronPeak Gym", title: "Editat: Q&A antrenor", state: "edited", platform: "TikTok", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c10", clientId: "altmark", clientName: "Altmark Residences", title: "Programat: Sky 2 camere", state: "scheduled", platform: "TikTok", scheduledDate: "2026-07-08", filmDate: "2026-07-04", assigned: "", notes: "", finalLink: "" },
+  { id: "c11", clientId: "verde", clientName: "Verde Bistro", title: "Programat: scenetă meniu", state: "scheduled", platform: "Instagram", scheduledDate: "2026-07-11", filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c12", clientId: "mareluna", clientName: "Mare Luna Hotel", title: "Postat: dezvăluire suită", state: "posted", platform: "Instagram", scheduledDate: "2026-07-01", filmDate: null, assigned: "", notes: "", finalLink: "" },
+  { id: "c13", clientId: "drivex", clientName: "DriveX Motors", title: "Postat: noutăți în stoc", state: "posted", platform: "Facebook", scheduledDate: "2026-06-28", filmDate: null, assigned: "", notes: "", finalLink: "" },
 ];
 
 type ClipsCtx = {
@@ -96,6 +98,7 @@ function mapRow(r: any): Clip {
     state: r.state as ClipState,
     platform: platformLabel(r.platform),
     scheduledDate: r.scheduled_date ?? null,
+    filmDate: r.film_date ?? null,
     assigned: r.assigned ?? "",
     notes: r.notes ?? "",
     finalLink: r.final_link ?? "",
@@ -116,7 +119,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from("clips")
-      .select("id, client_id, title, state, platform, scheduled_date, assigned, notes, final_link, client:clients(name)")
+      .select("id, client_id, title, state, platform, scheduled_date, film_date, assigned, notes, final_link, client:clients(name)")
       .eq("agency_id", agencyId)
       .order("created_at", { ascending: true });
     if (agencyRef.current !== agencyId) return; // drop stale response after an agency switch
@@ -139,14 +142,14 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
       setClips((prev) => [...prev, {
         id, clientId: input.clientId, clientName: clientName(input.clientId), title: input.title,
         state: input.state, platform: input.platform ?? "", scheduledDate: input.scheduledDate ?? null,
-        assigned: "", notes: input.notes ?? "", finalLink: input.finalLink ?? "",
+        filmDate: input.filmDate ?? null, assigned: "", notes: input.notes ?? "", finalLink: input.finalLink ?? "",
       }]);
       return { id };
     }
     const { data, error } = await supabase.from("clips").insert({
       agency_id: agencyId, client_id: input.clientId, title: input.title, state: input.state,
       platform: platformDb(input.platform), scheduled_date: input.scheduledDate ?? null,
-      notes: input.notes ?? "", final_link: input.finalLink ?? null,
+      film_date: input.filmDate ?? null, notes: input.notes ?? "", final_link: input.finalLink ?? null,
     }).select("id").single();
     if (error) return { error: error.message };
     await reload();
@@ -163,6 +166,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     if (patch.state !== undefined) db.state = patch.state;
     if (patch.platform !== undefined) db.platform = platformDb(patch.platform);
     if (patch.scheduledDate !== undefined) db.scheduled_date = patch.scheduledDate;
+    if (patch.filmDate !== undefined) db.film_date = patch.filmDate;
     if (patch.assigned !== undefined) db.assigned = patch.assigned;
     if (patch.notes !== undefined) db.notes = patch.notes;
     if (patch.finalLink !== undefined) db.final_link = patch.finalLink || null;
@@ -188,7 +192,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
         ...prev,
         ...Array.from({ length: n }, (_, i) => ({
           id: "demo-clip-" + ++demoSeq, clientId, clientName: name, title: `${base} ${i + 1}`,
-          state, platform: "", scheduledDate: null, assigned: "", notes: "", finalLink: "",
+          state, platform: "", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "",
         } as Clip)),
       ]);
       return {};

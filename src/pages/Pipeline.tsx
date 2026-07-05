@@ -16,6 +16,8 @@ const PLATFORMS = ["Instagram", "TikTok", "Facebook"];
 const pad = (n: number) => String(n).padStart(2, "0");
 export const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 export const needsDate = (s: ClipState) => s === "scheduled" || s === "posted";
+// The film day is settable while the clip is still upstream of scheduling.
+export const canSetFilmDate = (s: ClipState) => s === "idea" || s === "to_film" || s === "filmed";
 
 export default function Pipeline() {
   const { clips, loading, updateClip, deleteClip, batchCreate } = useClips();
@@ -163,12 +165,13 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
   const [state, setState] = useState<ClipState>("idea");
   const [platform, setPlatform] = useState("");
   const [date, setDate] = useState("");
+  const [filmDate, setFilmDate] = useState("");
   const [notes, setNotes] = useState("");
   const [finalLink, setFinalLink] = useState("");
   useEffect(() => {
     if (clip) {
       setTitle(clip.title); setClientId(clip.clientId ?? ""); setState(clip.state);
-      setPlatform(clip.platform || ""); setDate(clip.scheduledDate ?? "");
+      setPlatform(clip.platform || ""); setDate(clip.scheduledDate ?? ""); setFilmDate(clip.filmDate ?? "");
       setNotes(clip.notes || ""); setFinalLink(clip.finalLink || "");
     }
   }, [clip]);
@@ -178,7 +181,7 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
       badge={clip && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-700 text-muted-foreground">{clipStateLabel(clip.state)}</span>}
       footer={<>
         <Button variant="ghost" size="sm" className="text-danger" onClick={onDelete}><Trash2 className="h-4 w-4" /> Șterge</Button>
-        <Button variant="primary" size="sm" className="ml-auto" onClick={() => onSave({ title, clientId: clientId || null, state, platform, scheduledDate: needsDate(state) ? (date || todayISO()) : null, notes, finalLink })}>Salvează</Button>
+        <Button variant="primary" size="sm" className="ml-auto" onClick={() => onSave({ title, clientId: clientId || null, state, platform, scheduledDate: needsDate(state) ? (date || todayISO()) : null, filmDate: filmDate || null, notes, finalLink })}>Salvează</Button>
       </>}>
       {clip && (
         <div className="space-y-4">
@@ -189,7 +192,8 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full"><option value="">Fără platformă</option>{PLATFORMS.map((p) => <option key={p}>{p}</option>)}</Select></Field>
-            {needsDate(state) && <Field label="Dată"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>}
+            {needsDate(state) && <Field label="Zi de postare"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>}
+            {canSetFilmDate(state) && <Field label="Zi de filmare"><Input type="date" value={filmDate} onChange={(e) => setFilmDate(e.target.value)} /></Field>}
           </div>
           <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii scurte…" /></Field>
           <ClipScripts clipId={clip.id} />
