@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Users,
   Video,
+  Wallet,
 } from "lucide-react";
 
 export type NavItem = {
@@ -30,6 +31,7 @@ export const navGroups: NavGroup[] = [
   {
     items: [
       { label: "Azi", to: "/dashboard", icon: Target, end: true },
+      { label: "Bani", to: "/money", icon: Wallet },
       { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
       { label: "Conținut", to: "/content", icon: CalendarDays },
       { label: "Agenție", to: "/agency", icon: Building2 },
@@ -41,6 +43,7 @@ export const navGroups: NavGroup[] = [
 // limits reach. Includes the sub-pages that now live inside workspaces/clients.
 export const allDestinations: NavItem[] = [
   { label: "Azi", to: "/dashboard", icon: Target, end: true },
+  { label: "Bani", to: "/money", icon: Wallet },
   { label: "Clienți", to: "/clients", icon: Users },
   { label: "Conținut", to: "/content", icon: CalendarDays },
   { label: "Agenție", to: "/agency", icon: Building2 },
