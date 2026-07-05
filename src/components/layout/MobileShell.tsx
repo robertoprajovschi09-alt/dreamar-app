@@ -6,12 +6,11 @@ import { LibraryProvider } from "@/lib/library";
 import { UIProvider } from "@/lib/ui-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useInbox } from "@/lib/inbox";
-import { MobileHome } from "@/pages/mobile/MobileHome";
+import Today from "@/pages/Today";
 import { MobileInbox } from "@/pages/mobile/MobileInbox";
 import { MobileClients } from "@/pages/mobile/MobileClients";
 import { MobileAccount } from "@/pages/mobile/MobileAccount";
-import { QuickActionSheet } from "@/components/mobile/QuickActionSheet";
-import { Home, Inbox as InboxIcon, Plus, UserCircle, Users } from "lucide-react";
+import { Home, Inbox as InboxIcon, UserCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = "home" | "inbox" | "clients" | "account";
@@ -32,7 +31,6 @@ export default function MobileShell() {
 
 function MobileInner() {
   const [tab, setTab] = useState<Tab>("home");
-  const [sheet, setSheet] = useState(false);
   // Set when a feed row wants to open a client — consumed by the Clienți tab.
   const [focusClient, setFocusClient] = useState<string | null>(null);
   const { count } = useInbox();
@@ -51,7 +49,7 @@ function MobileInner() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
         <ErrorBoundary key={tab}>
-          {tab === "home" && <MobileHome onOpenInbox={() => setTab("inbox")} onOpenClient={openClient} />}
+          {tab === "home" && <Today />}
           {tab === "inbox" && <MobileInbox onOpenClient={openClient} />}
           {tab === "clients" && <MobileClients initialName={focusClient} onConsumed={() => setFocusClient(null)} />}
           {tab === "account" && <MobileAccount />}
@@ -62,17 +60,10 @@ function MobileInner() {
         <div className="mx-auto flex max-w-[680px] items-end justify-between px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-2">
           <TabBtn label="Acasă" icon={Home} active={tab === "home"} onClick={() => setTab("home")} />
           <TabBtn label="Inbox" icon={InboxIcon} active={tab === "inbox"} onClick={() => setTab("inbox")} badge={count} />
-          <div className="flex flex-1 justify-center">
-            <button onClick={() => setSheet(true)} aria-label="Acțiune rapidă" className="-mt-5 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition active:scale-95">
-              <Plus className="h-7 w-7" />
-            </button>
-          </div>
           <TabBtn label="Clienți" icon={Users} active={tab === "clients"} onClick={() => setTab("clients")} />
           <TabBtn label="Cont" icon={UserCircle} active={tab === "account"} onClick={() => setTab("account")} />
         </div>
       </nav>
-
-      <QuickActionSheet open={sheet} onClose={() => setSheet(false)} onGoInbox={() => setTab("inbox")} />
     </div>
   );
 }
