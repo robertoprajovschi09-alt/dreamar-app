@@ -126,7 +126,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
           </Field>
           {billingType === "retainer"
             ? <Field label="Retainer lunar (lei)"><Input type="number" placeholder="2000" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
-            : <Field label="Retainer lunar (lei)"><Input disabled placeholder="—" value="" /></Field>}
+            : <Field label="Retainer lunar (lei)"><Input disabled placeholder="" value="" /></Field>}
           <Field label="Livrabile pe lună"><Input type="number" placeholder="8" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
         </div>
       )}
@@ -178,7 +178,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
               })}
             </div>
           </div>
-          <Field label="Obiectivele lunii acesteia" full><textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Câte unul pe linie — ex. Generează 40 de lead-uri calificate, crește TikTok cu 15%…" /></Field>
+          <Field label="Obiectivele lunii acesteia" full><textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Câte unul pe linie - ex. Generează 40 de lead-uri calificate, crește TikTok cu 15%…" /></Field>
           <Field label="Notițe" full><Input placeholder="Detalii interne despre client…" value={notes} onChange={(e) => setNotes(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void create(); }} /></Field>
           <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-input bg-card p-3">
             <input type="checkbox" checked={invoiced} onChange={(e) => setInvoiced(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />

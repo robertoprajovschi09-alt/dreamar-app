@@ -168,11 +168,6 @@ function AgencySwitcher() {
               {a.id === currentAgency.id && <Check className="h-4 w-4 text-primary" />}
             </button>
           ))}
-          <div className="my-1 h-px bg-border" />
-          <button onClick={() => { setOpen(false); push({ tone: "info", title: "Creează agenție", description: "Gestionezi mai multe agenții dintr-un singur cont — în curând." }); }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-600 text-primary transition hover:bg-muted">
-            <span className="grid h-7 w-7 place-items-center rounded-lg border border-dashed border-primary/40 text-primary">+</span>
-            Creează agenție
-          </button>
         </div>
       )}
     </div>

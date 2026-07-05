@@ -69,7 +69,7 @@ function mapRow(r: any): Client {
     invoiced: r.invoiced ?? false,
     phone: r.contact_phone ?? "",
     notes: r.notes ?? "",
-    // "onboarding" is retired — treat any legacy row as active.
+    // "onboarding" is retired - treat any legacy row as active.
     status: (r.status === "archived" || r.status === "paused" ? "paused" : "active") as Client["status"],
     health: r.health_score ?? 0,
     risk: r.risk ?? "low",

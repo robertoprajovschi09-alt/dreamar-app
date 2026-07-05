@@ -8,11 +8,10 @@ import { useTheme } from "@/lib/theme";
 type UICtx = { openNewClient: () => void; openCommand: () => void; openShortcuts: () => void };
 const Ctx = createContext<UICtx | null>(null);
 
-// Post-IA-redesign destinations: workspaces + their tabs. (Old /tasks, /reports,
-// /strategy shortcuts pointed at demoted or relocated pages.)
+// G-then-key jumps, locked to the nine-item inventory.
 const goMap: Record<string, string> = {
-  d: "/dashboard", c: "/clients", n: "/content", t: "/content?tab=board", h: "/content?tab=hooks",
-  e: "/agency", v: "/videos",
+  d: "/dashboard", p: "/pipeline", b: "/money", c: "/clients", l: "/calendar",
+  s: "/scripts", k: "/kill-list", a: "/agency", e: "/settings",
 };
 
 function isTyping(el: EventTarget | null) {
@@ -32,15 +31,15 @@ export function UIProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      // ⌘K / Ctrl+K — command palette
+      // ⌘K / Ctrl+K - command palette
       if ((e.metaKey || e.ctrlKey) && k === "k") { e.preventDefault(); setCommandOpen((o) => !o); return; }
-      // ⌘⇧L / Ctrl+Shift+L — toggle theme
+      // ⌘⇧L / Ctrl+Shift+L - toggle theme
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && k === "l") { e.preventDefault(); toggle(); return; }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTyping(e.target)) return;
-      // ? — shortcuts panel
+      // ? - shortcuts panel
       if (e.key === "?") { e.preventDefault(); setShortcutsOpen(true); return; }
-      // G then <key> — navigate
+      // G then <key> - navigate
       if (pendingG.current) {
         pendingG.current = false;
         const to = goMap[k];

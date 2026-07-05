@@ -196,10 +196,10 @@ export default function ClientDetail() {
         </div>
       </Panel>
 
-      {/* Overview tab — full client summary; other tabs swap to just their own content */}
+      {/* Overview tab - full client summary; other tabs swap to just their own content */}
       {tab === "Prezentare" && (
       <div className="grid grid-cols-1 gap-4">
-        <SectionCard title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client — persistă între reîncărcări">
+        <SectionCard title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client - persistă între reîncărcări">
           <ul className="grid gap-2 sm:grid-cols-2">
             {objectives.map((o, i) => (
               <li key={`${o}-${i}`} className="group flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
@@ -210,7 +210,7 @@ export default function ClientDetail() {
                 </button>
               </li>
             ))}
-            {objectives.length === 0 && <li className="col-span-2 rounded-lg border border-dashed border-border px-3 py-3 text-center text-sm text-muted-foreground">Încă niciun obiectiv — adaugă unul mai jos.</li>}
+            {objectives.length === 0 && <li className="col-span-2 rounded-lg border border-dashed border-border px-3 py-3 text-center text-sm text-muted-foreground">Încă niciun obiectiv - adaugă unul mai jos.</li>}
           </ul>
           {objectives.length === 0 && nicheSpec(client.niche).objectivePresets.length > 0 && (
             <button
@@ -252,12 +252,12 @@ export default function ClientDetail() {
         </SectionCard>
       )}
 
-      {/* Brand profile — auto-filled by the client's portal onboarding */}
+      {/* Brand profile - auto-filled by the client's portal onboarding */}
       {tab === "Prezentare" && cl.live && (
         <SectionCard
           title="Profil de brand"
           icon={Megaphone}
-          subtitle="Vocea brandului, publicul și ce vinde clientul — pentru echipă"
+          subtitle="Vocea brandului, publicul și ce vinde clientul - pentru echipă"
         >
           {brand && (brand.brandVoice || brand.audience || brand.goals.length || Object.keys(brand.brandProfile).length) ? (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -287,8 +287,8 @@ export default function ClientDetail() {
                 {clientClips.slice().sort((a, b) => (a.scheduledDate ?? "9999").localeCompare(b.scheduledDate ?? "9999")).map((c) => (
                   <TR key={c.id}>
                     <TD className="max-w-[300px]"><p className="truncate font-600">{c.title}</p></TD>
-                    <TD>{c.platform ? <Badge tone="neutral">{c.platform}</Badge> : <span className="text-muted-foreground">—</span>}</TD>
-                    <TD className="text-muted-foreground">{c.scheduledDate ?? "—"}</TD>
+                    <TD>{c.platform ? <Badge tone="neutral">{c.platform}</Badge> : <span className="text-muted-foreground">fără date</span>}</TD>
+                    <TD className="text-muted-foreground">{c.scheduledDate ?? "fără date"}</TD>
                     <TD className="text-muted-foreground">{clipStateLabel(c.state)}</TD>
                   </TR>
                 ))}
@@ -303,10 +303,10 @@ export default function ClientDetail() {
       {tab === "Rezultate" && (
         <div className="space-y-4">
           <BusinessImpactTab live={cl.live} niche={client.niche} rows={impactRows} />
-          <SectionCard title="Performanță conținut" subtitle={`${clientVideos.length} ${clientVideos.length === 1 ? "videoclip" : "videoclipuri"}`} icon={TrendingUp} action={<Link to="/videos" className="text-xs font-700 text-primary">Toate</Link>}>
+          <SectionCard title="Performanță conținut" subtitle={`${clientVideos.length} ${clientVideos.length === 1 ? "videoclip" : "videoclipuri"}`} icon={TrendingUp}>
             {clientVideos.length ? (
               <Table>
-                <THead><TH>Hook</TH><TH>Platformă</TH><TH>Dată</TH><TH className="text-right">Vizualizări</TH><TH>Scor AI</TH><TH>Acțiune</TH></THead>
+                <THead><TH>Hook</TH><TH>Platformă</TH><TH>Dată</TH><TH className="text-right">Vizualizări</TH></THead>
                 <tbody>
                   {clientVideos.map((v) => (
                     <TR key={v.id}>
@@ -314,8 +314,6 @@ export default function ClientDetail() {
                       <TD><Badge tone="neutral">{v.platform}</Badge></TD>
                       <TD className="text-muted-foreground">{v.date}</TD>
                       <TD className="text-right font-600">{formatNumber(v.views)}</TD>
-                      <TD><span className={`font-display font-800 ${v.aiScore >= 80 ? "text-success" : v.aiScore >= 60 ? "text-[hsl(var(--warning))]" : "text-danger"}`}>{v.aiScore}</span></TD>
-                      <TD><Badge tone={recTone[v.rec]}>{v.rec}</Badge></TD>
                     </TR>
                   ))}
                 </tbody>
@@ -331,7 +329,7 @@ export default function ClientDetail() {
         <BarterCounters clientId={client.id} />
       ) : (
         <div className="space-y-4">
-          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Rezumatul lunii — descarcă-l ca imagine sau copiază textul" icon={FileText}>
+          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Rezumatul lunii - descarcă-l ca imagine sau copiază textul" icon={FileText}>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <ReportStat label="Postări publicate" value={String(publishedThisMonth)} icon={FileText} />
@@ -377,7 +375,7 @@ export default function ClientDetail() {
           return res;
         }}
         onArchive={async () => {
-          // Leave the page first — archiving removes the client from state and
+          // Leave the page first - archiving removes the client from state and
           // this detail page would flash "client negăsit" before navigating.
           navigate("/clients");
           const res = await cl.archiveClient(client.id);
@@ -404,7 +402,7 @@ function ReportField({ label, children }: { label: string; children: ReactNode }
 function BarterCounters({ clientId }: { clientId: string }) {
   const { values, bump } = useClientCounters(clientId);
   return (
-    <SectionCard title="Barter — livrabile" subtitle="Progresul înțelegerii, nu retainer" icon={FileText}
+    <SectionCard title="Barter - livrabile" subtitle="Progresul înțelegerii, nu retainer" icon={FileText}
       action={<Badge tone="warning" dot>Termen: {BARTER_DEADLINE}</Badge>}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {BARTER_COUNTERS.map((c) => {
@@ -558,7 +556,7 @@ function BusinessImpactTab({ live, niche, rows }: { live: boolean; niche: Niche;
     ? `Clientul a raportat singur aceste cifre pentru ${monthName}.`
     : any
     ? `Cifre introduse de agenție pentru ${monthName}.`
-    : `Încă niciun impact raportat pentru ${monthName} — îl poți adăuga tu în Impact în afacere.`;
+    : `Încă niciun impact raportat pentru ${monthName} - îl poți adăuga tu în Impact în afacere.`;
 
   return (
     <div className="space-y-4">

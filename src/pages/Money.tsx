@@ -91,7 +91,7 @@ function Block({ icon: Icon, tone, title, right, children }: { icon: typeof Wall
 function Collections({ money, clients }: { money: MoneyApi; clients: Client[] }) {
   const { collections, overdueCollections, updateCollection, removeCollection, addCollection, generateFromRetainers } = money;
   const isMobile = useIsMobile();
-  const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "Client" : "—"); }, [clients]);
+  const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "Client" : "Fără client"); }, [clients]);
   const rows = [...collections].sort((a, b) => nameOf(a.clientId).localeCompare(nameOf(b.clientId)) || a.dueDay - b.dueDay);
   const overdueDays = useMemo(() => new Map(overdueCollections.map((o) => [o.id, o.daysOverdue] as const)), [overdueCollections]);
 
@@ -127,7 +127,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
           const overdueLabel = od !== undefined ? <span className="text-[11px] font-700 text-danger">{od === 1 ? "scadent de 1 zi" : `scadent de ${od} zile`}</span> : null;
           const accent = cn("border-t border-border/60 border-l-2", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent");
           return isMobile ? (
-            /* Mobile: stacked card — name + status on top, amount + due day below. */
+            /* Mobile: stacked card - name + status on top, amount + due day below. */
             <div key={r.id} className={cn("px-4 py-2.5", accent)}>
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
@@ -173,7 +173,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
   );
 }
 
-/* ── 2 · Facturare (pregătire date — nu emite facturi fiscale) ───────────── */
+/* ── 2 · Facturare (pregătire date - nu emite facturi fiscale) ───────────── */
 const RO_MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
 const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = { not_issued: "Neemisă", issued: "Emisă", collected: "Încasată" };
 
@@ -189,7 +189,7 @@ function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
   function copy(client: Client, amount: number) {
     const text = `${client.name}\n${amount} lei\n${monthLabel}\nServicii producție și editare video, luna ${monthName}`;
     void navigator.clipboard?.writeText(text);
-    push({ tone: "success", title: "Date copiate", description: `${client.name} — gata de lipit în programul de facturare.` });
+    push({ tone: "success", title: "Date copiate", description: `${client.name} - gata de lipit în programul de facturare.` });
   }
 
   return (
@@ -215,7 +215,7 @@ function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
           </div>
         );
       })}
-      <p className="border-t border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] text-muted-foreground">Aplicația nu emite facturi fiscale — doar pregătește datele pentru programul tău de facturare.</p>
+      <p className="border-t border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] text-muted-foreground">Aplicația nu emite facturi fiscale - doar pregătește datele pentru programul tău de facturare.</p>
     </Block>
   );
 }
@@ -227,7 +227,7 @@ function Yanis({ money }: { money: MoneyApi }) {
   const isMobile = useIsMobile();
   const total = (d: YanisDeal) => d.commission + d.markup;
 
-  // Quick-add: 4 câmpuri (dată = azi, mașină, comision, vândută) — sub 10 secunde.
+  // Quick-add: 4 câmpuri (dată = azi, mașină, comision, vândută) - sub 10 secunde.
   const [qDate, setQDate] = useState(isoOf(new Date()));
   const [qCar, setQCar] = useState("");
   const [qComm, setQComm] = useState("");
@@ -250,7 +250,7 @@ function Yanis({ money }: { money: MoneyApi }) {
     const sum = unpaid.reduce((s, d) => s + total(d), 0);
     const text = `Decont Yanis\n${lines.join("\n")}\n\nTotal neplătit: ${sum} lei`;
     void navigator.clipboard?.writeText(text);
-    push({ tone: "success", title: "Decont copiat", description: `${unpaid.length} rânduri · ${sum} lei — gata de WhatsApp.` });
+    push({ tone: "success", title: "Decont copiat", description: `${unpaid.length} rânduri · ${sum} lei - gata de WhatsApp.` });
   }
 
   return (
@@ -264,11 +264,11 @@ function Yanis({ money }: { money: MoneyApi }) {
       {deals.length === 0 ? (
         <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun rând încă.</p>
       ) : isMobile ? (
-        /* Mobile: one card per deal — no horizontal scroll. */
+        /* Mobile: one card per deal - no horizontal scroll. */
         deals.map((d) => (
           <div key={d.id} className="border-t border-border/60 px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="min-w-0 flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="Mașină — ex. VW Golf 2018" /></span>
+              <span className="min-w-0 flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="Mașină - ex. VW Golf 2018" /></span>
               <span className="shrink-0 font-display text-base font-800">{lei(total(d))}</span>
               <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
             </div>
@@ -383,7 +383,7 @@ function Runway({ money }: { money: MoneyApi }) {
   const { settings, saveSettings } = money;
   const burn = settings.personalFix + settings.operationalBurn;
   const months = burn > 0 ? settings.tampon / burn : 0;
-  const monthsLabel = burn > 0 ? months.toLocaleString("ro-RO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "—";
+  const monthsLabel = burn > 0 ? months.toLocaleString("ro-RO", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : "fără date";
   const tone = burn <= 0 ? "text-muted-foreground" : months >= 3 ? "text-success" : months >= 1.5 ? "text-[hsl(var(--warning))]" : "text-danger";
 
   return (

@@ -1,20 +1,14 @@
 import {
-  Anchor,
   Building2,
   CalendarDays,
   Clapperboard,
-  FileText,
-  FolderOpen,
-  ListTodo,
-  type LucideIcon,
-  Plug,
+  ScrollText,
   Settings,
   Skull,
   Target,
-  TrendingUp,
   Users,
-  Video,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -27,39 +21,23 @@ export type NavItem = {
 
 export type NavGroup = { heading?: string; items: NavItem[] };
 
-// Agency OS — five workspaces. Everything else is reached inside a client,
-// inside a workspace, or via ⌘K (see `allDestinations`).
+// The nav inventory is LOCKED by the constitution to exactly these nine.
+// Nothing else may appear in the sidebar, the mobile "Mai mult" sheet, or ⌘K.
 export const navGroups: NavGroup[] = [
   {
     items: [
       { label: "Azi", to: "/dashboard", icon: Target, end: true },
       { label: "Pipeline", to: "/pipeline", icon: Clapperboard },
       { label: "Bani", to: "/money", icon: Wallet },
+      { label: "Clienți", to: "/clients", icon: Users },
+      { label: "Calendar", to: "/calendar", icon: CalendarDays },
+      { label: "Scripturi", to: "/scripts", icon: ScrollText },
       { label: "Kill List", to: "/kill-list", icon: Skull },
-      { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
-      { label: "Conținut", to: "/content", icon: CalendarDays },
       { label: "Agenție", to: "/agency", icon: Building2 },
+      { label: "Setări", to: "/settings", icon: Settings },
     ],
   },
 ];
 
-// Full destination list for the command palette (⌘K) — the slim sidebar never
-// limits reach. Includes the sub-pages that now live inside workspaces/clients.
-export const allDestinations: NavItem[] = [
-  { label: "Azi", to: "/dashboard", icon: Target, end: true },
-  { label: "Pipeline", to: "/pipeline", icon: Clapperboard },
-  { label: "Bani", to: "/money", icon: Wallet },
-  { label: "Kill List", to: "/kill-list", icon: Skull },
-  { label: "Clienți", to: "/clients", icon: Users },
-  { label: "Conținut", to: "/content", icon: CalendarDays },
-  { label: "Agenție", to: "/agency", icon: Building2 },
-  { label: "Calendar de conținut", to: "/calendar", icon: CalendarDays },
-  { label: "Sarcini", to: "/tasks", icon: ListTodo },
-  { label: "Bibliotecă de hook-uri", to: "/hooks", icon: Anchor },
-  { label: "Performanță video", to: "/videos", icon: Video },
-  { label: "Impact în afacere", to: "/impact", icon: TrendingUp },
-  { label: "Documente", to: "/documents", icon: FolderOpen },
-  { label: "Rapoarte lunare", to: "/reports", icon: FileText },
-  { label: "Integrări", to: "/integrations", icon: Plug },
-  { label: "Setări", to: "/settings", icon: Settings },
-];
+// The command palette reaches exactly the locked inventory — no more.
+export const allDestinations: NavItem[] = navGroups[0].items;

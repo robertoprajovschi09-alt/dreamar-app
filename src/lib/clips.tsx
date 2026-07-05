@@ -4,7 +4,7 @@ import { useWorkspace } from "./workspace";
 import { useClients } from "./clients";
 
 /*
- * The clip — the central object of the app. A single 6-state pipeline is the one
+ * The clip - the central object of the app. A single 6-state pipeline is the one
  * source of truth; the content calendar is just a view over the scheduled/posted
  * clips. Nothing else keeps its own copy of this data.
  */
@@ -91,7 +91,7 @@ function mapRow(r: any): Clip {
   return {
     id: r.id,
     clientId: r.client_id,
-    clientName: r.client?.name ?? "—",
+    clientName: r.client?.name ?? "Fără client",
     title: r.title ?? "",
     state: r.state as ClipState,
     platform: platformLabel(r.platform),
@@ -131,7 +131,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [live, agencyReady, agencyId, reload]);
 
-  const clientName = useCallback((id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "—" : "—"), [clients]);
+  const clientName = useCallback((id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "Fără client" : "Fără client"), [clients]);
 
   const createClip = useCallback(async (input: NewClipInput) => {
     if (!live || !supabase || !agencyId) {

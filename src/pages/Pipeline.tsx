@@ -95,7 +95,7 @@ export default function Pipeline() {
                       </div>
                     );
                   })}
-                  {col.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground/70">—</p>}
+                  {col.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground/70">Niciun clip</p>}
                 </Panel>
               </div>
             );
@@ -201,7 +201,7 @@ function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
             <Field label="Stare"><Select value={state} onChange={(e) => setState(e.target.value as ClipState)} className="w-full">{CLIP_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</Select></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full"><option value="">—</option>{PLATFORMS.map((p) => <option key={p}>{p}</option>)}</Select></Field>
+            <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full"><option value="">Fără platformă</option>{PLATFORMS.map((p) => <option key={p}>{p}</option>)}</Select></Field>
             {needsDate(state) && <Field label="Dată"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>}
           </div>
           <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii scurte…" /></Field>

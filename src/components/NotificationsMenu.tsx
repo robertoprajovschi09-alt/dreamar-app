@@ -27,7 +27,7 @@ function timeAgo(iso: string): string {
 
 // Demo-only notifications (live mode reads the real `notifications` table).
 const sampleNotes: Note[] = [
-  { id: 3, icon: MessageCircle, tone: TONE.info, title: "Comentariu cu intenție de cumpărare", desc: "Verde Bistro — solicitare de rezervare", time: "4h", to: "/clients/verde" },
+  { id: 3, icon: MessageCircle, tone: TONE.info, title: "Comentariu cu intenție de cumpărare", desc: "Verde Bistro - solicitare de rezervare", time: "4h", to: "/clients/verde" },
   { id: 4, icon: FileText, tone: TONE.success, title: "Raport gata", desc: "Raportul IronPeak pe mai a fost generat", time: "1z", to: "/reports" },
 ];
 

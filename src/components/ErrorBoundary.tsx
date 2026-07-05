@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </span>
             <h2 className="mt-4 font-display text-lg font-800">Ceva nu a mers bine</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Această secțiune a întâmpinat o eroare neașteptată. Restul datelor tale sunt în siguranță — aplicația funcționează în continuare.
+              Această secțiune a întâmpinat o eroare neașteptată. Restul datelor tale sunt în siguranță - aplicația funcționează în continuare.
             </p>
             <pre className="mt-4 max-h-28 overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-left text-[11px] text-muted-foreground">
               {this.state.error.message}

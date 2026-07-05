@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ClientsProvider } from "@/lib/clients";
 import { ClipsProvider } from "@/lib/clips";
+import { ScriptsProvider } from "@/lib/scripts";
 import { LibraryProvider } from "@/lib/library";
 import { CampaignsProvider } from "@/lib/campaigns";
 import { UIProvider } from "@/lib/ui-context";
@@ -20,13 +21,15 @@ export default function MobileShell() {
   return (
     <ClientsProvider>
       <ClipsProvider>
-        <LibraryProvider>
-          <CampaignsProvider>
-            <UIProvider>
-              <MobileInner />
-            </UIProvider>
-          </CampaignsProvider>
-        </LibraryProvider>
+        <ScriptsProvider>
+          <LibraryProvider>
+            <CampaignsProvider>
+              <UIProvider>
+                <MobileInner />
+              </UIProvider>
+            </CampaignsProvider>
+          </LibraryProvider>
+        </ScriptsProvider>
       </ClipsProvider>
     </ClientsProvider>
   );
@@ -49,7 +52,7 @@ function MobileInner() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-5">
+      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
         <Suspense fallback={<div className="grid min-h-[60vh] place-items-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" /></div>}>
           <ErrorBoundary key={path}>
             <Outlet />

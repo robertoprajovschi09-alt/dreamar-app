@@ -186,7 +186,7 @@ export default function ContentCalendar() {
           {listClips.map((c) => (
             <button key={c.id} onClick={() => setSelectedId(c.id)} className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-muted/40">
               <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-center">
-                <span className="font-display text-sm font-800 leading-none">{c.scheduledDate ? Number(c.scheduledDate.split("-")[2]) : "—"}</span>
+                <span className="font-display text-sm font-800 leading-none">{c.scheduledDate ? Number(c.scheduledDate.split("-")[2]) : "·"}</span>
                 <span className="text-[9px] uppercase text-muted-foreground">{c.scheduledDate ? new Date(c.scheduledDate + "T00:00:00").toLocaleString("ro-RO", { month: "short" }) : ""}</span>
               </div>
               <div className="min-w-0 flex-1">
@@ -271,7 +271,7 @@ function Composer({ open, onClose, clients, hooks, defaultDate, onCreate }: {
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={busy || !title.trim() || !clientId} onClick={submit}>{busy && <Loader2 className="h-4 w-4 animate-spin" />} Creează postarea</Button></>}>
       <div className="space-y-4">
         <Field label="Titlu">
-          <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Tur proprietate — Sky 2 camere" />
+          <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="ex. Tur proprietate - Sky 2 camere" />
           <button type="button" onClick={() => setShowHooks((s) => !s)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-700 text-primary">
             <Sparkles className="h-3.5 w-3.5" /> {showHooks ? "Ascunde hook-urile" : "Folosește un hook care a mers"}
           </button>
@@ -335,7 +335,7 @@ function ClipDrawer({ clip, onClose, onSave, onDelete }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="mb-1.5 text-xs font-700 text-muted-foreground"><User className="mr-1 inline h-3.5 w-3.5" />Platformă</p>
-              <Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="h-9 w-full"><option value="">—</option>{platforms.map((p) => <option key={p}>{p}</option>)}</Select>
+              <Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="h-9 w-full"><option value="">Fără platformă</option>{platforms.map((p) => <option key={p}>{p}</option>)}</Select>
             </div>
             <div>
               <p className="mb-1.5 text-xs font-700 text-muted-foreground"><CalendarClock className="mr-1 inline h-3.5 w-3.5" />Data programată</p>

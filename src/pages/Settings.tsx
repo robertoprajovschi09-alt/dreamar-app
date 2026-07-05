@@ -42,7 +42,7 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Setări" subtitle="Gestionează-ți contul, agenția și brandingul white-label — modificările se păstrează după reîncărcare" />
+      <PageHeader title="Setări" subtitle="Gestionează-ți contul, agenția și brandingul white-label - modificările se păstrează după reîncărcare" />
 
       <Segmented value={tab} onChange={setTab} options={tabs.map((t) => ({ label: TAB_LABEL[t], value: t }))} />
 
@@ -76,7 +76,7 @@ export default function Settings() {
       )}
 
       {tab === "Branding" && (
-        <SectionCard title="Branding white-label" icon={Palette} subtitle="Alege o culoare de brand și vezi cum se recolorează toată aplicația — se păstrează după reîncărcare">
+        <SectionCard title="Branding white-label" icon={Palette} subtitle="Alege o culoare de brand și vezi cum se recolorează toată aplicația - se păstrează după reîncărcare">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-2 text-xs font-700 text-muted-foreground">Logo agenție</p>

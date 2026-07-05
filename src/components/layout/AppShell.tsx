@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { UIProvider } from "@/lib/ui-context";
 import { ClientsProvider } from "@/lib/clients";
 import { ClipsProvider } from "@/lib/clips";
+import { ScriptsProvider } from "@/lib/scripts";
 import { LibraryProvider } from "@/lib/library";
 import { CampaignsProvider } from "@/lib/campaigns";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -16,6 +17,7 @@ export function AppShell() {
   return (
     <ClientsProvider>
     <ClipsProvider>
+    <ScriptsProvider>
     <LibraryProvider>
     <CampaignsProvider>
     <UIProvider>
@@ -60,6 +62,7 @@ export function AppShell() {
     </UIProvider>
     </CampaignsProvider>
     </LibraryProvider>
+    </ScriptsProvider>
     </ClipsProvider>
     </ClientsProvider>
   );

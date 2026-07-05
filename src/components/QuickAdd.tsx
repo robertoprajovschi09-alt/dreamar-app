@@ -61,7 +61,7 @@ export function QuickAdd({ clients, mobile, onCreateClip, onAddShot, onAddDeal, 
           )}
           <button aria-label="Adaugă rapid" onClick={() => setOpen((v) => !v)}
             className={cn("glass-fab fixed z-50 grid h-14 w-14 place-items-center rounded-full text-primary-foreground transition active:scale-95",
-              mobile ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2" : "bottom-6 right-6")}>
+              mobile ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4" : "bottom-6 right-6")}>
             {open ? <X className="h-6 w-6" /> : <Plus className="h-7 w-7" />}
           </button>
         </>,
@@ -87,7 +87,7 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
     setTitle("");
   };
   return (
-    <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Obiectul central — apare în Pipeline" size="sm"
+    <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Obiectul central - apare în Pipeline" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={!clientId || !title.trim()} onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
         <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
@@ -104,7 +104,7 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
   );
 }
 
-// "Clip de filmat" — 2 big fields, drops a clip straight into the to_film state.
+// "Clip de filmat" - 2 big fields, drops a clip straight into the to_film state.
 function FilmModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: () => void; clients: ClientLite[]; onAdd: (desc: string, clientId: string | null) => void }) {
   const [desc, setDesc] = useState("");
   const [clientId, setClientId] = useState("");
@@ -120,7 +120,7 @@ function FilmModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
   );
 }
 
-// "Rând Decont Yanis" — 4 big fields (mașină, comision numeric, vândută, dată).
+// "Rând Decont Yanis" - 4 big fields (mașină, comision numeric, vândută, dată).
 function YanisModal({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (init: YanisDealInit) => void }) {
   const [car, setCar] = useState("");
   const [commission, setCommission] = useState("");
@@ -134,7 +134,7 @@ function YanisModal({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
     <Modal open={open} onClose={onClose} title="Rând nou · Decont Yanis" subtitle="Adaugă o mașină în câteva secunde" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
-        <Input autoFocus className={BIG} value={car} onChange={(e) => setCar(e.target.value)} placeholder="Mașină — ex. VW Golf 2018" />
+        <Input autoFocus className={BIG} value={car} onChange={(e) => setCar(e.target.value)} placeholder="Mașină - ex. VW Golf 2018" />
         <Input className={BIG} type="number" inputMode="numeric" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="Comision (lei)" />
         <button onClick={() => setSold((s) => !s)}
           className={cn("flex h-12 w-full items-center justify-between rounded-lg border px-3 text-sm font-600 transition", sold ? "border-success bg-success/10 text-success" : "border-input text-foreground")}>

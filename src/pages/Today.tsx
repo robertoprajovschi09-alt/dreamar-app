@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 
 /*
- * "Azi" — the agency's daily operating system. It is a PURE READ of two sources:
+ * "Azi" - the agency's daily operating system. It is a PURE READ of two sources:
  * the clip pipeline (posts to do, tampon, filming queue) and Bani (money alerts).
- * Nothing is stored on this screen — every row reflects real pipeline/Bani state
+ * Nothing is stored on this screen - every row reflects real pipeline/Bani state
  * and every control mutates that state. The only creation affordance is the
  * "De filmat" quick-add, which drops a new clip straight into the to_film state.
  */
@@ -114,7 +114,7 @@ function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useM
   const nameOf = (id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "Client" : "Fără client");
 
   const overdue = money.overdueCollections;
-  // A "cu factură" client whose invoice for this month isn't issued yet — but
+  // A "cu factură" client whose invoice for this month isn't issued yet - but
   // only nag after the 1st (you just got there on day 1).
   const unbilled = dayOfMonth > 1
     ? clients.filter((c) => c.invoiced && (money.invoices.find((i) => i.clientId === c.id)?.status ?? "not_issued") === "not_issued")
@@ -127,7 +127,7 @@ function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useM
       right={<button onClick={onOpen} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
       {overdue.map((o) => (
         <div key={`c-${o.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
-          <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="min-w-0 flex-1 text-sm">
             <span className="font-700">{nameOf(o.clientId)}</span>, {lei(o.amount)},{" "}
             <span className="font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
           </span>
@@ -137,7 +137,7 @@ function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useM
       ))}
       {unbilled.map((c) => (
         <div key={`i-${c.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/[0.05] px-4 py-2.5">
-          <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="min-w-0 flex-1 text-sm">
             Factura <span className="font-700">{c.name}</span> pe {monthName} e <span className="font-700 text-[hsl(var(--warning))]">neemisă</span>
           </span>
         </div>
@@ -295,7 +295,7 @@ function TulceaRoute({ day }: { day: number }) {
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState(false);
 
-  // Re-sync (and reset) whenever the ISO-week Monday changes — so a tab left
+  // Re-sync (and reset) whenever the ISO-week Monday changes - so a tab left
   // open across a week boundary drops last week's checkmarks instead of
   // persisting them under the new week's key.
   useEffect(() => {
@@ -324,7 +324,7 @@ function TulceaRoute({ day }: { day: number }) {
       {editing ? (
         <TulceaEditor items={items} onSave={saveTemplate} />
       ) : items.length === 0 ? (
-        <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun item — apasă „Editează" ca să adaugi.</p>
+        <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun item - apasă „Editează" ca să adaugi.</p>
       ) : items.map((it, i) => {
         const done = !!checks[`${day}-${i}`];
         return (

@@ -35,7 +35,7 @@ export default function Clients() {
   const { openNewClient } = useUI();
   const { push } = useToast();
   const { clients, loading, archiveClient } = useClients();
-  // Filters + search survive navigation — stop re-applying the same filter every visit.
+  // Filters + search survive navigation - stop re-applying the same filter every visit.
   const savedFilters = (() => { try { return JSON.parse(sessionStorage.getItem("dreamar-clients-filters") || "{}"); } catch { return {}; } })();
   const [view, setView] = useState<"grid" | "list">(savedFilters.view === "list" ? "list" : "grid");
   const [niche, setNiche] = useState<string>(savedFilters.niche ?? "all");
@@ -217,7 +217,7 @@ function ClientCard({ c, selected, onToggle }: { c: Client; selected: boolean; o
 
         <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4 text-center">
           <Mini label={c.billingType && c.billingType !== "retainer" ? "Colaborare" : "Retainer"} value={retainerText(c)} />
-          <Mini label="Livrabile / lună" value={c.deliverables ? String(c.deliverables) : "—"} />
+          <Mini label="Livrabile / lună" value={c.deliverables ? String(c.deliverables) : "fără date încă"} />
         </div>
       </Panel>
     </Link>

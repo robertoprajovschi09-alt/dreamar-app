@@ -40,7 +40,7 @@ export function initials(name: string) {
     .toUpperCase();
 }
 
-// "Remember last used" — the most repeated dropdown in the app is the client
+// "Remember last used" - the most repeated dropdown in the app is the client
 // picker. Composers preselect the remembered client instead of clients[0].
 const LAST_CLIENT_KEY = "dreamar-last-client";
 export function rememberClient(id: string) {

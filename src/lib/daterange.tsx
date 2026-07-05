@@ -15,11 +15,11 @@ function computeRanges(now = new Date()): DateRange[] {
   const from7 = Math.max(1, d - 6);
   return [
     { id: "today", label: "Astăzi", range: lbl(d), startDay: d, endDay: d },
-    { id: "7d", label: "Ultimele 7 zile", range: `${from7} — ${lbl(d)}`, startDay: from7, endDay: d },
-    { id: "30d", label: "Ultimele 30 de zile", range: `1 — ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
-    { id: "month", label: "Luna aceasta", range: `1 — ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
-    { id: "quarter", label: "Trimestrul acesta", range: `1 ${MONTHS[mo - (mo % 3)]} — ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
-    { id: "ytd", label: "De la începutul anului", range: `1 ${MONTHS[0]} — ${lbl(d)}`, startDay: 1, endDay: daysInMonth },
+    { id: "7d", label: "Ultimele 7 zile", range: `${from7} - ${lbl(d)}`, startDay: from7, endDay: d },
+    { id: "30d", label: "Ultimele 30 de zile", range: `1 - ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
+    { id: "month", label: "Luna aceasta", range: `1 - ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
+    { id: "quarter", label: "Trimestrul acesta", range: `1 ${MONTHS[mo - (mo % 3)]} - ${lbl(daysInMonth)}`, startDay: 1, endDay: daysInMonth },
+    { id: "ytd", label: "De la începutul anului", range: `1 ${MONTHS[0]} - ${lbl(d)}`, startDay: 1, endDay: daysInMonth },
   ];
 }
 
@@ -67,7 +67,7 @@ export function DateRangeProvider({ children }: { children: ReactNode }) {
     setCustom({
       id: "custom",
       label: "Personalizat",
-      range: `${fmt(startISO)} — ${fmt(endISO)}`,
+      range: `${fmt(startISO)} - ${fmt(endISO)}`,
       startDay: Math.min(startDay, endDay),
       endDay: Math.max(startDay, endDay),
     });
