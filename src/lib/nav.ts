@@ -8,6 +8,7 @@ import {
   type LucideIcon,
   Plug,
   Settings,
+  Skull,
   Target,
   TrendingUp,
   Users,
@@ -32,6 +33,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { label: "Azi", to: "/dashboard", icon: Target, end: true },
       { label: "Bani", to: "/money", icon: Wallet },
+      { label: "Kill List", to: "/kill-list", icon: Skull },
       { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
       { label: "Conținut", to: "/content", icon: CalendarDays },
       { label: "Agenție", to: "/agency", icon: Building2 },
@@ -44,6 +46,7 @@ export const navGroups: NavGroup[] = [
 export const allDestinations: NavItem[] = [
   { label: "Azi", to: "/dashboard", icon: Target, end: true },
   { label: "Bani", to: "/money", icon: Wallet },
+  { label: "Kill List", to: "/kill-list", icon: Skull },
   { label: "Clienți", to: "/clients", icon: Users },
   { label: "Conținut", to: "/content", icon: CalendarDays },
   { label: "Agenție", to: "/agency", icon: Building2 },

@@ -13,6 +13,7 @@ import { Check, ChevronsUpDown, LogOut, X } from "lucide-react";
 const PREFETCH: Record<string, () => void> = {
   "/dashboard": () => void import("@/pages/Today"),
   "/money": () => void import("@/pages/Money"),
+  "/kill-list": () => void import("@/pages/KillList"),
   "/clients": () => void import("@/pages/Clients"),
   "/content": () => void import("@/pages/ContentWorkspace"),
   "/agency": () => void import("@/pages/AgencyWorkspace"),

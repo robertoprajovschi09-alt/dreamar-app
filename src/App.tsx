@@ -18,6 +18,7 @@ const MobileShell = lazy(() => import("@/components/layout/MobileShell"));
 // App (authenticated) — lazy so the heavy charting/page code is split per route.
 const Today = lazy(() => import("@/pages/Today"));
 const Money = lazy(() => import("@/pages/Money"));
+const KillList = lazy(() => import("@/pages/KillList"));
 const ContentWorkspace = lazy(() => import("@/pages/ContentWorkspace"));
 const AgencyWorkspace = lazy(() => import("@/pages/AgencyWorkspace"));
 const Clients = lazy(() => import("@/pages/Clients"));
@@ -77,6 +78,7 @@ export default function App() {
       >
         <Route path="dashboard" element={<Today />} />
         <Route path="money" element={<Money />} />
+        <Route path="kill-list" element={<KillList />} />
         <Route path="content" element={<ContentWorkspace />} />
         <Route path="agency" element={<AgencyWorkspace />} />
         <Route path="clients" element={<Clients />} />
