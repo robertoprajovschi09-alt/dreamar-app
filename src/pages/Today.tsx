@@ -10,23 +10,22 @@ import { useClients } from "@/lib/clients";
 import { useMoney } from "@/lib/money";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
-  AlertTriangle, Check, Clapperboard, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
+  Check, Clapperboard, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
 } from "lucide-react";
 
 /*
- * "Azi" - the agency's daily operating system. It is a PURE READ of two sources:
- * the clip pipeline (posts to do, clips gata de postat, filming queue) and Bani (money alerts).
- * Nothing is stored on this screen - every row reflects real pipeline/Bani state
- * and every control mutates that state. The only creation affordance is the
- * "De filmat" quick-add, which drops a new clip straight into the to_film state.
+ * "Azi" - the agency's daily operating system. A PURE READ of the clip pipeline
+ * (posts to do, clips gata de postat, filming queue). Money alerts live in the
+ * notification center now, not here. Nothing is stored on this screen - every row
+ * reflects real pipeline state and every control mutates it. The only creation
+ * affordance is the "De filmat" quick-add, which drops a clip into to_film.
  */
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 function mondayOf(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
-const lei = (n: number) => formatCurrency(n);
 
 const BUFFER_MIN = 3;
 const BUFFER_MAX = 5;
@@ -55,7 +54,6 @@ export default function Today() {
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} help="azi" />
 
       <div className="space-y-3">
-        <MoneyAlerts money={money} clients={clients} onOpen={(focus) => navigate(focus ? `/money?focus=${focus}` : "/money")} />
         <PostsToday clips={clipsCtx.clips} onPost={(id, posted) => void clipsCtx.updateClip(id, { state: posted ? "posted" : "scheduled" })} onPipeline={() => navigate("/pipeline")} />
         <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} onNewClient={openNewClient} />
         <FilmQueue
@@ -103,48 +101,6 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: ()
   );
 }
 const countPill = (n: number | string) => <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{n}</span>;
-
-/* ── 0 · Alerte de bani (doar dacă există) ───────────────────────────────── */
-// Overdue collections (with a "mark collected" action) + invoices still not
-// issued past the 1st of the month. Reads Bani only; hides entirely when clean.
-function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: (focus?: string) => void }) {
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const monthName = now.toLocaleDateString("ro-RO", { month: "long" });
-  const nameOf = (id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "Client" : "Fără client");
-
-  const overdue = money.overdueCollections;
-  // A "cu factură" client whose invoice for this month isn't issued yet - but
-  // only nag after the 1st (you just got there on day 1).
-  const unbilled = dayOfMonth > 1
-    ? clients.filter((c) => c.invoiced && (money.invoices.find((i) => i.clientId === c.id)?.status ?? "not_issued") === "not_issued")
-    : [];
-
-  if (money.loading || (overdue.length === 0 && unbilled.length === 0)) return null;
-
-  return (
-    <Section icon={AlertTriangle} tone="text-danger" title="Alerte de bani"
-      right={<button onClick={() => onOpen()} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
-      {overdue.map((o) => (
-        <div key={`c-${o.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
-          <button onClick={() => onOpen(`col-${o.id}`)} className="min-w-0 flex-1 text-left text-sm">
-            <span className="font-700">{nameOf(o.clientId)}</span>, {lei(o.amount)},{" "}
-            <span className="font-700 text-danger">{o.daysOverdue === 1 ? "întârziat cu 1 zi" : `întârziat cu ${o.daysOverdue} zile`}</span>
-          </button>
-          <button onClick={() => void money.updateCollection(o.id, { collected: true })}
-            className="shrink-0 rounded-lg bg-success/15 px-2.5 py-1 text-xs font-700 text-success transition hover:bg-success/25">Marchează încasat</button>
-        </div>
-      ))}
-      {unbilled.map((c) => (
-        <button key={`i-${c.id}`} onClick={() => onOpen(`fact-${c.id}`)} className="flex w-full items-center gap-3 border-t border-l-2 border-border/60 border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/[0.05] px-4 py-2.5 text-left">
-          <span className="min-w-0 flex-1 text-sm">
-            Factura <span className="font-700">{c.name}</span> pe {monthName} e <span className="font-700 text-[hsl(var(--warning))]">neemisă</span>
-          </span>
-        </button>
-      ))}
-    </Section>
-  );
-}
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
 // Today's Programat clips. Checking one moves it to Postat, so it leaves the

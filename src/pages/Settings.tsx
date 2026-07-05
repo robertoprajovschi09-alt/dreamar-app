@@ -5,13 +5,14 @@ import { useTheme } from "@/lib/theme";
 import { useWorkspace } from "@/lib/workspace";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
-import { Building2, Check, Copy, Loader2, Moon, Palette, RotateCcw, Sun, Trash2, User, UserPlus, Users } from "lucide-react";
+import { Bell, Building2, Check, Copy, Loader2, Moon, Palette, RotateCcw, Sun, Trash2, User, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotifications, EVENING_TIMES } from "@/lib/notifications";
 
 const ROLE_LABEL: Record<string, string> = { agency_owner: "Proprietar agenție", agency_team_member: "Membru echipă", content_creator: "Creator de conținut" };
 
-const tabs = ["Profile", "Agency", "Branding", "Team", "Appearance"] as const;
-const TAB_LABEL: Record<(typeof tabs)[number], string> = { Profile: "Profil", Agency: "Agenție", Branding: "Branding", Team: "Echipă", Appearance: "Aspect" };
+const tabs = ["Profile", "Agency", "Branding", "Team", "Notifications", "Appearance"] as const;
+const TAB_LABEL: Record<(typeof tabs)[number], string> = { Profile: "Profil", Agency: "Agenție", Branding: "Branding", Team: "Echipă", Notifications: "Notificări", Appearance: "Aspect" };
 const swatches = ["#4F46E5", "#f5803e", "#1fae7a", "#0ea5e9", "#e0556b", "#d4a017", "#111827"];
 
 export default function Settings() {
@@ -126,6 +127,8 @@ export default function Settings() {
 
       {tab === "Team" && <TeamTab />}
 
+      {tab === "Notifications" && <NotificationsTab />}
+
       {tab === "Appearance" && (
         <SectionCard title="Aspect" icon={Palette}>
           <p className="mb-3 text-sm text-muted-foreground">Alege cum arată drea.mar pentru tine. Preferința ta este reținută.</p>
@@ -142,6 +145,40 @@ export default function Settings() {
         </SectionCard>
       )}
     </>
+  );
+}
+
+function NotificationsTab() {
+  const { eveningTime, setEveningTime, push, setPush, pushSupported } = useNotifications();
+  return (
+    <SectionCard title="Notificări" icon={Bell}>
+      <div className="max-w-md space-y-5">
+        <div>
+          <p className="text-sm font-700">Planificarea de seară</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">În fiecare seară primești o notificare „Planifică ziua de mâine".</p>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">La ora</span>
+            <Select value={eveningTime} onChange={(e) => setEveningTime(e.target.value)} className="w-28">
+              {EVENING_TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+          </div>
+        </div>
+        <div className="flex items-start justify-between gap-4 border-t border-border/60 pt-4">
+          <div>
+            <p className="text-sm font-700">Notificări push</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {pushSupported
+                ? "Primești notificarea și când aplicația nu e în față. Pe iPhone funcționează doar cu aplicația adăugată pe ecranul de start și cu permisiunea acordată."
+                : "Dispozitivul acesta nu acceptă notificări push."}
+            </p>
+          </div>
+          <button onClick={() => void setPush(!push)} disabled={!pushSupported} role="switch" aria-checked={push} aria-label="Notificări push"
+            className={cn("relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-40", push ? "bg-primary" : "bg-muted")}>
+            <span className={cn("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", push ? "left-[22px]" : "left-0.5")} />
+          </button>
+        </div>
+      </div>
+    </SectionCard>
   );
 }
 

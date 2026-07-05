@@ -7,6 +7,8 @@ import { ScriptsProvider } from "@/lib/scripts";
 import { LibraryProvider } from "@/lib/library";
 import { CampaignsProvider } from "@/lib/campaigns";
 import { UIProvider } from "@/lib/ui-context";
+import { NotificationsProvider } from "@/lib/notifications";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { allDestinations } from "@/lib/nav";
 import { useWorkspace } from "@/lib/workspace";
@@ -26,7 +28,9 @@ export default function MobileShell() {
           <LibraryProvider>
             <CampaignsProvider>
               <UIProvider>
-                <MobileInner />
+                <NotificationsProvider>
+                  <MobileInner />
+                </NotificationsProvider>
               </UIProvider>
             </CampaignsProvider>
           </LibraryProvider>
@@ -57,7 +61,10 @@ function MobileInner() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
+      <header className="sticky top-0 z-30 flex items-center justify-end bg-background/80 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur">
+        <NotificationsBell />
+      </header>
+      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-1">
         <Suspense fallback={<div className="grid min-h-[60vh] place-items-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" /></div>}>
           <ErrorBoundary key={path}>
             <Outlet />

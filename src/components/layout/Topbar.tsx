@@ -1,7 +1,7 @@
 import { Button, IconButton } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { useUI } from "@/lib/ui-context";
-import { NotificationsMenu } from "@/components/NotificationsMenu";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import { UserMenu } from "@/components/UserMenu";
 import { DateRangeMenu } from "@/components/DateRangeMenu";
 import { Menu, Moon, Search, Sparkles, Sun } from "lucide-react";
@@ -37,7 +37,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </IconButton>
 
-        <NotificationsMenu />
+        <NotificationsBell />
         <UserMenu />
       </div>
     </header>

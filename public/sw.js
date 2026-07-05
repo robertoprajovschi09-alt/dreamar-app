@@ -23,6 +23,30 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Web Push: show whatever a (future) server sends. The in-app center works
+// without this; a local showNotification() from the page also routes here on tap.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) { data = {}; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "drea.mar", {
+      body: data.body || "", tag: data.tag || "dreamar", icon: "/icon-192.png",
+      data: { url: data.url || "/dashboard" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/dashboard";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ("focus" in c) { c.navigate(url); return c.focus(); } }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;

@@ -9,6 +9,7 @@ import { ClipsProvider } from "@/lib/clips";
 import { ScriptsProvider } from "@/lib/scripts";
 import { LibraryProvider } from "@/lib/library";
 import { CampaignsProvider } from "@/lib/campaigns";
+import { NotificationsProvider } from "@/lib/notifications";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function AppShell() {
@@ -21,6 +22,7 @@ export function AppShell() {
     <LibraryProvider>
     <CampaignsProvider>
     <UIProvider>
+    <NotificationsProvider>
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
@@ -59,6 +61,7 @@ export function AppShell() {
         </main>
       </div>
     </div>
+    </NotificationsProvider>
     </UIProvider>
     </CampaignsProvider>
     </LibraryProvider>
