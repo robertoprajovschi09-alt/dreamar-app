@@ -1,4 +1,4 @@
-// drea.mar — the niche "brain". A single source of truth per business niche that
+// drea.mar, the niche "brain". A single source of truth per business niche that
 // drives client onboarding questions, suggested monthly objectives, the monthly
 // self-report fields, and the client-portal KPIs. Generated with niche-expert input,
 // then curated. Editing one niche here updates onboarding + portal + objectives at once.
@@ -38,19 +38,19 @@ export type NicheSpec = {
 // target_audience -> clients.target_audience, top_goals -> clients.goals; the rest land in
 // clients.brand_profile keyed by id.
 export const SHARED_QUESTIONS: OnboardingQuestion[] = [
-  { id: "brand_voice", label: "Vocea și tonul brandului", help: "Cum ar trebui să sune fiecare caption și videoclip — alege tot ce ți se potrivește.", type: "chips",
+  { id: "brand_voice", label: "Vocea și tonul brandului", help: "Cum ar trebui să sune fiecare caption și videoclip, alege tot ce ți se potrivește.", type: "chips",
     options: ["Prietenos", "Profesional", "Jucăuș", "Premium / Lux", "Îndrăzneț și sigur", "Cald și personal", "La modă", "Minimalist", "Inspirațional", "Distractiv și relaxat"] },
   { id: "target_audience", label: "Cine sunt clienții tăi ideali?", help: "Oamenii cărora ar trebui să le vorbim în fiecare postare.", type: "textarea",
-    placeholder: "ex. Familii din Cluj, 30–50 de ani, care își caută prima locuință" },
+    placeholder: "ex. Familii din Cluj, 30-50 de ani, care își caută prima locuință" },
   { id: "usps", label: "Ce te face diferit?", help: "De ce te aleg clienții pe tine în locul concurenței.", type: "textarea",
     placeholder: "ex. Singura clinică din oraș cu implanturi în aceeași zi; 12 ani de recenzii de 5 stele" },
   { id: "primary_goal", label: "Obiectivul tău #1 de pe social media", help: "Vom pondera strategia spre acesta.", type: "select",
     options: ["Mai multe lead-uri și solicitări", "Mai multe rezervări / programări", "Mai multe vânzări și venituri", "Mai mult trafic / vizite", "Notorietate de brand și followeri", "Lansarea unui produs / a unei locații", "Recrutare / angajări"] },
-  { id: "top_goals", label: "Cele mai importante obiective de business acum", help: "Câte unul pe rând — reușitele de ansamblu pe care le vrei în următoarele luni.", type: "textarea",
+  { id: "top_goals", label: "Cele mai importante obiective de business acum", help: "Câte unul pe rând, reușitele de ansamblu pe care le vrei în următoarele luni.", type: "textarea",
     placeholder: "Să devii clinica de referință din oraș\nSă umpli calendarul în fiecare săptămână\nSă lansezi noua locație" },
-  { id: "current_offers", label: "Promoții sau oferte curente de promovat", help: "Opțional — orice vrei să evidențiem luna aceasta.", type: "textarea",
+  { id: "current_offers", label: "Promoții sau oferte curente de promovat", help: "Opțional, orice vrei să evidențiem luna aceasta.", type: "textarea",
     placeholder: "ex. 20% reducere la prima vizită, înghețarea abonamentului pe vară, consultație gratuită" },
-  { id: "avoid", label: "Există ceva ce ar trebui să evităm?", help: "Opțional — subiecte, cuvinte, afirmații sau concurenți de evitat.", type: "textarea",
+  { id: "avoid", label: "Există ceva ce ar trebui să evităm?", help: "Opțional, subiecte, cuvinte, afirmații sau concurenți de evitat.", type: "textarea",
     placeholder: "ex. Nu menționa prețurile public; evită afirmațiile medicale" },
 ];
 
@@ -83,7 +83,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "areas_served",
       "label": "Zone / cartiere pe care le acoperi",
-      "help": "Enumeră orașele, sectoarele sau cartierele în care lucrezi — conținutul hiper-local convertește cel mai bine în imobiliare.",
+      "help": "Enumeră orașele, sectoarele sau cartierele în care lucrezi, conținutul hiper-local convertește cel mai bine în imobiliare.",
       "type": "textarea",
       "placeholder": "ex. București - Pipera, Floreasca, Băneasa; plus ansambluri noi în Otopeni"
     },
@@ -111,7 +111,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "proof_points",
       "label": "Argumente de încredere și acreditări",
-      "help": "Semnale de încredere care îi fac pe cumpărători și vânzători să te aleagă — alege-le pe cele pe care le poți susține.",
+      "help": "Semnale de încredere care îi fac pe cumpărători și vânzători să te aleagă, alege-le pe cele pe care le poți susține.",
       "type": "chips",
       "options": [
         "Ani de experiență",
@@ -191,7 +191,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "cuisine_and_format",
       "label": "Tipul de bucătărie și formatul de servire",
-      "help": "Alege tot ce se aplică — asta modelează stilul vizual și preparatele pe care le evidențiem.",
+      "help": "Alege tot ce se aplică, asta modelează stilul vizual și preparatele pe care le evidențiem.",
       "type": "chips",
       "options": [
         "Italiană",
@@ -221,7 +221,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "booking_and_ordering_channels",
       "label": "Cum rezervă și comandă clienții",
-      "help": "Unde ar trebui să direcționăm fiecare postare — alege tot ce folosești, ca CTA-urile și linkurile să indice locul potrivit.",
+      "help": "Unde ar trebui să direcționăm fiecare postare, alege tot ce folosești, ca CTA-urile și linkurile să indice locul potrivit.",
       "type": "chips",
       "options": [
         "Rezervări telefonice",
@@ -238,7 +238,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "service_occasions",
       "label": "Intervale de servire și ocazii cheie",
-      "help": "Când ai cea mai mare nevoie să umpli locurile — ca să temporizăm conținutul și promoțiile în jurul lor.",
+      "help": "Când ai cea mai mare nevoie să umpli locurile, ca să temporizăm conținutul și promoțiile în jurul lor.",
       "type": "chips",
       "options": [
         "Prânz în timpul săptămânii",
@@ -338,7 +338,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "signature_offerings",
       "label": "Băuturi semnătură, experiențe și ce te recomandă",
-      "help": "Cocktailurile tale vedetă, pachetele de bottle service, serile tematice, vedetele din bucătărie — lucrurile despre care oamenii postează.",
+      "help": "Cocktailurile tale vedetă, pachetele de bottle service, serile tematice, vedetele din bucătărie, lucrurile despre care oamenii postează.",
       "type": "textarea",
       "placeholder": "ex. Smoked Old Fashioned, pachete de sticle de 350€, seri Afro-House vinerea, ora apusului pe rooftop, cartofi cu trufe târziu în noapte"
     },
@@ -365,7 +365,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "booking_focus",
       "label": "Ce vrei cel mai mult ca oamenii să rezerve sau să cumpere?",
-      "help": "Unde sunt banii — asta ghidează fiecare call-to-action pe care îl scriem.",
+      "help": "Unde sunt banii, asta ghidează fiecare call-to-action pe care îl scriem.",
       "type": "chips",
       "options": [
         "Mese VIP / bottle service",
@@ -382,7 +382,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
       "label": "Serile de vârf, publicul și atmosfera",
       "help": "Cele mai aglomerate seri, intervalul tipic de vârstă, dress code-ul, genurile muzicale și energia la care se pot aștepta oaspeții.",
       "type": "textarea",
-      "placeholder": "ex. Joi–Sâmbătă, public 25–35, dress code smart-casual, house și R&B, rafinat dar animat, vârf între 23:00–02:00"
+      "placeholder": "ex. Joi-Sâmbătă, public 25-35, dress code smart-casual, house și R&B, rafinat dar animat, vârf între 23:00-02:00"
     }
   ],
   "objectivePresets": [
@@ -438,7 +438,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
       "label": "Venituri est. din social"
     }
   ],
-  "portalNote": "Începe cu rezervările și DM-urile cu intenție de rezervare, ca localul să vadă cum social-ul aduce mese și guestlist, nu doar like-uri. Pune accent pe ritmul de weekend/evenimente — leagă reach-ul și DM-urile de rezervările confirmate și vânzările de bilete din jurul fiecărei seri principale."
+  "portalNote": "Începe cu rezervările și DM-urile cu intenție de rezervare, ca localul să vadă cum social-ul aduce mese și guestlist, nu doar like-uri. Pune accent pe ritmul de weekend/evenimente, leagă reach-ul și DM-urile de rezervările confirmate și vânzările de bilete din jurul fiecărei seri principale."
 },
   dental_clinic: {
   "niche": "dental_clinic",
@@ -563,7 +563,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "facility_type",
       "label": "Ce tip de spațiu ești?",
-      "help": "Alege varianta cea mai apropiată — modelează unghiul de conținut și tipul de dovezi pe care le evidențiem.",
+      "help": "Alege varianta cea mai apropiată, modelează unghiul de conținut și tipul de dovezi pe care le evidențiem.",
       "type": "select",
       "options": [
         "Sală mare (big-box)",
@@ -579,7 +579,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "signature_programs",
       "label": "Clase, programe sau servicii semnătură",
-      "help": "Ofertele tale vedetă — cele pe care ar trebui să le evidențiem cel mai mult (ex. HYROX, spinning, Pilates reformer, PT 1:1, antrenament în grupuri mici, provocări de transformare).",
+      "help": "Ofertele tale vedetă, cele pe care ar trebui să le evidențiem cel mai mult (ex. HYROX, spinning, Pilates reformer, PT 1:1, antrenament în grupuri mici, provocări de transformare).",
       "type": "chips",
       "options": [
         "Clase de grup",
@@ -620,7 +620,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "social_proof",
       "label": "Argumente de încredere și credibilitate",
-      "help": "Rezultatele membrilor, calificările antrenorilor, ani de funcționare, mărimea comunității, recenzii — dovezile care îi fac pe oameni să aibă încredere.",
+      "help": "Rezultatele membrilor, calificările antrenorilor, ani de funcționare, mărimea comunității, recenzii, dovezile care îi fac pe oameni să aibă încredere.",
       "type": "textarea",
       "placeholder": "ex. 400+ membri, antrenori certificați în forță și condiție, 4.9★ pe Google (180 recenzii), 50+ transformări înainte/după"
     }
@@ -741,7 +741,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "proof_points",
       "label": "Argumente de încredere și semnale de credibilitate",
-      "help": "Ani de funcționare, premii, numărul de clienți mulțumiți, recenzii, reputație locală — credibilitatea pe care o putem evidenția.",
+      "help": "Ani de funcționare, premii, numărul de clienți mulțumiți, recenzii, reputație locală, credibilitatea pe care o putem evidenția.",
       "type": "textarea",
       "placeholder": "ex. Deschis din 2009, 4.8 stele / 600+ recenzii Google, votat cel mai bun magazin de cadouri din oraș în 2024, afacere de familie."
     }
@@ -831,7 +831,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "signature_treatments",
       "label": "Tratamente semnătură și vedetă",
-      "help": "Cele 2-4 servicii ale tale cele mai cunoscute sau mai profitabile — cele pe care ar trebui să le împingem cel mai tare (ex. 'Transformări balayage', 'Gene Russian volume', 'HydraFacial').",
+      "help": "Cele 2-4 servicii ale tale cele mai cunoscute sau mai profitabile, cele pe care ar trebui să le împingem cel mai tare (ex. 'Transformări balayage', 'Gene Russian volume', 'HydraFacial').",
       "type": "textarea",
       "placeholder": "ex. Balayage lived-in, gene Russian volume, HydraFacial semnătură..."
     },
@@ -857,7 +857,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "booking_and_proof",
       "label": "Cum rezervă clienții + argumentele tale de încredere",
-      "help": "Linkul/sistemul tău de rezervare (Fresha, Booksy, telefon, DM) și acreditările/dovezile pe care le putem evidenția — ani de funcționare, premii, certificări de brand, număr de recenzii/rating.",
+      "help": "Linkul/sistemul tău de rezervare (Fresha, Booksy, telefon, DM) și acreditările/dovezile pe care le putem evidenția, ani de funcționare, premii, certificări de brand, număr de recenzii/rating.",
       "type": "textarea",
       "placeholder": "ex. Rezervă prin linkul Fresha din bio; 8 ani de funcționare, 4.9★ pe Google (320+ recenzii), colorist certificat L'Oréal, Wella Master..."
     }
@@ -867,7 +867,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     "Crește numărul de followeri locali pe Instagram cu 250 de followeri calificați din zona deservită în fiecare lună",
     "Publică 12 materiale de conținut din salon (8 Reels + 4 carusele) care prezintă transformări",
     "Ajunge la 25.000 de conturi locale pe lună cu Reels geo-targetate",
-    "Umple zilele lente din săptămână — generează 15 rezervări la mijlocul săptămânii prin oferte limitate",
+    "Umple zilele lente din săptămână, generează 15 rezervări la mijlocul săptămânii prin oferte limitate",
     "Adună 20 de recenzii noi de 5 stele pe Google/Booksy pe lună de la clienți mulțumiți",
     "Promovează un tratament semnătură până la 30 de programări în luna respectivă"
   ],
@@ -915,7 +915,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
       "label": "Venituri estimate din social"
     }
   ],
-  "portalNote": "Pune accent pe rezervările generate de social — începe portalul cu DM-urile de interes și programările făcute, apoi leagă-le de clienții noi la prima vizită și de venitul estimat, ca proprietarul salonului să vadă o cale clară de la conținut la timpul petrecut în scaun. Asociază cifrele cu Reels-urile de transformare cu cele mai bune rezultate ale lunii, ca să vadă exact ce conținut a umplut calendarul."
+  "portalNote": "Pune accent pe rezervările generate de social, începe portalul cu DM-urile de interes și programările făcute, apoi leagă-le de clienții noi la prima vizită și de venitul estimat, ca proprietarul salonului să vadă o cale clară de la conținut la timpul petrecut în scaun. Asociază cifrele cu Reels-urile de transformare cu cele mai bune rezultate ale lunii, ca să vadă exact ce conținut a umplut calendarul."
 },
   auto: {
   "niche": "auto",
@@ -924,7 +924,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "business_type",
       "label": "Ce tip de afacere auto este aceasta?",
-      "help": "Alege tot ce se aplică — unghiurile de conținut diferă mult între vânzarea de mașini și service-ul lor.",
+      "help": "Alege tot ce se aplică, unghiurile de conținut diferă mult între vânzarea de mașini și service-ul lor.",
       "type": "chips",
       "options": [
         "Dealer de mașini noi",
@@ -949,7 +949,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "signature_offers",
       "label": "Oferte semnătură și hook-uri pentru clienți",
-      "help": "Ofertele și serviciile care atrag oamenii — acestea devin formate de postare recurente.",
+      "help": "Ofertele și serviciile care atrag oamenii, acestea devin formate de postare recurente.",
       "type": "chips",
       "options": [
         "Trade-in / buy-back",
@@ -974,7 +974,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "proof_points",
       "label": "Argumente de încredere și acreditări",
-      "help": "Semnale de încredere de inclus în conținut — ani de experiență, unități vândute, rating Google, certificări, premii.",
+      "help": "Semnale de încredere de inclus în conținut, ani de experiență, unități vândute, rating Google, certificări, premii.",
       "type": "textarea",
       "placeholder": "ex. 18 ani de experiență, 4.8★ (900+ recenzii Google), partener oficial de service VW, 1.200 de mașini vândute în 2025"
     }
@@ -1032,7 +1032,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
       "label": "Venituri est. din social"
     }
   ],
-  "portalNote": "Pune accent pe funnelul complet de la reach la venituri: volumul de lead-uri (apeluri + solicitări) în partea de sus, apoi cele două căi de conversie care contează pentru un client auto — test drive-urile care duc la vânzări de vehicule și programările de service/reparații — încununate de venitul estimat, ca dealerul să vadă banii din spatele activității. Ține test drive-urile și programările de service distincte vizual, pentru că reprezintă cele două laturi ale afacerii (showroom vs. atelier)."
+  "portalNote": "Pune accent pe funnelul complet de la reach la venituri: volumul de lead-uri (apeluri + solicitări) în partea de sus, apoi cele două căi de conversie care contează pentru un client auto, test drive-urile care duc la vânzări de vehicule și programările de service/reparații, încununate de venitul estimat, ca dealerul să vadă banii din spatele activității. Ține test drive-urile și programările de service distincte vizual, pentru că reprezintă cele două laturi ale afacerii (showroom vs. atelier)."
 },
   hotel: {
   "niche": "hotel",
@@ -1186,7 +1186,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     {
       "id": "service_area",
       "label": "Locații sau zone deservite",
-      "help": "Orașe, cartiere sau rază de livrare — ca postările să țintească audiența locală potrivită.",
+      "help": "Orașe, cartiere sau rază de livrare, ca postările să țintească audiența locală potrivită.",
       "type": "text",
       "placeholder": "ex. Cluj-Napoca + 30km, sau livrare la nivel național"
     },
@@ -1271,7 +1271,7 @@ export function onboardingSteps(niche: string): { title: string; subtitle: strin
   ];
 }
 
-// ---- Niche "items" — the things an agency promotes for a client (properties,
+// ---- Niche "items", the things an agency promotes for a client (properties,
 // dishes, treatments…). Stored in public.niche_items (name + attributes jsonb).
 // Drives the live Overview table + its add/edit form, per niche.
 export type FieldType = "text" | "number" | "money" | "select";
@@ -1279,7 +1279,7 @@ export type ItemField = { key: string; label: string; type: FieldType; options?:
 export type NicheItemConfig = { singular: string; plural: string; itemType: string; nameLabel: string; namePlaceholder: string; fields: ItemField[] };
 
 export const NICHE_ITEMS: Record<NicheKey, NicheItemConfig> = {
-  real_estate: { singular: "Proprietate", plural: "Proprietăți promovate", itemType: "property", nameLabel: "Proprietate", namePlaceholder: "ex. Sky Tower — penthouse cu 2 camere",
+  real_estate: { singular: "Proprietate", plural: "Proprietăți promovate", itemType: "property", nameLabel: "Proprietate", namePlaceholder: "ex. Sky Tower, penthouse cu 2 camere",
     fields: [
       { key: "type", label: "Tip", type: "select", options: ["Apartament", "Casă / Vilă", "Teren", "Comercial", "Ansamblu nou", "Închiriere"] },
       { key: "area", label: "Suprafață / zonă", type: "text" },
@@ -1292,7 +1292,7 @@ export const NICHE_ITEMS: Record<NicheKey, NicheItemConfig> = {
       { key: "price", label: "Preț", type: "money" },
       { key: "tag", label: "Etichetă", type: "select", options: ["Semnătură", "Bestseller", "Nou", "Sezonier", "Promo"] },
     ] },
-  lounge: { singular: "Ofertă", plural: "Oferte și seri", itemType: "offering", nameLabel: "Ofertă", namePlaceholder: "ex. Masă VIP — Afro-House vineri",
+  lounge: { singular: "Ofertă", plural: "Oferte și seri", itemType: "offering", nameLabel: "Ofertă", namePlaceholder: "ex. Masă VIP, Afro-House vineri",
     fields: [
       { key: "type", label: "Tip", type: "select", options: ["Cocktail", "Sticlă / VIP", "Seară de eveniment", "Pachet de masă", "Intrare / bilet"] },
       { key: "price", label: "Preț", type: "money" },
@@ -1328,7 +1328,7 @@ export const NICHE_ITEMS: Record<NicheKey, NicheItemConfig> = {
       { key: "price", label: "Preț", type: "money" },
       { key: "status", label: "Status", type: "select", options: ["Disponibil", "Rezervat", "Vândut", "În curs"] },
     ] },
-  hotel: { singular: "Cameră / Pachet", plural: "Camere și pachete", itemType: "package", nameLabel: "Cameră / pachet", namePlaceholder: "ex. Apartament cu vedere la mare — escapadă de vară",
+  hotel: { singular: "Cameră / Pachet", plural: "Camere și pachete", itemType: "package", nameLabel: "Cameră / pachet", namePlaceholder: "ex. Apartament cu vedere la mare, escapadă de vară",
     fields: [
       { key: "type", label: "Tip", type: "select", options: ["Cameră", "Apartament", "Pachet", "Experiență", "Spațiu de evenimente"] },
       { key: "price", label: "Preț / noapte", type: "money" },

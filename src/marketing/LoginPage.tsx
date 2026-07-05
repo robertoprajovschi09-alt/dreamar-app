@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <AuthShell>
       <h1 className="font-display text-3xl font-600">Bine ai revenit</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Autentifică-te în spațiul de lucru al agenției tale.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Intră în aplicația agenției.</p>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
         <Field label="Email de serviciu">
@@ -40,7 +40,7 @@ export default function LoginPage() {
           <a href="/#" className="link-u font-500 text-foreground">Ai uitat parola?</a>
         </div>
         <button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground text-sm font-500 text-background transition duration-200 motion-safe:hover:-translate-y-0.5 disabled:opacity-60">
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Autentificare
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Autentifică-te
         </button>
       </form>
 

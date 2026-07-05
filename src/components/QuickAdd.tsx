@@ -87,7 +87,7 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
     setTitle("");
   };
   return (
-    <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Obiectul central - apare în Pipeline" size="sm"
+    <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Apare în Pipeline" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={!clientId || !title.trim()} onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
         <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
@@ -131,7 +131,7 @@ function YanisModal({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
     setCar(""); setCommission(""); setSold(false);
   };
   return (
-    <Modal open={open} onClose={onClose} title="Rând nou · Decont Yanis" subtitle="Adaugă o mașină în câteva secunde" size="sm"
+    <Modal open={open} onClose={onClose} title="Rând nou · Decont Yanis" subtitle="Adaugă o mașină în Decont Yanis" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
         <Input autoFocus className={BIG} value={car} onChange={(e) => setCar(e.target.value)} placeholder="Mașină - ex. VW Golf 2018" />

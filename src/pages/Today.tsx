@@ -17,7 +17,7 @@ import {
 
 /*
  * "Azi" - the agency's daily operating system. It is a PURE READ of two sources:
- * the clip pipeline (posts to do, tampon, filming queue) and Bani (money alerts).
+ * the clip pipeline (posts to do, clips gata de postat, filming queue) and Bani (money alerts).
  * Nothing is stored on this screen - every row reflects real pipeline/Bani state
  * and every control mutates that state. The only creation affordance is the
  * "De filmat" quick-add, which drops a new clip straight into the to_film state.
@@ -129,7 +129,7 @@ function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useM
         <div key={`c-${o.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
           <button onClick={() => onOpen(`col-${o.id}`)} className="min-w-0 flex-1 text-left text-sm">
             <span className="font-700">{nameOf(o.clientId)}</span>, {lei(o.amount)},{" "}
-            <span className="font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
+            <span className="font-700 text-danger">{o.daysOverdue === 1 ? "întârziat cu 1 zi" : `întârziat cu ${o.daysOverdue} zile`}</span>
           </button>
           <button onClick={() => void money.updateCollection(o.id, { collected: true })}
             className="shrink-0 rounded-lg bg-success/15 px-2.5 py-1 text-xs font-700 text-success transition hover:bg-success/25">Marchează încasat</button>
@@ -182,10 +182,10 @@ function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id:
   );
 }
 
-/* ── 2 · Tampon clipuri ──────────────────────────────────────────────────── */
+/* ── 2 · Clipuri gata de postat ──────────────────────────────────────────── */
 // Derived from the pipeline: how many of each active client's clips sit in
-// "Editat". No clips at all → neutral "fără date încă"; <3 → red "sub tampon";
-// 3–5 → green; >5 → plain. No other labels.
+// "Editat". No clips at all -> neutral "fără date încă"; <3 -> red "sub țintă";
+// 3-5 -> green; >5 -> plain. No other labels.
 function ClipBuffer({ active, clips, onClient, onNewClient }: { active: Client[]; clips: Clip[]; onClient: (id: string) => void; onNewClient: () => void }) {
   const counts = useMemo(() => {
     const total: Record<string, number> = {};
@@ -199,18 +199,18 @@ function ClipBuffer({ active, clips, onClient, onNewClient }: { active: Client[]
   }, [clips]);
 
   return (
-    <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Tampon clipuri"
-      right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX} · în Editat</span>}>
+    <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Clipuri gata de postat"
+      right={<span className="text-[11px] font-600 text-muted-foreground">ținta: {BUFFER_MIN}-{BUFFER_MAX} gata pe client</span>}>
       {active.length === 0 ? (
         <div className="flex flex-col items-center gap-2 border-t border-border/60 px-4 py-8 text-center">
-          <p className="text-sm text-muted-foreground">Tamponul arată câte clipuri Editate are fiecare client. Adaugă un client ca să-l urmărești.</p>
+          <p className="text-sm text-muted-foreground">Aici vezi câte clipuri gata de postat are fiecare client. Adaugă un client ca să-l urmărești.</p>
           <Button size="sm" variant="outline" onClick={onNewClient}><Plus className="h-4 w-4" /> Client nou</Button>
         </div>
       ) : active.map((c) => {
         const hasClips = (counts.total[c.id] ?? 0) > 0;
         const n = counts.edited[c.id] ?? 0;
-        const st = !hasClips ? { dot: "bg-muted-foreground/40", text: "text-muted-foreground", label: "fără date încă", value: "–" }
-          : n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "sub tampon", value: String(n) }
+        const st = !hasClips ? { dot: "bg-muted-foreground/40", text: "text-muted-foreground", label: "fără date încă", value: "-" }
+          : n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "sub țintă", value: String(n) }
           : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "", value: String(n) }
           : { dot: "bg-foreground/50", text: "text-foreground", label: "", value: String(n) };
         return (
@@ -327,7 +327,7 @@ function TulceaRoute({ day }: { day: number }) {
       {editing ? (
         <TulceaEditor items={items} onSave={saveTemplate} />
       ) : items.length === 0 ? (
-        <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun item - apasă „Editează" ca să adaugi.</p>
+        <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Nimic în listă. Apasă „Editează" ca să adaugi.</p>
       ) : items.map((it, i) => {
         const done = !!checks[`${day}-${i}`];
         return (
@@ -351,7 +351,7 @@ function TulceaEditor({ items, onSave }: { items: string[]; onSave: (items: stri
           <button onClick={() => commit(rows.filter((_, j) => j !== i))} aria-label="Șterge" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted hover:text-danger"><X className="h-4 w-4" /></button>
         </div>
       ))}
-      <Button size="sm" variant="outline" onClick={() => setRows([...rows, ""])}><Plus className="h-4 w-4" /> Adaugă item</Button>
+      <Button size="sm" variant="outline" onClick={() => setRows([...rows, ""])}><Plus className="h-4 w-4" /> Adaugă rând</Button>
     </div>
   );
 }

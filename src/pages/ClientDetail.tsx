@@ -112,7 +112,7 @@ export default function ClientDetail() {
           ) : (
             <>
               <p className="font-display text-lg font-700">Clientul nu a fost găsit</p>
-              <p className="text-sm text-muted-foreground">Este posibil să fi fost eliminat sau să aparțină altui workspace.</p>
+              <p className="text-sm text-muted-foreground">Este posibil să fi fost eliminat sau să aparțină altui spațiu de lucru.</p>
               <Link to="/clients"><Button variant="primary" className="mt-1">Înapoi la clienți</Button></Link>
             </>
           )}
@@ -136,7 +136,7 @@ export default function ClientDetail() {
   const isYanis = billing === "comision";    // Yanis / Târg Auto: no Rezultate tab (decontul e rezultatul)
   const visibleTabs = isYanis ? tabs.filter((t): boolean => t !== "Rezultate") : tabs;
   // A remembered tab (sessionStorage / ?tab=) may name a tab this client doesn't
-  // have (e.g. a Yanis client remembering "Rezultate") — fall back so the body
+  // have (e.g. a Yanis client remembering "Rezultate"), fall back so the body
   // never renders blank.
   const activeTab = visibleTabs.includes(tab) ? tab : "Prezentare";
   const publishedSelected = clientClips.filter((c) => c.state === "posted" && c.scheduledDate && c.scheduledDate.slice(0, 7) === monthKey).length;

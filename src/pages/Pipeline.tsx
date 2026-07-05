@@ -56,7 +56,7 @@ export default function Pipeline() {
 
   return (
     <>
-      <PageHeader title="Pipeline" help="pipeline" subtitle="Fiecare clip, de la idee la postare · trage între coloane">
+      <PageHeader title="Pipeline" help="pipeline" subtitle="Drumul clipurilor, de la idee la postat.">
         <Select value={client} onChange={(e) => setClient(e.target.value)} className="w-40"><option value="all">Toți clienții</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <Button variant="primary" onClick={() => setBatchOpen(true)}><Layers className="h-4 w-4" /> Adaugă în lot</Button>
       </PageHeader>

@@ -15,18 +15,18 @@ export type HelpKey = "azi" | "pipeline" | "bani" | "calendar" | "scripturi" | "
 export const HELP: Record<HelpKey, { title: string; short: string; body: string }> = {
   azi: {
     title: "Azi",
-    short: "Ce ai de făcut acum: alerte de bani, ce postezi azi, tamponul și ce filmezi.",
-    body: "Ce ai de făcut acum: alerte de bani, ce postezi azi, tamponul și ce filmezi. Totul vine din Pipeline și din Bani. Aici doar bifezi.",
+    short: "Ce ai de făcut acum: alerte de bani, ce postezi azi, clipurile gata de postat și ce filmezi.",
+    body: "Ce ai de făcut acum: alerte de bani, ce postezi azi, clipurile gata de postat și ce filmezi. Totul vine din Pipeline și din Bani. Aici doar bifezi.",
   },
   pipeline: {
     title: "Pipeline",
     short: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat.",
-    body: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat. Tamponul unui client e numărul clipurilor lui din Editat. Ce programezi aici apare în Azi și în Calendar.",
+    body: "Drumul unui clip: Idee, De filmat, Filmat, Editat, Programat, Postat. Clipurile gata de postat ale unui client sunt cele din Editat. Ce programezi aici apare în Azi și în Calendar.",
   },
   bani: {
     title: "Bani",
-    short: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și găleți.",
-    body: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și găleți. Ce e depășit aici urcă singur în Azi. Pragurile de aici deblochează Kill List.",
+    short: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și împărțirea banilor.",
+    body: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și împărțirea banilor. Ce e depășit aici urcă singur în Azi. Pragurile de aici deblochează Kill List.",
   },
   calendar: {
     title: "Calendar",

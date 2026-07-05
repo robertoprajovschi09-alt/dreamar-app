@@ -173,7 +173,7 @@ function Level1({ clients, clips, onOpen, onBatch }: { clients: Client[]; clips:
 
   return (
     <>
-      <PageHeader title="Pipeline" help="pipeline" subtitle="Apasă un client ca să-i vezi clipurile" />
+      <PageHeader title="Pipeline" help="pipeline" subtitle="Drumul clipurilor, de la idee la postat." />
       <div className="mt-3 rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm font-600">
         {inWork} {inWork === 1 ? "clip în lucru" : "clipuri în lucru"} · {weekScheduled} programate săptămâna asta
       </div>
@@ -278,7 +278,7 @@ function SwipeRow({ clip, nextLabel, onAdvance, onDelete, onOpen }: { clip: Clip
   const [dx, setDx] = useState(0);
   const start = useRef(0);
   const active = useRef(false);
-  const dxRef = useRef(0); // committed delta for the release decision — pointermove is a
+  const dxRef = useRef(0); // committed delta for the release decision; pointermove is a
   const THRESH = 72;       // continuous-priority event, so its setDx may not flush before pointerup
   return (
     <div className="relative overflow-hidden border-b border-border/60 last:border-b-0">

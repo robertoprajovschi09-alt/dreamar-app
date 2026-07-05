@@ -24,7 +24,7 @@ export type KillItem = { id: string; title: string; conditions: Condition[] };
 
 export const KILL_LIST: KillItem[] = [
   { id: "primul-client-constanta", title: "Primul client Constanța", conditions: [{ kind: "manual", key: "done", label: "Am primul client din Constanța" }] },
-  { id: "cashflow-4000", title: "Cashflow 4.000 euro pe lună", conditions: [{ kind: "income_month", threshold: 21000 }] },
+  { id: "cashflow-4000", title: "Încasări 4.000 euro pe lună", conditions: [{ kind: "income_month", threshold: 21000 }] },
   { id: "iphone-17", title: "iPhone 17 Pro Max nr. 1", conditions: [{ kind: "item", itemId: "primul-client-constanta" }, { kind: "tampon", threshold: 8000 }] },
   { id: "iphone-2-camera", title: "iPhone nr. 2 + cameră", conditions: [{ kind: "consecutive_income", threshold: 21000, months: 2 }] },
   { id: "masina-15000", title: "Mașină, buget 15.000 euro", conditions: [{ kind: "manual", key: "permis", label: "Permis luat" }, { kind: "consecutive_income", threshold: 21000, months: 3 }, { kind: "tampon", threshold: 15000 }] },
@@ -108,7 +108,7 @@ export function useKillList() {
     const items: (EvalItem & { currentlyMet: boolean })[] = KILL_LIST.map((item) => {
       const conditions: EvalCondition[] = item.conditions.map((c) => {
         if (c.kind === "income_month") { const p = c.threshold > 0 ? Math.min(1, income / c.threshold) : 1; return { kind: c.kind, label: `Încasări luna asta ≥ ${lei(c.threshold)}`, met: income >= c.threshold, numeric: true, progress: p, current: income, target: c.threshold }; }
-        if (c.kind === "tampon") { const p = c.threshold > 0 ? Math.min(1, tampon / c.threshold) : 1; return { kind: c.kind, label: `Tampon ≥ ${lei(c.threshold)}`, met: tampon >= c.threshold, numeric: true, progress: p, current: tampon, target: c.threshold }; }
+        if (c.kind === "tampon") { const p = c.threshold > 0 ? Math.min(1, tampon / c.threshold) : 1; return { kind: c.kind, label: `Rezervă ≥ ${lei(c.threshold)}`, met: tampon >= c.threshold, numeric: true, progress: p, current: tampon, target: c.threshold }; }
         if (c.kind === "consecutive_income") { const n = consecutive(c.threshold); const p = c.months > 0 ? Math.min(1, n / c.months) : 1; return { kind: c.kind, label: `${c.months} luni consecutive ≥ ${lei(c.threshold)}`, met: n >= c.months, numeric: true, progress: p, current: n, target: c.months }; }
         if (c.kind === "manual") { const on = !!state[item.id]?.manual?.[c.key]; return { kind: c.kind, label: c.label, met: on, numeric: false, progress: on ? 1 : 0, current: on ? 1 : 0, target: 1, manualKey: c.key }; }
         // item dependency

@@ -44,7 +44,7 @@ export default function Money() {
   if (money.loading || lc) return <PageSkeleton variant="dashboard" />;
   return (
     <>
-      <PageHeader title="Bani" subtitle="Încasări, deconturi și runway" help="bani" />
+      <PageHeader title="Bani" subtitle="Încasări, deconturi și cât te țin banii" help="bani" />
       <div className="space-y-4">
         <Collections money={money} clients={clients} />
         <Facturare money={money} clients={clients} />
@@ -144,7 +144,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
       ) : (
         rows.map((r) => {
           const od = overdueDays.get(r.id);
-          const overdueLabel = od !== undefined ? <span className="text-[11px] font-700 text-danger">{od === 1 ? "scadent de 1 zi" : `scadent de ${od} zile`}</span> : null;
+          const overdueLabel = od !== undefined ? <span className="text-[11px] font-700 text-danger">{od === 1 ? "întârziat cu 1 zi" : `întârziat cu ${od} zile`}</span> : null;
           const accent = cn("border-t border-border/60 border-l-2", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent");
           return isMobile ? (
             /* Mobile: stacked card - name + status on top, amount + due day below. */
@@ -160,7 +160,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
               <div className="mt-2 flex items-center gap-2">
                 <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-28 text-right" />
                 <span className="text-xs text-muted-foreground">lei</span>
-                <span className="ml-auto text-xs text-muted-foreground">scadent pe</span>
+                <span className="ml-auto text-xs text-muted-foreground">termen: ziua</span>
                 <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
               </div>
             </div>
@@ -171,7 +171,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
                 {overdueLabel}
               </div>
               <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-24 text-right" />
-              <span className="text-xs text-muted-foreground">pe</span>
+              <span className="text-xs text-muted-foreground">ziua</span>
               <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
               <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
               <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
@@ -184,7 +184,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
         <Select value={newClient} onChange={(e) => setNewClient(e.target.value)} className="sm:w-44"><option value="">Fără client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         <div className="flex items-center gap-2">
           <NumInput value={Number(newAmount) || 0} onCommit={(n) => setNewAmount(n ? String(n) : "")} className="w-24 text-right" placeholder="sumă" />
-          <span className="text-xs text-muted-foreground">pe</span>
+          <span className="text-xs text-muted-foreground">ziua</span>
           <NumInput value={Number(newDay) || 1} onCommit={(n) => setNewDay(String(Math.min(31, Math.max(1, n))))} className="w-14 text-center" />
           <Button size="sm" variant="primary" onClick={add}><Plus className="h-4 w-4" /> Adaugă</Button>
         </div>
@@ -341,7 +341,7 @@ function Yanis({ money }: { money: MoneyApi }) {
   );
 }
 
-/* ── 4 · Găleți ──────────────────────────────────────────────────────────── */
+/* ── 4 · Împărțirea banilor ───────────────────────────────────────────────── */
 function Buckets({ money }: { money: MoneyApi }) {
   const { settings, saveSettings, tampon, addTamponEntry, removeTamponEntry } = money;
   const [desc, setDesc] = useState("");
@@ -355,16 +355,16 @@ function Buckets({ money }: { money: MoneyApi }) {
   }
 
   return (
-    <Block icon={Coins} tone="text-[hsl(var(--warning))]" title="Găleți">
+    <Block icon={Coins} tone="text-[hsl(var(--warning))]" title="Împărțirea banilor">
       <div className="grid grid-cols-1 gap-px border-t border-border/60 bg-border/60 sm:grid-cols-3">
-        <BucketCard label="Personal fix" value={settings.personalFix} onCommit={(n) => void saveSettings({ personalFix: n })} />
-        <BucketCard label="Operațional" value={settings.operational} onCommit={(n) => void saveSettings({ operational: n })} />
-        <BucketCard label="Tampon" value={settings.tampon} onCommit={(n) => void saveSettings({ tampon: n })} />
+        <BucketCard label="Cheltuieli personale (chirie plus utilități)" value={settings.personalFix} onCommit={(n) => void saveSettings({ personalFix: n })} />
+        <BucketCard label="Cheltuieli firmă" value={settings.operational} onCommit={(n) => void saveSettings({ operational: n })} />
+        <BucketCard label="Rezervă" value={settings.tampon} onCommit={(n) => void saveSettings({ tampon: n })} />
       </div>
 
-      {/* Tampon history */}
+      {/* Istoric Rezervă */}
       <div className="border-t border-border/60 px-4 py-3">
-        <p className="mb-2 text-xs font-700 text-muted-foreground">Istoric Tampon</p>
+        <p className="mb-2 text-xs font-700 text-muted-foreground">Istoric Rezervă</p>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Toggle on={dir === 1} onToggle={() => setDir((d) => (d === 1 ? -1 : 1))} onLabel="Intrare" offLabel="Ieșire" />
           <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descriere (ex. plată geomar)" className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />
@@ -401,7 +401,7 @@ function BucketCard({ label, value, onCommit }: { label: string; value: number; 
   );
 }
 
-/* ── 5 · Runway ──────────────────────────────────────────────────────────── */
+/* ── 5 · Cât te țin banii ─────────────────────────────────────────────────── */
 function Runway({ money }: { money: MoneyApi }) {
   const { settings, saveSettings } = money;
   const burn = settings.personalFix + settings.operationalBurn;
@@ -410,19 +410,19 @@ function Runway({ money }: { money: MoneyApi }) {
   const tone = burn <= 0 ? "text-muted-foreground" : months >= 3 ? "text-success" : months >= 1.5 ? "text-[hsl(var(--warning))]" : "text-danger";
 
   return (
-    <Block icon={ShieldCheck} tone="text-success" title="Runway">
+    <Block icon={ShieldCheck} tone="text-success" title="Cât te țin banii">
       <div className="grid grid-cols-1 gap-4 border-t border-border/60 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <div>
-          <p className={cn("font-display text-4xl font-800", tone)}>{monthsLabel} <span className="text-2xl">luni de siguranță</span></p>
-          <p className="mt-1 text-sm text-muted-foreground">Tampon {lei(settings.tampon)} ÷ burn lunar {lei(burn)}</p>
+          <p className={cn("font-display text-4xl font-800", tone)}>{monthsLabel}{burn > 0 && <span className="text-2xl"> luni</span>}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Rezerva împărțită la cheltuielile tale lunare</p>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-3">
-          <p className="mb-1 text-xs font-700 text-muted-foreground">Cheltuieli operaționale / lună</p>
+          <p className="mb-1 text-xs font-700 text-muted-foreground">Cheltuieli firmă pe lună</p>
           <div className="flex items-center gap-1">
             <NumInput value={settings.operationalBurn} onCommit={(n) => void saveSettings({ operationalBurn: n })} className="w-28 text-right" />
             <span className="text-sm text-muted-foreground">lei</span>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">Burn = Personal fix ({lei(settings.personalFix)}) + operațional</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">Cheltuieli lunare = cheltuieli personale ({lei(settings.personalFix)}) + cheltuieli firmă</p>
         </div>
       </div>
     </Block>
