@@ -44,7 +44,7 @@ export default function Money() {
   if (money.loading || lc) return <PageSkeleton variant="dashboard" />;
   return (
     <>
-      <PageHeader title="Bani" subtitle="Încasări, deconturi și runway" />
+      <PageHeader title="Bani" subtitle="Încasări, deconturi și runway" help="bani" />
       <div className="space-y-4">
         <Collections money={money} clients={clients} />
         <Facturare money={money} clients={clients} />
@@ -215,7 +215,10 @@ function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
   return (
     <Block icon={FileText} tone="text-primary" title="Facturare">
       {invoiced.length === 0 ? (
-        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun client „cu factură". Bifează „Cu factură" în setările clientului.</p>
+        <div className="flex flex-col items-center gap-2 border-t border-border/60 px-4 py-6 text-center">
+          <p className="max-w-sm text-sm text-muted-foreground">Aici pregătești datele de facturare lunare. Bifează „Cu factură" la un client ca să apară aici.</p>
+          <Link to="/clients"><Button size="sm" variant="outline">Deschide Clienți</Button></Link>
+        </div>
       ) : invoiced.map((c) => {
         const inv = byClient.get(c.id);
         const amount = inv?.amount ?? c.retainer ?? 0;
@@ -282,7 +285,7 @@ function Yanis({ money }: { money: MoneyApi }) {
       </div>
 
       {deals.length === 0 ? (
-        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun rând încă.</p>
+        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Ține evidența mașinilor lui Yanis. Adaugă primul rând din formularul de mai jos.</p>
       ) : isMobile ? (
         /* Mobile: one card per deal - no horizontal scroll. */
         deals.map((d) => (

@@ -92,7 +92,7 @@ export default function Clients() {
 
   return (
     <>
-      <PageHeader title="Clienți" subtitle={`${clients.length} ${clients.length === 1 ? "client" : "clienți"}`}>
+      <PageHeader title="Clienți" help="clienti" subtitle={`${clients.length} ${clients.length === 1 ? "client" : "clienți"}`}>
         <Button variant="primary" onClick={openNewClient}>
           <Plus className="h-4 w-4" /> Adaugă client
         </Button>

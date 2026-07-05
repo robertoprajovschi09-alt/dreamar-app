@@ -1,5 +1,6 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { HELP } from "@/components/PageHelp";
 import { ClientsProvider } from "@/lib/clients";
 import { ClipsProvider } from "@/lib/clips";
 import { ScriptsProvider } from "@/lib/scripts";
@@ -50,6 +51,10 @@ function MobileInner() {
     : "more";
   const go = (to: string) => { setMoreOpen(false); navigate(to); };
 
+  // Long-press on a bottom-bar icon reveals a tiny "what is this page" popover.
+  const [pressHelp, setPressHelp] = useState<{ title: string; short: string } | null>(null);
+  const MORE_HELP = { title: "Mai mult", short: "Restul paginilor: Clienți, Calendar, Scripturi, Kill List, Agenție, Setări." };
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))]">
@@ -60,12 +65,21 @@ function MobileInner() {
         </Suspense>
       </main>
 
+      {pressHelp && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4">
+          <div className="max-w-[320px] rounded-xl border border-border bg-card p-3 shadow-card">
+            <p className="text-sm font-800">{pressHelp.title}</p>
+            <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{pressHelp.short}</p>
+          </div>
+        </div>
+      )}
+
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-[680px] items-stretch justify-between px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
-          <TabBtn label="Azi" icon={Target} active={active === "home"} onClick={() => go("/dashboard")} />
-          <TabBtn label="Pipeline" icon={Clapperboard} active={active === "pipeline"} onClick={() => go("/pipeline")} />
-          <TabBtn label="Bani" icon={Wallet} active={active === "money"} onClick={() => go("/money")} />
-          <TabBtn label="Mai mult" icon={LayoutGrid} active={active === "more" || moreOpen} onClick={() => setMoreOpen(true)} />
+          <TabBtn label="Azi" icon={Target} active={active === "home"} onClick={() => go("/dashboard")} help={HELP.azi} onPress={setPressHelp} />
+          <TabBtn label="Pipeline" icon={Clapperboard} active={active === "pipeline"} onClick={() => go("/pipeline")} help={HELP.pipeline} onPress={setPressHelp} />
+          <TabBtn label="Bani" icon={Wallet} active={active === "money"} onClick={() => go("/money")} help={HELP.bani} onPress={setPressHelp} />
+          <TabBtn label="Mai mult" icon={LayoutGrid} active={active === "more" || moreOpen} onClick={() => setMoreOpen(true)} help={MORE_HELP} onPress={setPressHelp} />
         </div>
       </nav>
 
@@ -74,10 +88,28 @@ function MobileInner() {
   );
 }
 
-function TabBtn({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active: boolean; onClick: () => void }) {
+type TabHelp = { title: string; short: string };
+function TabBtn({ label, icon: Icon, active, onClick, help, onPress }: { label: string; icon: LucideIcon; active: boolean; onClick: () => void; help: TabHelp; onPress: (h: TabHelp | null) => void }) {
+  const timer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  const start = () => {
+    longPressed.current = false;
+    clear();
+    timer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      onPress(help);
+      try { navigator.vibrate?.(15); } catch { /* no haptics */ }
+    }, 450);
+  };
+  const end = () => { clear(); onPress(null); };
   return (
-    <button onClick={onClick} aria-label={label} aria-current={active ? "page" : undefined}
-      className={cn("flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] font-700 transition active:bg-muted/60",
+    <button
+      onClick={() => { if (!longPressed.current) onClick(); }}
+      onPointerDown={start} onPointerUp={end} onPointerLeave={end} onPointerCancel={end}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label={label} aria-current={active ? "page" : undefined}
+      className={cn("flex min-h-[52px] flex-1 select-none flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] font-700 transition active:bg-muted/60",
         active ? "text-primary" : "text-muted-foreground")}>
       <Icon className="h-[23px] w-[23px]" />
       {label}

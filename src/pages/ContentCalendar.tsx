@@ -133,7 +133,7 @@ export default function ContentCalendar() {
 
   return (
     <>
-      <PageHeader title="Calendar de conținut" subtitle="Vedere peste clipurile Programate și Postate · trage pentru a reprograma">
+      <PageHeader title="Calendar de conținut" help="calendar" subtitle="Vedere peste clipurile Programate și Postate · trage pentru a reprograma">
         <Button variant="primary" onClick={() => openComposer()} disabled={live && clients.length === 0}><Plus className="h-4 w-4" /> Postare nouă</Button>
       </PageHeader>
 

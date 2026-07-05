@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Panel, SectionCard, Button, Badge, Input, Select } from "@/components/ui";
 import { Table, THead, TH, TR, TD } from "@/components/table";
 import { Modal } from "@/components/overlay";
@@ -123,7 +124,7 @@ export default function NicheOverview({ clientId, niche }: { clientId: string; n
               </div>
             ))}
           </div>
-        ) : <p className="py-6 text-center text-sm text-muted-foreground">Încă niciun conținut — creează postări în Calendarul de conținut.</p>}
+        ) : <p className="py-6 text-center text-sm text-muted-foreground">Încă niciun conținut. <Link to="/calendar" className="font-700 text-primary">Programează în Calendar</Link>.</p>}
       </SectionCard>
 
       {editing !== null && (
@@ -135,7 +136,7 @@ export default function NicheOverview({ clientId, niche }: { clientId: string; n
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderVal(f: ItemField, v: any) {
-  if (v == null || v === "") return <span className="text-muted-foreground">—</span>;
+  if (v == null || v === "") return <span className="text-muted-foreground">fără date</span>;
   if (f.type === "money") return formatCurrency(Number(v));
   if (f.type === "select") return <Badge tone="neutral">{String(v)}</Badge>;
   return String(v);
@@ -186,7 +187,7 @@ function ItemModal({ cfg, clientId, niche, agencyId, item, onClose, onSaved }: {
               <p className="mb-1.5 text-xs font-700 text-muted-foreground">{f.label}{f.type === "money" ? " (lei)" : ""}</p>
               {f.type === "select" ? (
                 <Select value={attrs[f.key]} onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}>
-                  <option value="">—</option>
+                  <option value="">Alege</option>
                   {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                 </Select>
               ) : (

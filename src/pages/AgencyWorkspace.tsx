@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { PageHeader, Panel } from "@/components/ui";
+import { PageHeader, Panel, Button } from "@/components/ui";
 import { StatCard } from "@/components/StatCard";
 import { useClients } from "@/lib/clients";
 import { formatCurrency } from "@/lib/utils";
 import { billingTypeLabels } from "@/data/sample";
-import { CalendarDays, Users, Wallet } from "lucide-react";
+import { CalendarDays, Plus, Users, Wallet } from "lucide-react";
 
 // Agenție - the agency itself: portfolio performance across clients. Settings is
 // its own top-level page now, so this is just the performance view.
@@ -28,7 +28,10 @@ export default function AgencyWorkspace() {
       <Panel className="p-4 sm:p-5">
         <p className="mb-3 font-display text-base font-800">Venit pe client</p>
         {clients.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Niciun client încă - retainerele apar aici.</p>
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <p className="text-sm text-muted-foreground">Venitul recurent pe client apare aici. Adaugă primul client ca să vezi retainerele.</p>
+            <Link to="/clients"><Button size="sm" variant="primary"><Plus className="h-4 w-4" /> Adaugă client</Button></Link>
+          </div>
         ) : (
           <div className="space-y-2">
             {ranked.map((c) => {

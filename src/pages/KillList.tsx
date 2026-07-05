@@ -15,7 +15,7 @@ export default function KillList() {
 
   return (
     <>
-      <PageHeader title="Kill List" subtitle={`${done} din ${items.length} deblocate`} />
+      <PageHeader title="Kill List" subtitle={`${done} din ${items.length} deblocate`} help="killlist" />
       <div className="space-y-3">
         {items.map((item) => (
           <Panel key={item.id} className={cn("p-0 overflow-hidden", item.unlocked && "ring-1 ring-success/40")}>

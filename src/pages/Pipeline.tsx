@@ -59,7 +59,7 @@ export default function Pipeline() {
 
   return (
     <>
-      <PageHeader title="Pipeline" subtitle={isMobile ? "Apasă Avansează ca să muți un clip mai departe" : "Fiecare clip, de la idee la postare · trage între coloane"}>
+      <PageHeader title="Pipeline" help="pipeline" subtitle={isMobile ? "Apasă Avansează ca să muți un clip mai departe" : "Fiecare clip, de la idee la postare · trage între coloane"}>
         <Select value={client} onChange={(e) => setClient(e.target.value)} className="w-40"><option value="all">Toți clienții</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
         {!isMobile && <Button variant="primary" onClick={() => setBatchOpen(true)}><Layers className="h-4 w-4" /> Adaugă în lot</Button>}
       </PageHeader>

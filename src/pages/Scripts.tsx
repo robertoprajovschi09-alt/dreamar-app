@@ -44,7 +44,7 @@ export default function Scripts() {
 
   return (
     <>
-      <PageHeader title="Scripturi" subtitle="Ideea scrisă, înainte să devină clip">
+      <PageHeader title="Scripturi" help="scripturi" subtitle="Ideea scrisă, înainte să devină clip">
         <Select value={targetFilter} onChange={(e) => setTargetFilter(e.target.value)} className="w-36">
           <option value="all">Toate</option>
           <option value="general">General</option>

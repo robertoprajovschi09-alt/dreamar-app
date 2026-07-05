@@ -52,12 +52,12 @@ export default function Today() {
 
   return (
     <>
-      <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} />
+      <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} help="azi" />
 
       <div className="space-y-3">
         <MoneyAlerts money={money} clients={clients} onOpen={(focus) => navigate(focus ? `/money?focus=${focus}` : "/money")} />
         <PostsToday clips={clipsCtx.clips} onPost={(id, posted) => void clipsCtx.updateClip(id, { state: posted ? "posted" : "scheduled" })} onPipeline={() => navigate("/pipeline")} />
-        <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} />
+        <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} onNewClient={openNewClient} />
         <FilmQueue
           clips={clipsCtx.clips}
           clients={clients}
@@ -186,7 +186,7 @@ function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id:
 // Derived from the pipeline: how many of each active client's clips sit in
 // "Editat". No clips at all → neutral "fără date încă"; <3 → red "sub tampon";
 // 3–5 → green; >5 → plain. No other labels.
-function ClipBuffer({ active, clips, onClient }: { active: Client[]; clips: Clip[]; onClient: (id: string) => void }) {
+function ClipBuffer({ active, clips, onClient, onNewClient }: { active: Client[]; clips: Clip[]; onClient: (id: string) => void; onNewClient: () => void }) {
   const counts = useMemo(() => {
     const total: Record<string, number> = {};
     const edited: Record<string, number> = {};
@@ -202,7 +202,10 @@ function ClipBuffer({ active, clips, onClient }: { active: Client[]; clips: Clip
     <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Tampon clipuri"
       right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX} · în Editat</span>}>
       {active.length === 0 ? (
-        <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun client activ.</p>
+        <div className="flex flex-col items-center gap-2 border-t border-border/60 px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">Tamponul arată câte clipuri Editate are fiecare client. Adaugă un client ca să-l urmărești.</p>
+          <Button size="sm" variant="outline" onClick={onNewClient}><Plus className="h-4 w-4" /> Client nou</Button>
+        </div>
       ) : active.map((c) => {
         const hasClips = (counts.total[c.id] ?? 0) > 0;
         const n = counts.edited[c.id] ?? 0;
@@ -261,7 +264,7 @@ function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
         </div>
       </div>
       {openCount === 0 ? (
-        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Nimic de filmat momentan.</p>
+        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Lista ta de filmări. Adaugă mai sus ce ai de filmat.</p>
       ) : groups.map((g) => (
         <div key={g.key}>
           <p className="border-t border-border/60 bg-muted/20 px-4 py-1.5 text-[11px] font-700 uppercase tracking-wide text-muted-foreground">{g.name}</p>

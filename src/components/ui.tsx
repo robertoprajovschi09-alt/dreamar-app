@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, forwardRef } from "react";
 import { ArrowDownRight, ArrowUpRight, type LucideIcon, Search } from "lucide-react";
+import { PageHelp, type HelpKey } from "@/components/PageHelp";
 
 /* ----------------------------- Card / Panel ----------------------------- */
 export function Panel({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -297,16 +298,21 @@ export function EmptyState({
 export function PageHeader({
   title,
   subtitle,
+  help,
   children,
 }: {
   title: string;
   subtitle?: string;
+  help?: HelpKey;
   children?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="font-display text-2xl font-800 tracking-tight">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="font-display text-2xl font-800 tracking-tight">{title}</h1>
+          {help && <PageHelp page={help} />}
+        </div>
         {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
