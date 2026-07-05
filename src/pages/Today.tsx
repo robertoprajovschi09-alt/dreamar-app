@@ -5,11 +5,11 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { QuickAdd } from "@/components/QuickAdd";
 import { useUI } from "@/lib/ui-context";
 import { useWorkspace } from "@/lib/workspace";
-import { useContent } from "@/lib/content";
+import { useContent, type UIPostStatus } from "@/lib/content";
 import { useClients } from "@/lib/clients";
 import { useFilmShots, type FilmShot } from "@/lib/filmshots";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { supabase } from "@/lib/supabase";
+import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
 import {
   CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Minus, Send, Trash2, Video, X, type LucideIcon,
@@ -29,39 +29,14 @@ function mondayOf(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.se
 const BUFFER_MIN = 3;
 const BUFFER_MAX = 5;
 
-/* Per-client clip buffer (live: clients.clip_buffer, demo: localStorage). */
-function useClipBuffer(clients: { id: string; clipBuffer?: number }[], live: boolean) {
-  const [values, setValues] = useState<Record<string, number>>({});
-  useEffect(() => {
-    setValues((prev) => {
-      const next = { ...prev };
-      clients.forEach((c) => {
-        if (next[c.id] === undefined) {
-          if (live) next[c.id] = c.clipBuffer ?? 0;
-          else { try { next[c.id] = Number(localStorage.getItem(`dreamar-clipbuffer-${c.id}`) ?? "0") || 0; } catch { next[c.id] = 0; } }
-        }
-      });
-      return next;
-    });
-  }, [clients, live]);
-  const bump = (id: string, delta: number) => setValues((prev) => {
-    const val = Math.max(0, (prev[id] ?? 0) + delta);
-    if (live && supabase) void supabase.from("clients").update({ clip_buffer: val }).eq("id", id);
-    else try { localStorage.setItem(`dreamar-clipbuffer-${id}`, String(val)); } catch { /* private */ }
-    return { ...prev, [id]: val };
-  });
-  return { values, bump };
-}
-
 export default function Today() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { openNewClient } = useUI();
   const { profile } = useWorkspace();
   const content = useContent();
-  const { clients, live, loading: lc } = useClients();
+  const { clients, loading: lc, bumpClipBuffer } = useClients();
   const film = useFilmShots();
-  const buffer = useClipBuffer(clients, live);
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bună dimineața" : h < 18 ? "Bună ziua" : "Bună seara"; })();
@@ -78,7 +53,7 @@ export default function Today() {
 
       <div className="space-y-3">
         <PostsToday content={content} onCalendar={() => navigate("/content?tab=calendar")} />
-        <ClipBuffer active={active} buffer={buffer} />
+        <ClipBuffer active={active} bump={bumpClipBuffer} />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
         <FilmList film={film} clients={clients} />
       </div>
@@ -87,7 +62,7 @@ export default function Today() {
         clients={clients}
         mobile={isMobile}
         onAddShot={(d, c) => void film.addShot(d, c)}
-        onAddClip={(c) => buffer.bump(c, 1)}
+        onAddClip={(c) => bumpClipBuffer(c, 1)}
         onAddPost={(i) => void content.createPost({ clientId: i.clientId, title: i.title, platform: i.platform, status: "scheduled", date: i.date })}
         onNewClient={openNewClient}
       />
@@ -121,13 +96,21 @@ const countPill = (n: number | string) => <span className="rounded-full bg-muted
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
 const POST_TIMES_KEY = "dreamar-post-times";
+const STATUS_LABEL: Record<UIPostStatus, string> = {
+  idea: "Idee", script: "Scenariu", filming: "Filmare", editing: "Editare", approval: "Pentru aprobare",
+  approved: "Aprobat", scheduled: "Programat", published: "Publicat", analyzed: "Analizat",
+};
+const isPosted = (s: UIPostStatus) => s === "published" || s === "analyzed";
 function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useContent>; onCalendar: () => void }) {
   const { posts, updatePost } = content;
   const todayISO = isoOf(new Date());
+  // Single source of truth = the calendar. Show EVERY post dated today, whatever
+  // its production status — status is a badge, not a filter (a post placed on the
+  // calendar for today must always appear here). Not-yet-posted rows come first.
   const list = posts
-    .filter((p) => p.date === todayISO && (p.status === "scheduled" || p.status === "published"))
-    .sort((a, b) => a.clientName.localeCompare(b.clientName));
-  const doneCount = list.filter((p) => p.status === "published").length;
+    .filter((p) => p.date === todayISO)
+    .sort((a, b) => Number(isPosted(a.status)) - Number(isPosted(b.status)) || a.clientName.localeCompare(b.clientName));
+  const doneCount = list.filter((p) => isPosted(p.status)).length;
 
   const [times, setTimes] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem(POST_TIMES_KEY) || "{}"); } catch { return {}; } });
   const setTime = (id: string, t: string) => setTimes((prev) => { const next = { ...prev, [id]: t }; try { localStorage.setItem(POST_TIMES_KEY, JSON.stringify(next)); } catch { /* private */ } return next; });
@@ -141,7 +124,7 @@ function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useCon
         </div>
       ) : (
         list.map((p) => {
-          const posted = p.status === "published";
+          const posted = isPosted(p.status);
           return (
             <div key={p.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
               <Checkbox checked={posted} onChange={() => void updatePost(p.id, { status: posted ? "scheduled" : "published" })} label={`Marchează „${p.title}” ca postat`} />
@@ -151,7 +134,7 @@ function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useCon
                 <span className={cn("block truncate text-sm font-600", posted && "text-muted-foreground line-through")}>{p.title}</span>
                 <span className="block truncate text-xs text-muted-foreground">{p.clientName}{p.platform ? ` · ${p.platform}` : ""}</span>
               </span>
-              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-700", posted ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>{posted ? "Publicat" : "Programat"}</span>
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-700", posted ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>{STATUS_LABEL[p.status]}</span>
             </div>
           );
         })
@@ -161,14 +144,16 @@ function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useCon
 }
 
 /* ── 2 · Tampon clipuri ──────────────────────────────────────────────────── */
-function ClipBuffer({ active, buffer }: { active: { id: string; name: string }[]; buffer: ReturnType<typeof useClipBuffer> }) {
+// Reads clip_buffer straight off the client (owned by ClientsProvider); mutates
+// via the provider's bumpClipBuffer. No local copy of the value.
+function ClipBuffer({ active, bump }: { active: Client[]; bump: (id: string, delta: number) => void }) {
   return (
     <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Tampon clipuri"
       right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX}</span>}>
       {active.length === 0 ? (
         <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun client activ.</p>
       ) : active.map((c) => {
-        const n = buffer.values[c.id] ?? 0;
+        const n = c.clipBuffer ?? 0;
         const state = n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "Sub tampon" }
           : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "OK" }
           : { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Buffer mare" };
@@ -180,9 +165,9 @@ function ClipBuffer({ active, buffer }: { active: { id: string; name: string }[]
               <span className={cn("text-[11px] font-700", state.text)}>{state.label}</span>
             </span>
             <div className="flex items-center gap-1.5">
-              <button onClick={() => buffer.bump(c.id, -1)} disabled={n === 0} aria-label="Scade" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"><Minus className="h-4 w-4" /></button>
+              <button onClick={() => bump(c.id, -1)} disabled={n === 0} aria-label="Scade" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"><Minus className="h-4 w-4" /></button>
               <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", state.text)}>{n}</span>
-              <button onClick={() => buffer.bump(c.id, 1)} aria-label="Crește" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted"><Plus className="h-4 w-4" /></button>
+              <button onClick={() => bump(c.id, 1)} aria-label="Crește" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted"><Plus className="h-4 w-4" /></button>
             </div>
           </div>
         );

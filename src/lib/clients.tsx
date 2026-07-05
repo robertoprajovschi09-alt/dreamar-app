@@ -50,9 +50,18 @@ type ClientsCtx = {
   addObjective: (id: string, text: string) => void;
   removeObjective: (id: string, idx: number) => void;
   applyObjectivesToAll: (ids: string[], objectives: string[]) => Promise<void>;
+  // Clip buffer lives on the client row — mutate it through the provider so the
+  // Today screen never keeps a second copy of it.
+  bumpClipBuffer: (id: string, delta: number) => void;
 };
 
 const Ctx = createContext<ClientsCtx | null>(null);
+
+// Demo persistence for the clip buffer (live reads clients.clip_buffer).
+const demoClipKey = (id: string) => `dreamar-clipbuffer-${id}`;
+function demoClip(id: string): number {
+  try { return Number(localStorage.getItem(demoClipKey(id)) ?? "0") || 0; } catch { return 0; }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRow(r: any): Client {
@@ -114,7 +123,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
   }, [live, agencyId]);
 
   useEffect(() => {
-    if (!live) { setClients(sampleClients); setLoading(false); return; }
+    if (!live) { setClients(sampleClients.map((c) => ({ ...c, clipBuffer: demoClip(c.id) }))); setLoading(false); return; }
     if (!agencyReady || !agencyId) { setLoading(true); return; }
     void reload();
   }, [live, agencyReady, agencyId, reload]);
@@ -199,6 +208,18 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     return {};
   }, [live, reload]);
 
+  // Clip buffer: functional update on the shared clients state (single source of
+  // truth) + persist. No stale closure on rapid taps, no second copy anywhere.
+  const bumpClipBuffer = useCallback((id: string, delta: number) => {
+    setClients((prev) => {
+      const cur = prev.find((c) => c.id === id)?.clipBuffer ?? 0;
+      const val = Math.max(0, cur + delta);
+      if (live && supabase) void supabase.from("clients").update({ clip_buffer: val }).eq("id", id);
+      else { try { localStorage.setItem(demoClipKey(id), String(val)); } catch { /* private */ } }
+      return prev.map((c) => (c.id === id ? { ...c, clipBuffer: val } : c));
+    });
+  }, [live]);
+
   const getClient = useCallback((id: string) => clients.find((c) => c.id === id), [clients]);
   const detailsFor = useCallback((id: string) => details[id], [details]);
   const objectivesFor = useCallback((id: string) => details[id]?.objectives ?? [], [details]);
@@ -240,7 +261,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
   }, [live]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Ctx.Provider value={{ clients, loading, live, reload, createClient, updateClient, archiveClient, getClient, detailsFor, objectivesFor, feedbackFor, addObjective, removeObjective, applyObjectivesToAll }}>
+    <Ctx.Provider value={{ clients, loading, live, reload, createClient, updateClient, archiveClient, getClient, detailsFor, objectivesFor, feedbackFor, addObjective, removeObjective, applyObjectivesToAll, bumpClipBuffer }}>
       {children}
     </Ctx.Provider>
   );
