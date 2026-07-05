@@ -1,31 +1,32 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader, Panel, Button, Input } from "@/components/ui";
+import { PageHeader, Panel, Button, Input, Select } from "@/components/ui";
 import { PageSkeleton } from "@/components/Skeleton";
 import { QuickAdd } from "@/components/QuickAdd";
 import { useUI } from "@/lib/ui-context";
 import { useWorkspace } from "@/lib/workspace";
-import { useClips, clipStateLabel, type Clip } from "@/lib/clips";
+import { useClips, type Clip } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useMoney } from "@/lib/money";
-import { useFilmShots, type FilmShot } from "@/lib/filmshots";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
-  AlertTriangle, CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
+  AlertTriangle, Check, Clapperboard, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
 } from "lucide-react";
 
 /*
- * "Azi" — the agency's daily operating system. Every row is an action to take
- * or a done-confirmation: today's posts (read from the calendar), the clip
- * buffer per client, the Tue/Wed Tulcea route, and the filming queue. Shared
- * state lives here so the Quick Add FAB stays in sync with the sections.
+ * "Azi" — the agency's daily operating system. It is a PURE READ of two sources:
+ * the clip pipeline (posts to do, tampon, filming queue) and Bani (money alerts).
+ * Nothing is stored on this screen — every row reflects real pipeline/Bani state
+ * and every control mutates that state. The only creation affordance is the
+ * "De filmat" quick-add, which drops a new clip straight into the to_film state.
  */
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 function mondayOf(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+const lei = (n: number) => formatCurrency(n);
 
 const BUFFER_MIN = 3;
 const BUFFER_MAX = 5;
@@ -37,35 +38,41 @@ export default function Today() {
   const { profile } = useWorkspace();
   const clipsCtx = useClips();
   const { clients, loading: lc } = useClients();
-  const film = useFilmShots();
   const money = useMoney();
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bună dimineața" : h < 18 ? "Bună ziua" : "Bună seara"; })();
   const today = new Date();
-  const dateLabel = today.toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" });
   const day = today.getDay(); // 0 Sun … 6 Sat
+  const dateLabel = today.toLocaleDateString("ro-RO", { weekday: "long", day: "numeric", month: "long" });
+  const subtitle = day === 0 ? "Duminică. Zi liberă, regula ta." : dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
   const active = useMemo(() => clients.filter((c) => c.status === "active"), [clients]);
 
   if (clipsCtx.loading || lc) return <PageSkeleton variant="dashboard" />;
 
   return (
     <>
-      <PageHeader title={`${greeting}, ${firstName}`} subtitle={dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} />
+      <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} />
 
       <div className="space-y-3">
-        <OverdueCollections money={money} clients={clients} onOpen={() => navigate("/money")} />
-        <PostsToday clipsCtx={clipsCtx} onCalendar={() => navigate("/content?tab=calendar")} />
+        <MoneyAlerts money={money} clients={clients} onOpen={() => navigate("/money")} />
+        <PostsToday clips={clipsCtx.clips} onPost={(id, posted) => void clipsCtx.updateClip(id, { state: posted ? "posted" : "scheduled" })} onPipeline={() => navigate("/pipeline")} />
         <ClipBuffer active={active} clips={clipsCtx.clips} />
+        <FilmQueue
+          clips={clipsCtx.clips}
+          clients={clients}
+          onCreate={(clientId, title) => void clipsCtx.createClip({ clientId, title, state: "to_film" })}
+          onFilmed={(id) => void clipsCtx.updateClip(id, { state: "filmed" })}
+          onDelete={(id) => void clipsCtx.deleteClip(id)}
+        />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
-        <FilmList film={film} clients={clients} />
       </div>
 
       <QuickAdd
         clients={clients}
         mobile={isMobile}
         onCreateClip={(input) => void clipsCtx.createClip(input)}
-        onAddShot={(d, c) => void film.addShot(d, c)}
+        onAddShot={(desc, clientId) => void clipsCtx.createClip({ clientId, title: desc, state: "to_film" })}
         onNewClient={openNewClient}
       />
     </>
@@ -96,20 +103,42 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: ()
 }
 const countPill = (n: number | string) => <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{n}</span>;
 
-/* ── 0 · Scadențe depășite (încasări neîncasate cu ziua trecută) ──────────── */
-// Citește lista expusă de useMoney; se afișează doar când există restanțe.
-function OverdueCollections({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: () => void }) {
-  const overdue = money.overdueCollections;
-  if (money.loading || overdue.length === 0) return null;
+/* ── 0 · Alerte de bani (doar dacă există) ───────────────────────────────── */
+// Overdue collections (with a "mark collected" action) + invoices still not
+// issued past the 1st of the month. Reads Bani only; hides entirely when clean.
+function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: () => void }) {
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  const monthName = now.toLocaleDateString("ro-RO", { month: "long" });
   const nameOf = (id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "Client" : "Fără client");
+
+  const overdue = money.overdueCollections;
+  // A "cu factură" client whose invoice for this month isn't issued yet — but
+  // only nag after the 1st (you just got there on day 1).
+  const unbilled = dayOfMonth > 1
+    ? clients.filter((c) => c.invoiced && (money.invoices.find((i) => i.clientId === c.id)?.status ?? "not_issued") === "not_issued")
+    : [];
+
+  if (money.loading || (overdue.length === 0 && unbilled.length === 0)) return null;
+
   return (
-    <Section icon={AlertTriangle} tone="text-danger" title="Scadențe depășite"
+    <Section icon={AlertTriangle} tone="text-danger" title="Alerte de bani"
       right={<button onClick={onOpen} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
       {overdue.map((o) => (
-        <div key={o.id} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
-          <span className="min-w-0 flex-1 truncate text-sm font-600">{nameOf(o.clientId)}</span>
-          <span className="shrink-0 text-[11px] font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
-          <span className="shrink-0 text-sm font-700">{formatCurrency(o.amount)}</span>
+        <div key={`c-${o.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm">
+            <span className="font-700">{nameOf(o.clientId)}</span>, {lei(o.amount)},{" "}
+            <span className="font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
+          </span>
+          <button onClick={() => void money.updateCollection(o.id, { collected: true })}
+            className="shrink-0 rounded-lg bg-success/15 px-2.5 py-1 text-xs font-700 text-success transition hover:bg-success/25">Marchează încasat</button>
+        </div>
+      ))}
+      {unbilled.map((c) => (
+        <div key={`i-${c.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/[0.05] px-4 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm">
+            Factura <span className="font-700">{c.name}</span> pe {monthName} e <span className="font-700 text-[hsl(var(--warning))]">neemisă</span>
+          </span>
         </div>
       ))}
     </Section>
@@ -117,75 +146,77 @@ function OverdueCollections({ money, clients, onOpen }: { money: ReturnType<type
 }
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
-// The clip is the single source of truth. Show today's scheduled/posted clips;
-// the checkbox flips scheduled ⇄ posted on the same clip.
-const POST_TIMES_KEY = "dreamar-post-times";
-function PostsToday({ clipsCtx, onCalendar }: { clipsCtx: ReturnType<typeof useClips>; onCalendar: () => void }) {
-  const { clips, updateClip } = clipsCtx;
+// Today's Programat clips. Checking one moves it to Postat, so it leaves the
+// list; when the last one is done we show "Gata pe azi." instead of an empty box.
+function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id: string, posted: boolean) => void; onPipeline: () => void }) {
   const todayISO = isoOf(new Date());
-  const list = clips
-    .filter((c) => (c.state === "scheduled" || c.state === "posted") && c.scheduledDate === todayISO)
-    .sort((a, b) => Number(a.state === "posted") - Number(b.state === "posted") || a.clientName.localeCompare(b.clientName));
-  const doneCount = list.filter((c) => c.state === "posted").length;
-
-  const [times, setTimes] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem(POST_TIMES_KEY) || "{}"); } catch { return {}; } });
-  const setTime = (id: string, t: string) => setTimes((prev) => { const next = { ...prev, [id]: t }; try { localStorage.setItem(POST_TIMES_KEY, JSON.stringify(next)); } catch { /* private */ } return next; });
+  const scheduled = clips
+    .filter((c) => c.state === "scheduled" && c.scheduledDate === todayISO)
+    .sort((a, b) => a.clientName.localeCompare(b.clientName) || a.title.localeCompare(b.title));
+  const postedCount = clips.filter((c) => c.state === "posted" && c.scheduledDate === todayISO).length;
+  const total = scheduled.length + postedCount;
 
   return (
-    <Section icon={Send} tone="text-primary" title="De postat azi" right={list.length ? countPill(`${doneCount}/${list.length}`) : null}>
-      {list.length === 0 ? (
+    <Section icon={Send} tone="text-primary" title="De postat azi" right={total > 0 ? countPill(`${postedCount}/${total}`) : null}>
+      {total === 0 ? (
         <div className="flex flex-col items-center gap-3 border-t border-border/60 px-4 py-8 text-center">
           <span className="text-sm text-muted-foreground">Nimic programat astăzi.</span>
-          <Button size="sm" variant="outline" onClick={onCalendar}><CalendarPlus className="h-4 w-4" /> Deschide calendarul</Button>
+          <Button size="sm" variant="outline" onClick={onPipeline}><Clapperboard className="h-4 w-4" /> Deschide Pipeline</Button>
         </div>
+      ) : scheduled.length === 0 ? (
+        <p className="border-t border-border/60 px-4 py-8 text-center text-sm font-600 text-success">Gata pe azi. 🎉</p>
       ) : (
-        list.map((c) => {
-          const posted = c.state === "posted";
-          return (
-            <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
-              <Checkbox checked={posted} onChange={() => void updateClip(c.id, { state: posted ? "scheduled" : "posted" })} label={`Marchează „${c.title}” ca postat`} />
-              <input type="time" value={times[c.id] ?? ""} onChange={(e) => setTime(c.id, e.target.value)} aria-label="Ora postării"
-                className="h-8 w-[4.5rem] shrink-0 rounded-lg border border-input bg-card px-1.5 text-xs tabular-nums ring-focus" />
-              <span className="min-w-0 flex-1">
-                <span className={cn("block truncate text-sm font-600", posted && "text-muted-foreground line-through")}>{c.title}</span>
-                <span className="block truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</span>
-              </span>
-              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-700", posted ? "bg-success/15 text-success" : "bg-primary/15 text-primary")}>{clipStateLabel(c.state)}</span>
-            </div>
-          );
-        })
+        scheduled.map((c) => (
+          <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
+            <Checkbox checked={false} onChange={() => onPost(c.id, true)} label={`Marchează „${c.title}” ca postat`} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-600">{c.title}</span>
+              <span className="block truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</span>
+            </span>
+            <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-700 text-primary">Programat</span>
+          </div>
+        ))
       )}
     </Section>
   );
 }
 
 /* ── 2 · Tampon clipuri ──────────────────────────────────────────────────── */
-// Tampon = how many of the client's clips are in the "Editat" state. Derived,
-// read-only — no manual counter anymore.
+// Derived from the pipeline: how many of each active client's clips sit in
+// "Editat". No clips at all → neutral "fără date încă"; <3 → red "sub tampon";
+// 3–5 → green; >5 → plain. No other labels.
 function ClipBuffer({ active, clips }: { active: Client[]; clips: Clip[] }) {
-  const editedByClient = useMemo(() => {
-    const m: Record<string, number> = {};
-    clips.forEach((c) => { if (c.state === "edited" && c.clientId) m[c.clientId] = (m[c.clientId] ?? 0) + 1; });
-    return m;
+  const counts = useMemo(() => {
+    const total: Record<string, number> = {};
+    const edited: Record<string, number> = {};
+    clips.forEach((c) => {
+      if (!c.clientId) return;
+      total[c.clientId] = (total[c.clientId] ?? 0) + 1;
+      if (c.state === "edited") edited[c.clientId] = (edited[c.clientId] ?? 0) + 1;
+    });
+    return { total, edited };
   }, [clips]);
+
   return (
     <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Tampon clipuri"
       right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX} · în Editat</span>}>
       {active.length === 0 ? (
         <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun client activ.</p>
       ) : active.map((c) => {
-        const n = editedByClient[c.id] ?? 0;
-        const st = n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "Sub tampon" }
-          : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "OK" }
-          : { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Buffer mare" };
+        const hasClips = (counts.total[c.id] ?? 0) > 0;
+        const n = counts.edited[c.id] ?? 0;
+        const st = !hasClips ? { dot: "bg-muted-foreground/40", text: "text-muted-foreground", label: "fără date încă", value: "–" }
+          : n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "sub tampon", value: String(n) }
+          : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "", value: String(n) }
+          : { dot: "bg-foreground/50", text: "text-foreground", label: "", value: String(n) };
         return (
           <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-2.5">
             <span className={cn("h-2 w-2 shrink-0 rounded-full", st.dot)} />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-600">{c.name}</span>
-              <span className={cn("text-[11px] font-700", st.text)}>{st.label}</span>
+              <span className={cn("block truncate text-sm font-600", !hasClips && "text-muted-foreground")}>{c.name}</span>
+              {st.label && <span className={cn("text-[11px] font-700", st.text)}>{st.label}</span>}
             </span>
-            <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", st.text)}>{n}</span>
+            <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", st.text)}>{st.value}</span>
           </div>
         );
       })}
@@ -193,7 +224,60 @@ function ClipBuffer({ active, clips }: { active: Client[]; clips: Clip[] }) {
   );
 }
 
-/* ── 3 · Tura Tulcea (Tue/Wed) ───────────────────────────────────────────── */
+/* ── 3 · De filmat ───────────────────────────────────────────────────────── */
+// The pipeline's to_film clips, grouped by client. The checkbox moves a clip to
+// Filmat (it leaves the list); the quick-add creates a new to_film clip.
+function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
+  clips: Clip[];
+  clients: { id: string; name: string }[];
+  onCreate: (clientId: string | null, title: string) => void;
+  onFilmed: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [qClient, setQClient] = useState("");
+  const [qTitle, setQTitle] = useState("");
+  const submit = () => { if (qTitle.trim()) { onCreate(qClient || null, qTitle.trim()); setQTitle(""); } };
+
+  const groups = useMemo(() => {
+    const m = new Map<string, { key: string; name: string; items: Clip[] }>();
+    clips.forEach((c) => {
+      if (c.state !== "to_film") return;
+      const key = c.clientId ?? "";
+      if (!m.has(key)) m.set(key, { key, name: c.clientId ? (c.clientName || "Client") : "Fără client", items: [] });
+      m.get(key)!.items.push(c);
+    });
+    return [...m.values()].sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : a.name.localeCompare(b.name)));
+  }, [clips]);
+  const openCount = groups.reduce((s, g) => s + g.items.length, 0);
+
+  return (
+    <Section icon={Film} tone="text-muted-foreground" title="De filmat" right={openCount ? countPill(openCount) : null}>
+      <div className="flex flex-col gap-2 border-t border-border/60 px-4 py-3 sm:flex-row">
+        <Select value={qClient} onChange={(e) => setQClient(e.target.value)} className="sm:w-40"><option value="">Fără client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+        <div className="flex flex-1 gap-2">
+          <Input value={qTitle} onChange={(e) => setQTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Ce filmezi? ex. Reel testimonial" className="flex-1" />
+          <Button variant="primary" onClick={submit} disabled={!qTitle.trim()}><Plus className="h-4 w-4" /></Button>
+        </div>
+      </div>
+      {openCount === 0 ? (
+        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Nimic de filmat momentan.</p>
+      ) : groups.map((g) => (
+        <div key={g.key}>
+          <p className="border-t border-border/60 bg-muted/20 px-4 py-1.5 text-[11px] font-700 uppercase tracking-wide text-muted-foreground">{g.name}</p>
+          {g.items.map((c) => (
+            <div key={c.id} className="group flex items-center gap-3 border-t border-border/60 px-4 py-3">
+              <Checkbox checked={false} onChange={() => onFilmed(c.id)} label={`Marchează „${c.title}” ca filmat`} />
+              <span className="min-w-0 flex-1 truncate text-sm font-600">{c.title}</span>
+              <button onClick={() => onDelete(c.id)} aria-label="Șterge" className="text-muted-foreground opacity-60 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+/* ── 4 · Tura Tulcea (Tue/Wed) ───────────────────────────────────────────── */
 const TULCEA_DEFAULT: Record<number, string[]> = {
   2: ["Geomar filmare batch", "Modern Glass filmare", "Marinarul seara"],
   3: ["Adelyn filmare", "Yanis walkaround", "retur Constanța"],
@@ -210,6 +294,9 @@ function TulceaRoute({ day }: { day: number }) {
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState(false);
 
+  // Re-sync (and reset) whenever the ISO-week Monday changes — so a tab left
+  // open across a week boundary drops last week's checkmarks instead of
+  // persisting them under the new week's key.
   useEffect(() => {
     try { const raw = JSON.parse(localStorage.getItem(TULCEA_CHECKS_KEY) || "null"); setChecks(raw && raw.week === weekKey ? (raw.done ?? {}) : {}); } catch { setChecks({}); }
   }, [weekKey]);
@@ -262,46 +349,5 @@ function TulceaEditor({ items, onSave }: { items: string[]; onSave: (items: stri
       ))}
       <Button size="sm" variant="outline" onClick={() => setRows([...rows, ""])}><Plus className="h-4 w-4" /> Adaugă item</Button>
     </div>
-  );
-}
-
-/* ── 4 · De filmat ───────────────────────────────────────────────────────── */
-function FilmList({ film, clients }: { film: ReturnType<typeof useFilmShots>; clients: { id: string; name: string }[] }) {
-  const { shots, addShot, toggleShot, removeShot } = film;
-  const [desc, setDesc] = useState("");
-  const [showDone, setShowDone] = useState(false);
-  const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "" : ""); }, [clients]);
-  const submit = () => { if (desc.trim()) { void addShot(desc, null); setDesc(""); } };
-  const open = shots.filter((s) => !s.done);
-  const done = shots.filter((s) => s.done);
-
-  const Row = (s: FilmShot) => (
-    <div key={s.id} className="group flex items-center gap-3 border-t border-border/60 px-4 py-3">
-      <Checkbox checked={s.done} onChange={() => void toggleShot(s.id, !s.done)} label={s.description} />
-      <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-sm font-600", s.done && "text-muted-foreground line-through")}>{s.description}</span>
-        {nameOf(s.clientId) && <span className="block truncate text-xs text-muted-foreground">{nameOf(s.clientId)}</span>}
-      </span>
-      <button onClick={() => void removeShot(s.id)} aria-label="Șterge" className="text-muted-foreground opacity-60 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
-    </div>
-  );
-
-  return (
-    <Section icon={Film} tone="text-muted-foreground" title="De filmat" right={open.length ? countPill(open.length) : null}>
-      <div className="flex gap-2 border-t border-border/60 px-4 py-3">
-        <Input value={desc} onChange={(e) => setDesc(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Adaugă rapid — ce filmezi?" className="flex-1" />
-        <Button variant="primary" onClick={submit} disabled={!desc.trim()}><Plus className="h-4 w-4" /></Button>
-      </div>
-      {open.map(Row)}
-      {open.length === 0 && done.length === 0 && <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Nimic de filmat momentan.</p>}
-      {done.length > 0 && (
-        <>
-          <button onClick={() => setShowDone((v) => !v)} className="flex w-full items-center gap-2 border-t border-border/60 px-4 py-2.5 text-left text-xs font-700 text-muted-foreground transition hover:bg-muted/40">
-            <ChevronDown className={cn("h-4 w-4 transition", showDone && "rotate-180")} /> Finalizate ({done.length})
-          </button>
-          {showDone && done.map(Row)}
-        </>
-      )}
-    </Section>
   );
 }
