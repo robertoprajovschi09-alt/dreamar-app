@@ -5,15 +5,14 @@ import { Modal } from "@/components/overlay";
 import { Table, THead, TH, TR, TD } from "@/components/table";
 import { NicheDashboard } from "@/components/niches";
 import NicheOverview from "@/components/niches/NicheOverview";
-import { clients as sampleClients, nicheLabels, billingTypeLabels, videos, type Client, type Niche, type BillingType } from "@/data/sample";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { clients as sampleClients, nicheLabels, billingTypeLabels, type Client, type Niche, type BillingType } from "@/data/sample";
+import { formatCurrency } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace";
 import { useClients, type ClientPatch } from "@/lib/clients";
 import { useClips, clipStateLabel } from "@/lib/clips";
-import { useLibrary } from "@/lib/library";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
-import { nicheSpec, type MetricField } from "@/lib/niches";
+import { nicheSpec } from "@/lib/niches";
 import {
   ArrowLeft,
   Copy,
@@ -29,7 +28,6 @@ import {
   Plus,
   Target,
   Trash2,
-  TrendingUp,
   Upload,
   Users,
   Wand2,
@@ -39,29 +37,24 @@ import { downloadReportImage, buildReportText } from "@/lib/reportImage";
 import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clientcounters";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
-const firstOfMonthISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ImpactRow = { source: string } & Record<string, any>;
 
-const tabs = ["Prezentare", "Conținut", "Rezultate", "Raport", "Fișiere"] as const;
-const recTone = { repeat: "success", improve: "warning", stop: "danger" } as const;
+const tabs = ["Prezentare", "Conținut", "Rezultate", "Fișiere"] as const;
 
 export default function ClientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const cl = useClients();
   const clipsCtx = useClips();
-  const lib = useLibrary();
   const ws = useWorkspace();
   const { push } = useToast();
-  // Reopen each client on the tab you were working in (e.g. Raport during report week).
+  // Reopen each client on the tab you were working in (e.g. Rezultate during report week).
   const [tab, setTab] = useState<(typeof tabs)[number]>(() => {
     const saved = sessionStorage.getItem(`dreamar-client-tab-${id}`);
     return (tabs as readonly string[]).includes(saved ?? "") ? (saved as (typeof tabs)[number]) : "Prezentare";
   });
   useEffect(() => { try { sessionStorage.setItem(`dreamar-client-tab-${id}`, tab); } catch { /* ignore */ } }, [id, tab]);
-  // Deep link (?tab=Raport) from the weekly queues overrides the remembered tab.
+  // Deep link (?tab=Rezultate) from the weekly queues overrides the remembered tab.
   const [searchParams] = useSearchParams();
   useEffect(() => {
     const t = searchParams.get("tab");
@@ -70,31 +63,40 @@ export default function ClientDetail() {
   const [newObj, setNewObj] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [brand, setBrand] = useState<BrandProfile | null>(null);
-  const [impactRows, setImpactRows] = useState<ImpactRow[]>([]);
-  const [homeFields, setHomeFields] = useState({ reach: "", dmLeads: "", week: "", next: "" });
-  const [savingHome, setSavingHome] = useState(false);
+  // Rezultate tab: selected month (YYYY-MM) + its manual figures.
+  const [monthKey, setMonthKey] = useState(() => new Date().toISOString().slice(0, 7));
+  const [results, setResults] = useState({ reach: "", dmLeads: "" });
+  const [savingResults, setSavingResults] = useState(false);
+  const agencyId = ws.currentAgency.id;
 
   const liveClient = cl.live ? cl.getClient(id) : undefined;
 
-  // Live: load the onboarding/brand profile + this month's impact entries (client + agency).
+  // Live: load the onboarding/brand profile (Prezentare tab).
   useEffect(() => {
-    if (!cl.live || !supabase || !id || id.startsWith("demo")) { setBrand(null); setImpactRows([]); return; }
+    if (!cl.live || !supabase || !id || id.startsWith("demo")) { setBrand(null); return; }
     let active = true;
     (async () => {
-      const month = firstOfMonthISO();
-      const [p, im] = await Promise.all([
-        supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at, report_reach, report_dm_leads, week_summary, next_steps").eq("id", id).maybeSingle(),
-        supabase!.from("business_impact_entries").select("source, calls_received, relevant_dms, bookings, appointments, orders, sales, viewings, contracts, revenue_estimate, qualitative_feedback, objections_heard").eq("client_id", id).eq("period_month", month),
-      ]);
-      if (!active) return;
-      if (p.data) {
-        setBrand({ brandVoice: p.data.brand_voice ?? "", audience: p.data.target_audience ?? "", goals: p.data.goals ?? [], brandProfile: p.data.brand_profile ?? {}, onboardedAt: p.data.onboarding_completed_at ?? null });
-        setHomeFields({ reach: p.data.report_reach != null ? String(p.data.report_reach) : "", dmLeads: p.data.report_dm_leads != null ? String(p.data.report_dm_leads) : "", week: p.data.week_summary ?? "", next: p.data.next_steps ?? "" });
-      }
-      setImpactRows((im.data ?? []) as ImpactRow[]);
+      const { data } = await supabase!.from("clients").select("brand_voice, target_audience, goals, brand_profile, onboarding_completed_at").eq("id", id).maybeSingle();
+      if (!active || !data) return;
+      setBrand({ brandVoice: data.brand_voice ?? "", audience: data.target_audience ?? "", goals: data.goals ?? [], brandProfile: data.brand_profile ?? {}, onboardedAt: data.onboarding_completed_at ?? null });
     })();
     return () => { active = false; };
   }, [cl.live, id]);
+
+  // Load the selected month's manual results (live table / demo localStorage).
+  useEffect(() => {
+    const period = `${monthKey}-01`;
+    if (cl.live && supabase && id && !id.startsWith("demo")) {
+      let active = true;
+      (async () => {
+        const { data } = await supabase!.from("monthly_results").select("reach, dm_leads").eq("client_id", id).eq("period_month", period).maybeSingle();
+        if (!active) return;
+        setResults({ reach: data?.reach ? String(data.reach) : "", dmLeads: data?.dm_leads ? String(data.dm_leads) : "" });
+      })();
+      return () => { active = false; };
+    }
+    try { const raw = JSON.parse(localStorage.getItem(`dreamar-results-${id}-${monthKey}`) || "null"); setResults({ reach: raw?.reach ?? "", dmLeads: raw?.dmLeads ?? "" }); } catch { setResults({ reach: "", dmLeads: "" }); }
+  }, [cl.live, id, monthKey]);
 
   // Live mode: the route id is a real UUID; wait for the load, and show a
   // proper not-found state instead of silently falling back to a sample client.
@@ -126,33 +128,39 @@ export default function ClientDetail() {
   const clientFeedback = cl.live ? cl.feedbackFor(client.id) : ws.feedbackFor(client.id);
   const det = cl.live ? cl.detailsFor(client.id) : undefined;
   const email = cl.live ? det?.email : `contact@${client.id}.ro`;
-  const clientVideos = (cl.live ? lib.videos : videos).filter((v) => v.client === client.name);
   const clientClips = clipsCtx.clips.filter((c) => c.clientId === client.id);
 
-  // Report figures (this month). Posted clips counted straight from the pipeline.
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const publishedThisMonth = clientClips.filter((c) => c.state === "posted" && c.scheduledDate && c.scheduledDate.slice(0, 7) === monthKey).length;
-  const monthLabel = new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
-  const isBarter = (client.billingType ?? "retainer") === "barter";
+  // Rezultate figures for the selected month. Posted clips counted from the pipeline.
+  const billing = client.billingType ?? "retainer";
+  const isBarter = billing === "barter";     // Super Pasta: extra deliverable counters
+  const isYanis = billing === "comision";    // Yanis / Târg Auto: no Rezultate tab (decontul e rezultatul)
+  const visibleTabs = isYanis ? tabs.filter((t): boolean => t !== "Rezultate") : tabs;
+  // A remembered tab (sessionStorage / ?tab=) may name a tab this client doesn't
+  // have (e.g. a Yanis client remembering "Rezultate") — fall back so the body
+  // never renders blank.
+  const activeTab = visibleTabs.includes(tab) ? tab : "Prezentare";
+  const publishedSelected = clientClips.filter((c) => c.state === "posted" && c.scheduledDate && c.scheduledDate.slice(0, 7) === monthKey).length;
+  const monthLabel = new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
 
   const reportData = {
-    clientName: client.name, monthLabel, published: publishedThisMonth,
-    reach: Number(homeFields.reach) || 0, dmLeads: Number(homeFields.dmLeads) || 0,
-    week: homeFields.week, next: homeFields.next,
+    clientName: client.name, monthLabel, published: publishedSelected,
+    reach: Number(results.reach) || 0, dmLeads: Number(results.dmLeads) || 0, week: "", next: "",
   };
 
-  async function saveHome() {
-    if (!supabase || !cl.live || savingHome) return;
-    setSavingHome(true);
-    const { error } = await supabase.from("clients").update({
-      report_reach: homeFields.reach === "" ? null : Number(homeFields.reach),
-      report_dm_leads: homeFields.dmLeads === "" ? null : Number(homeFields.dmLeads),
-      week_summary: homeFields.week.trim() || null,
-      next_steps: homeFields.next.trim() || null,
-    }).eq("id", id);
-    setSavingHome(false);
-    if (error) { push({ tone: "danger", title: "Nu am putut salva", description: error.message }); return; }
-    push({ tone: "success", title: "Raport salvat" });
+  async function saveResults() {
+    if (savingResults) return;
+    setSavingResults(true);
+    const reach = results.reach === "" ? 0 : Number(results.reach);
+    const dmLeads = results.dmLeads === "" ? 0 : Number(results.dmLeads);
+    if (cl.live && supabase && !id.startsWith("demo")) {
+      const { error } = await supabase.from("monthly_results").upsert({ agency_id: agencyId, client_id: id, period_month: `${monthKey}-01`, reach, dm_leads: dmLeads }, { onConflict: "client_id,period_month" });
+      setSavingResults(false);
+      if (error) { push({ tone: "danger", title: "Nu am putut salva", description: error.message }); return; }
+    } else {
+      try { localStorage.setItem(`dreamar-results-${id}-${monthKey}`, JSON.stringify({ reach: results.reach, dmLeads: results.dmLeads })); } catch { /* private */ }
+      setSavingResults(false);
+    }
+    push({ tone: "success", title: "Rezultate salvate", description: monthLabel });
   }
 
   return (
@@ -192,12 +200,12 @@ export default function ClientDetail() {
         </div>
 
         <div className="border-t border-border px-5 py-3">
-          <Segmented value={tab} onChange={setTab} options={tabs.map((t) => ({ label: t, value: t }))} />
+          <Segmented value={activeTab} onChange={setTab} options={visibleTabs.map((t) => ({ label: t, value: t }))} />
         </div>
       </Panel>
 
       {/* Overview tab - full client summary; other tabs swap to just their own content */}
-      {tab === "Prezentare" && (
+      {activeTab === "Prezentare" && (
       <div className="grid grid-cols-1 gap-4">
         <SectionCard title="Obiectivele lunii acesteia" icon={Target} subtitle="Salvate per client - persistă între reîncărcări">
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -246,14 +254,14 @@ export default function ClientDetail() {
       )}
 
       {/* Latest client feedback (from the client portal) */}
-      {tab === "Prezentare" && clientFeedback && (
+      {activeTab === "Prezentare" && clientFeedback && (
         <SectionCard title="Cel mai recent feedback de la client" subtitle="Preluat din portalul clientului" icon={Mail} action={<Badge tone="info" dot>Nou</Badge>}>
           <p className="rounded-xl border border-info/30 bg-info/[0.06] p-4 text-sm leading-relaxed text-foreground">"{clientFeedback}"</p>
         </SectionCard>
       )}
 
       {/* Brand profile - auto-filled by the client's portal onboarding */}
-      {tab === "Prezentare" && cl.live && (
+      {activeTab === "Prezentare" && cl.live && (
         <SectionCard
           title="Profil de brand"
           icon={Megaphone}
@@ -276,9 +284,9 @@ export default function ClientDetail() {
       )}
 
       {/* Tab content */}
-      {tab === "Prezentare" && (cl.live ? <NicheOverview clientId={client.id} niche={client.niche} /> : <NicheDashboard client={client} />)}
+      {activeTab === "Prezentare" && (cl.live ? <NicheOverview clientId={client.id} niche={client.niche} /> : <NicheDashboard client={client} />)}
 
-      {tab === "Conținut" && (
+      {activeTab === "Conținut" && (
         <SectionCard title="Clipuri" subtitle={`${clientClips.length} ${clientClips.length === 1 ? "clip" : "clipuri"} pentru ${client.name}`} action={<Link to="/pipeline" className="text-xs font-700 text-primary">Deschide Pipeline</Link>}>
           {clientClips.length ? (
             <Table>
@@ -300,56 +308,28 @@ export default function ClientDetail() {
         </SectionCard>
       )}
 
-      {tab === "Rezultate" && (
+      {activeTab === "Rezultate" && !isYanis && (
         <div className="space-y-4">
-          <BusinessImpactTab live={cl.live} niche={client.niche} rows={impactRows} />
-          <SectionCard title="Performanță conținut" subtitle={`${clientVideos.length} ${clientVideos.length === 1 ? "videoclip" : "videoclipuri"}`} icon={TrendingUp}>
-            {clientVideos.length ? (
-              <Table>
-                <THead><TH>Hook</TH><TH>Platformă</TH><TH>Dată</TH><TH className="text-right">Vizualizări</TH></THead>
-                <tbody>
-                  {clientVideos.map((v) => (
-                    <TR key={v.id}>
-                      <TD className="max-w-[280px]"><p className="truncate font-600">{v.hook}</p><p className="text-xs text-muted-foreground">{v.format}</p></TD>
-                      <TD><Badge tone="neutral">{v.platform}</Badge></TD>
-                      <TD className="text-muted-foreground">{v.date}</TD>
-                      <TD className="text-right font-600">{formatNumber(v.views)}</TD>
-                    </TR>
-                  ))}
-                </tbody>
-              </Table>
-            ) : (
-              <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun videoclip înregistrat.</p>
-            )}
-          </SectionCard>
-        </div>
-      )}
-
-      {tab === "Raport" && (isBarter ? (
-        <BarterCounters clientId={client.id} />
-      ) : (
-        <div className="space-y-4">
-          <SectionCard title={`Raport · ${monthLabel}`} subtitle="Rezumatul lunii - descarcă-l ca imagine sau copiază textul" icon={FileText}>
+          <SectionCard title="Rezultate" subtitle="Rezultatele lunii, plus raportul pentru client" icon={FileText}
+            action={<input type="month" value={monthKey} onChange={(e) => setMonthKey(e.target.value)} aria-label="Alege luna" className="h-9 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />}>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <ReportStat label="Postări publicate" value={String(publishedThisMonth)} icon={FileText} />
-                <ReportField label="Reach total"><Input type="number" min={0} value={homeFields.reach} onChange={(e) => setHomeFields((f) => ({ ...f, reach: e.target.value }))} placeholder="ex. 42000" /></ReportField>
-                <ReportField label="Lead-uri DM și WhatsApp"><Input type="number" min={0} value={homeFields.dmLeads} onChange={(e) => setHomeFields((f) => ({ ...f, dmLeads: e.target.value }))} placeholder="ex. 18" /></ReportField>
+                <ReportStat label="Postări publicate" value={String(publishedSelected)} icon={FileText} />
+                <ReportField label="Reach total"><Input type="number" inputMode="numeric" min={0} value={results.reach} onChange={(e) => setResults((r) => ({ ...r, reach: e.target.value }))} placeholder="ex. 42000" /></ReportField>
+                <ReportField label="Lead-uri DM și WhatsApp"><Input type="number" inputMode="numeric" min={0} value={results.dmLeads} onChange={(e) => setResults((r) => ({ ...r, dmLeads: e.target.value }))} placeholder="ex. 18" /></ReportField>
               </div>
-              <ReportField label="Ce s-a întâmplat"><textarea value={homeFields.week} onChange={(e) => setHomeFields((f) => ({ ...f, week: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Filmările despre albire au adus 9 programări noi." /></ReportField>
-              <ReportField label="Ce urmează"><textarea value={homeFields.next} onChange={(e) => setHomeFields((f) => ({ ...f, next: e.target.value }))} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="ex. Pregătim 4 postări noi și relansăm reclama." /></ReportField>
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="primary" disabled={savingHome || !cl.live} onClick={saveHome}>{savingHome && <Loader2 className="h-4 w-4 animate-spin" />} Salvează</Button>
+                <Button variant="primary" disabled={savingResults} onClick={saveResults}>{savingResults && <Loader2 className="h-4 w-4 animate-spin" />} Salvează</Button>
                 <Button variant="outline" onClick={() => { void navigator.clipboard?.writeText(buildReportText(reportData)); push({ tone: "success", title: "Text copiat", description: "Gata de trimis pe WhatsApp." }); }}><Copy className="h-4 w-4" /> Copiază text</Button>
                 <Button variant="outline" onClick={() => { void downloadReportImage(reportData); push({ tone: "success", title: "Imagine generată", description: "Raportul s-a descărcat." }); }}><Download className="h-4 w-4" /> Descarcă imagine</Button>
-                {!cl.live && <p className="text-xs text-muted-foreground">Salvarea e disponibilă în contul live.</p>}
               </div>
             </div>
           </SectionCard>
+          {isBarter && <BarterCounters clientId={client.id} />}
         </div>
-      ))}
+      )}
 
-      {tab === "Fișiere" && (
+      {activeTab === "Fișiere" && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[
             { name: `${client.name} Ghid de brand.pdf`, size: "4.2 MB" },
@@ -532,52 +512,4 @@ function profileEntries(niche: Niche, bp: Record<string, unknown>): [string, str
     .map(([k, label]) => [label, bp[k]] as [string, unknown])
     .filter(([, v]) => (Array.isArray(v) ? v.length > 0 : !!(v && String(v).trim())))
     .map(([label, v]) => [label, Array.isArray(v) ? (v as string[]).join(", ") : String(v)] as [string, string]);
-}
-
-function BusinessImpactTab({ live, niche, rows }: { live: boolean; niche: Niche; rows: ImpactRow[] }) {
-  const metrics = nicheSpec(niche).monthlyMetrics;
-  const clientRow = rows.find((r) => r.source === "client");
-  const agencyRow = rows.find((r) => r.source === "agency");
-  const val = (f: MetricField) => Number((clientRow?.[f] ?? agencyRow?.[f]) ?? 0);
-  const monthName = new Date().toLocaleDateString("ro-RO", { month: "long" });
-
-  if (!live) {
-    return (
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[{ l: "Apeluri primite", v: "42" }, { l: "Rezervări", v: "26" }, { l: "Impact pe venituri", v: "38.200 lei" }, { l: "DM-uri relevante", v: "138" }].map((m) => (
-          <Panel key={m.l} className="p-5"><p className="text-xs text-muted-foreground">{m.l}</p><p className="mt-1 font-display text-2xl font-800">{m.v}</p></Panel>
-        ))}
-      </div>
-    );
-  }
-
-  const any = clientRow || agencyRow;
-  const status = clientRow
-    ? `Clientul a raportat singur aceste cifre pentru ${monthName}.`
-    : any
-    ? `Cifre introduse de agenție pentru ${monthName}.`
-    : `Încă niciun impact raportat pentru ${monthName} - îl poți adăuga tu în Impact în afacere.`;
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {metrics.map((m) => (
-          <Panel key={m.field} className="p-5">
-            <p className="text-xs text-muted-foreground">{m.label}</p>
-            <p className="mt-1 font-display text-2xl font-800">{m.field === "revenue_estimate" ? formatCurrency(val(m.field)) : formatNumber(val(m.field))}</p>
-          </Panel>
-        ))}
-      </div>
-      {clientRow?.qualitative_feedback && (
-        <SectionCard title="Ce a raportat clientul" icon={Mail} action={<Badge tone="info" dot>Client</Badge>}>
-          <p className="rounded-xl border border-info/30 bg-info/[0.06] p-4 text-sm leading-relaxed">"{clientRow.qualitative_feedback}"</p>
-          {clientRow.objections_heard && <p className="mt-2 text-sm text-muted-foreground"><span className="font-700">Obiecții întâlnite:</span> {clientRow.objections_heard}</p>}
-        </SectionCard>
-      )}
-      <Panel className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">{status}</p>
-        <Link to="/impact"><Button variant="primary" size="sm">Deschide Impact în afacere</Button></Link>
-      </Panel>
-    </div>
-  );
 }

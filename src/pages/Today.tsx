@@ -55,9 +55,9 @@ export default function Today() {
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} />
 
       <div className="space-y-3">
-        <MoneyAlerts money={money} clients={clients} onOpen={() => navigate("/money")} />
+        <MoneyAlerts money={money} clients={clients} onOpen={(focus) => navigate(focus ? `/money?focus=${focus}` : "/money")} />
         <PostsToday clips={clipsCtx.clips} onPost={(id, posted) => void clipsCtx.updateClip(id, { state: posted ? "posted" : "scheduled" })} onPipeline={() => navigate("/pipeline")} />
-        <ClipBuffer active={active} clips={clipsCtx.clips} />
+        <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} />
         <FilmQueue
           clips={clipsCtx.clips}
           clients={clients}
@@ -107,7 +107,7 @@ const countPill = (n: number | string) => <span className="rounded-full bg-muted
 /* ── 0 · Alerte de bani (doar dacă există) ───────────────────────────────── */
 // Overdue collections (with a "mark collected" action) + invoices still not
 // issued past the 1st of the month. Reads Bani only; hides entirely when clean.
-function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: () => void }) {
+function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: (focus?: string) => void }) {
   const now = new Date();
   const dayOfMonth = now.getDate();
   const monthName = now.toLocaleDateString("ro-RO", { month: "long" });
@@ -124,23 +124,23 @@ function MoneyAlerts({ money, clients, onOpen }: { money: ReturnType<typeof useM
 
   return (
     <Section icon={AlertTriangle} tone="text-danger" title="Alerte de bani"
-      right={<button onClick={onOpen} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
+      right={<button onClick={() => onOpen()} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
       {overdue.map((o) => (
         <div key={`c-${o.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
-          <span className="min-w-0 flex-1 text-sm">
+          <button onClick={() => onOpen(`col-${o.id}`)} className="min-w-0 flex-1 text-left text-sm">
             <span className="font-700">{nameOf(o.clientId)}</span>, {lei(o.amount)},{" "}
             <span className="font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
-          </span>
+          </button>
           <button onClick={() => void money.updateCollection(o.id, { collected: true })}
             className="shrink-0 rounded-lg bg-success/15 px-2.5 py-1 text-xs font-700 text-success transition hover:bg-success/25">Marchează încasat</button>
         </div>
       ))}
       {unbilled.map((c) => (
-        <div key={`i-${c.id}`} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/[0.05] px-4 py-2.5">
+        <button key={`i-${c.id}`} onClick={() => onOpen(`fact-${c.id}`)} className="flex w-full items-center gap-3 border-t border-l-2 border-border/60 border-l-[hsl(var(--warning))] bg-[hsl(var(--warning))]/[0.05] px-4 py-2.5 text-left">
           <span className="min-w-0 flex-1 text-sm">
             Factura <span className="font-700">{c.name}</span> pe {monthName} e <span className="font-700 text-[hsl(var(--warning))]">neemisă</span>
           </span>
-        </div>
+        </button>
       ))}
     </Section>
   );
@@ -186,7 +186,7 @@ function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id:
 // Derived from the pipeline: how many of each active client's clips sit in
 // "Editat". No clips at all → neutral "fără date încă"; <3 → red "sub tampon";
 // 3–5 → green; >5 → plain. No other labels.
-function ClipBuffer({ active, clips }: { active: Client[]; clips: Clip[] }) {
+function ClipBuffer({ active, clips, onClient }: { active: Client[]; clips: Clip[]; onClient: (id: string) => void }) {
   const counts = useMemo(() => {
     const total: Record<string, number> = {};
     const edited: Record<string, number> = {};
@@ -211,14 +211,14 @@ function ClipBuffer({ active, clips }: { active: Client[]; clips: Clip[] }) {
           : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "", value: String(n) }
           : { dot: "bg-foreground/50", text: "text-foreground", label: "", value: String(n) };
         return (
-          <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-2.5">
+          <button key={c.id} onClick={() => onClient(c.id)} className="flex w-full items-center gap-3 border-t border-border/60 px-4 py-2.5 text-left transition hover:bg-muted/40">
             <span className={cn("h-2 w-2 shrink-0 rounded-full", st.dot)} />
             <span className="min-w-0 flex-1">
               <span className={cn("block truncate text-sm font-600", !hasClips && "text-muted-foreground")}>{c.name}</span>
               {st.label && <span className={cn("text-[11px] font-700", st.text)}>{st.label}</span>}
             </span>
             <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", st.text)}>{st.value}</span>
-          </div>
+          </button>
         );
       })}
     </Section>

@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Panel, Button, Input, Select } from "@/components/ui";
 import { Drawer, Modal } from "@/components/overlay";
 import { PageSkeleton } from "@/components/Skeleton";
 import { useClips, CLIP_STATES, CLIP_STATE_ORDER, clipStateLabel, type Clip, type ClipState } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
+import { useScripts } from "@/lib/scripts";
 import { useToast } from "@/lib/toast";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { cn } from "@/lib/utils";
-import { ArrowRight, Layers, Link2, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Layers, Link2, Plus, Trash2, X } from "lucide-react";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -19,7 +21,10 @@ export default function Pipeline() {
   const { clients, loading: lc } = useClients();
   const { push } = useToast();
   const isMobile = useIsMobile();
-  const [client, setClient] = useState("all");
+  const [searchParams] = useSearchParams();
+  const [client, setClient] = useState(() => searchParams.get("client") || "all");
+  // Deep link from Azi → Tampon: /pipeline?client=<id> pre-filters this board.
+  useEffect(() => { const c = searchParams.get("client"); if (c) setClient(c); }, [searchParams]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<ClipState | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -205,10 +210,51 @@ function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
             {needsDate(state) && <Field label="Dată"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>}
           </div>
           <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii scurte…" /></Field>
+          <ClipScripts clipId={clip.id} />
           <Field label={<><Link2 className="mr-1 inline h-3.5 w-3.5" />Link final</>}><Input value={finalLink} onChange={(e) => setFinalLink(e.target.value)} placeholder="https://…" /></Field>
         </div>
       )}
     </Drawer>
+  );
+}
+
+// Attach one or more scripts to a clip, with quick title search.
+function ClipScripts({ clipId }: { clipId: string }) {
+  const { scripts, scriptIdsForClip, attachScript, detachScript } = useScripts();
+  const [q, setQ] = useState("");
+  const attachedIds = scriptIdsForClip(clipId);
+  const attached = scripts.filter((s) => attachedIds.includes(s.id));
+  const query = q.trim().toLowerCase();
+  const matches = query
+    ? scripts.filter((s) => !attachedIds.includes(s.id) && `${s.title} ${s.hook}`.toLowerCase().includes(query)).slice(0, 6)
+    : [];
+  return (
+    <div>
+      <p className="mb-1.5 text-xs font-700 text-muted-foreground">Scripturi</p>
+      {attached.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {attached.map((s) => (
+            <span key={s.id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-600 text-primary">
+              {s.title || "Script"}
+              <button onClick={() => void detachScript(clipId, s.id)} aria-label="Detașează"><X className="h-3 w-3" /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Atașează script, caută după titlu…" />
+        {matches.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-card">
+            {matches.map((s) => (
+              <button key={s.id} onClick={() => { void attachScript(clipId, s.id); setQ(""); }} className="block w-full px-3 py-2 text-left text-sm transition hover:bg-muted">
+                <span className="font-600">{s.title || "Script"}</span>
+                {s.hook && <span className="block truncate text-xs text-muted-foreground">„{s.hook}"</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

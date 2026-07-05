@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PageHeader, Panel } from "@/components/ui";
 import { StatCard } from "@/components/StatCard";
 import { useClients } from "@/lib/clients";
@@ -33,7 +34,7 @@ export default function AgencyWorkspace() {
             {ranked.map((c) => {
               const isRetainer = (c.billingType ?? "retainer") === "retainer";
               return (
-                <div key={c.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <Link key={c.id} to={`/clients/${c.id}`} className="flex items-center gap-3 rounded-xl border border-border p-3 transition hover:border-primary/40 hover:bg-muted/40">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-xs font-800 text-white">{c.name.slice(0, 2).toUpperCase()}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-600">{c.name}</span>
@@ -42,7 +43,7 @@ export default function AgencyWorkspace() {
                   <span className="shrink-0 text-right text-sm font-700">
                     {isRetainer ? formatCurrency(c.retainer) : billingTypeLabels[c.billingType ?? "retainer"]}
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>

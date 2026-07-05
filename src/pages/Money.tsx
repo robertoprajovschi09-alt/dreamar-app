@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader, Panel, Button, Select } from "@/components/ui";
 import { PageSkeleton } from "@/components/Skeleton";
 import { useClients } from "@/lib/clients";
@@ -18,9 +19,28 @@ function mondayOf(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.se
 const fmtDay = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}` : iso);
 const lei = (n: number) => formatCurrency(n);
 
+// A client's name is always a link to their page (unless there is no client).
+function ClientLink({ id, name, className }: { id: string | null; name: string; className?: string }) {
+  return id ? <Link to={`/clients/${id}`} className={cn(className, "hover:text-primary hover:underline")}>{name}</Link> : <span className={className}>{name}</span>;
+}
+
 export default function Money() {
   const money = useMoney();
   const { clients, loading: lc } = useClients();
+  const [sp] = useSearchParams();
+  const focus = sp.get("focus");
+  // Deep link from an Azi alert (?focus=col-<id> / fact-<id>): scroll to + flash the row.
+  useEffect(() => {
+    if (!focus || money.loading || lc) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(focus);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-inset", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-inset", "ring-primary"), 2600);
+    }, 80);
+    return () => clearTimeout(t);
+  }, [focus, money.loading, lc]);
   if (money.loading || lc) return <PageSkeleton variant="dashboard" />;
   return (
     <>
@@ -128,10 +148,10 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
           const accent = cn("border-t border-border/60 border-l-2", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent");
           return isMobile ? (
             /* Mobile: stacked card - name + status on top, amount + due day below. */
-            <div key={r.id} className={cn("px-4 py-2.5", accent)}>
+            <div key={r.id} id={`col-${r.id}`} className={cn("px-4 py-2.5", accent)}>
               <div className="flex items-center gap-2">
                 <div className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
+                  <ClientLink id={r.clientId} name={nameOf(r.clientId)} className="block truncate text-sm font-600" />
                   {overdueLabel}
                 </div>
                 <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
@@ -145,9 +165,9 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
               </div>
             </div>
           ) : (
-            <div key={r.id} className={cn("group flex items-center gap-2 px-4 py-2 sm:gap-3", accent)}>
+            <div key={r.id} id={`col-${r.id}`} className={cn("group flex items-center gap-2 px-4 py-2 sm:gap-3", accent)}>
               <div className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
+                <ClientLink id={r.clientId} name={nameOf(r.clientId)} className="block truncate text-sm font-600" />
                 {overdueLabel}
               </div>
               <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-24 text-right" />
@@ -201,8 +221,8 @@ function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
         const amount = inv?.amount ?? c.retainer ?? 0;
         const status: InvoiceStatus = inv?.status ?? "not_issued";
         return (
-          <div key={c.id} className="flex flex-col gap-2 border-t border-border/60 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-600">{c.name}</span>
+          <div key={c.id} id={`fact-${c.id}`} className="flex flex-col gap-2 border-t border-border/60 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+            <ClientLink id={c.id} name={c.name} className="min-w-0 flex-1 truncate text-sm font-600" />
             <span className="text-xs text-muted-foreground sm:w-32">{monthLabel}</span>
             <div className="flex items-center gap-1">
               <NumInput value={amount} onCommit={(n) => void setInvoice(c.id, n, status)} className="w-24 text-right" />
