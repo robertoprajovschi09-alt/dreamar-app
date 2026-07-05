@@ -73,6 +73,7 @@ export default function Today() {
         mobile={isMobile}
         onCreateClip={(input) => void clipsCtx.createClip(input)}
         onAddShot={(desc, clientId) => void clipsCtx.createClip({ clientId, title: desc, state: "to_film" })}
+        onAddDeal={(init) => void money.addDeal(init)}
         onNewClient={openNewClient}
       />
     </>

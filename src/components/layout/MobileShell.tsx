@@ -1,28 +1,31 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Suspense, useEffect, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ClientsProvider } from "@/lib/clients";
 import { ClipsProvider } from "@/lib/clips";
 import { LibraryProvider } from "@/lib/library";
+import { CampaignsProvider } from "@/lib/campaigns";
 import { UIProvider } from "@/lib/ui-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useInbox } from "@/lib/inbox";
-import Today from "@/pages/Today";
-import { MobileInbox } from "@/pages/mobile/MobileInbox";
-import { MobileClients } from "@/pages/mobile/MobileClients";
-import { MobileAccount } from "@/pages/mobile/MobileAccount";
-import { Home, Inbox as InboxIcon, UserCircle, Users } from "lucide-react";
+import { allDestinations } from "@/lib/nav";
+import { useWorkspace } from "@/lib/workspace";
+import { useTheme } from "@/lib/theme";
+import { useAuth } from "@/lib/auth";
+import { Clapperboard, LayoutGrid, LogOut, Moon, Sun, Target, Wallet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = "home" | "inbox" | "clients" | "account";
+// The three primary tabs; everything else lives behind "Mai mult".
+const TAB_PATHS = new Set(["/dashboard", "/pipeline", "/money"]);
 
 export default function MobileShell() {
   return (
     <ClientsProvider>
       <ClipsProvider>
         <LibraryProvider>
-          <UIProvider>
-            <MobileInner />
-          </UIProvider>
+          <CampaignsProvider>
+            <UIProvider>
+              <MobileInner />
+            </UIProvider>
+          </CampaignsProvider>
         </LibraryProvider>
       </ClipsProvider>
     </ClientsProvider>
@@ -30,50 +33,102 @@ export default function MobileShell() {
 }
 
 function MobileInner() {
-  const [tab, setTab] = useState<Tab>("home");
-  // Set when a feed row wants to open a client — consumed by the Clienți tab.
-  const [focusClient, setFocusClient] = useState<string | null>(null);
-  const { count } = useInbox();
+  const navigate = useNavigate();
   const location = useLocation();
-  const openClient = (name: string) => { setFocusClient(name); setTab("clients"); };
+  const path = location.pathname;
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  // Deep links / programmatic navigation (g-shortcuts) land on the right tab.
-  useEffect(() => {
-    const p = location.pathname;
-    if (p.startsWith("/clients")) setTab("clients");
-    else if (p.startsWith("/settings") || p.startsWith("/agency") || p.startsWith("/integrations")) setTab("account");
-    else if (p.startsWith("/dashboard")) setTab("home");
-  }, [location.pathname]);
+  // Close the sheet whenever the route changes (a tap navigated away).
+  useEffect(() => { setMoreOpen(false); }, [path]);
+
+  const active = path.startsWith("/pipeline") ? "pipeline"
+    : path.startsWith("/money") ? "money"
+    : path.startsWith("/dashboard") ? "home"
+    : "more";
+  const go = (to: string) => { setMoreOpen(false); navigate(to); };
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-5">
-        <ErrorBoundary key={tab}>
-          {tab === "home" && <Today />}
-          {tab === "inbox" && <MobileInbox onOpenClient={openClient} />}
-          {tab === "clients" && <MobileClients initialName={focusClient} onConsumed={() => setFocusClient(null)} />}
-          {tab === "account" && <MobileAccount />}
-        </ErrorBoundary>
+      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-5">
+        <Suspense fallback={<div className="grid min-h-[60vh] place-items-center"><div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" /></div>}>
+          <ErrorBoundary key={path}>
+            <Outlet />
+          </ErrorBoundary>
+        </Suspense>
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-[680px] items-end justify-between px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-2">
-          <TabBtn label="Acasă" icon={Home} active={tab === "home"} onClick={() => setTab("home")} />
-          <TabBtn label="Inbox" icon={InboxIcon} active={tab === "inbox"} onClick={() => setTab("inbox")} badge={count} />
-          <TabBtn label="Clienți" icon={Users} active={tab === "clients"} onClick={() => setTab("clients")} />
-          <TabBtn label="Cont" icon={UserCircle} active={tab === "account"} onClick={() => setTab("account")} />
+        <div className="mx-auto flex max-w-[680px] items-stretch justify-between px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5">
+          <TabBtn label="Azi" icon={Target} active={active === "home"} onClick={() => go("/dashboard")} />
+          <TabBtn label="Pipeline" icon={Clapperboard} active={active === "pipeline"} onClick={() => go("/pipeline")} />
+          <TabBtn label="Bani" icon={Wallet} active={active === "money"} onClick={() => go("/money")} />
+          <TabBtn label="Mai mult" icon={LayoutGrid} active={active === "more" || moreOpen} onClick={() => setMoreOpen(true)} />
         </div>
       </nav>
+
+      <MoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} onGo={go} />
     </div>
   );
 }
 
-function TabBtn({ label, icon: Icon, active, onClick, badge }: { label: string; icon: typeof Home; active: boolean; onClick: () => void; badge?: number }) {
+function TabBtn({ label, icon: Icon, active, onClick }: { label: string; icon: LucideIcon; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={cn("relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-600 transition", active ? "text-primary" : "text-muted-foreground")}>
-      <Icon className="h-[22px] w-[22px]" />
+    <button onClick={onClick} aria-label={label} aria-current={active ? "page" : undefined}
+      className={cn("flex min-h-[52px] flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] font-700 transition active:bg-muted/60",
+        active ? "text-primary" : "text-muted-foreground")}>
+      <Icon className="h-[23px] w-[23px]" />
       {label}
-      {badge ? <span className="absolute right-[18%] top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-danger px-1 text-[10px] font-800 text-white">{badge}</span> : null}
     </button>
+  );
+}
+
+function MoreSheet({ open, onClose, onGo }: { open: boolean; onClose: () => void; onGo: (to: string) => void }) {
+  const { profile, currentAgency } = useWorkspace();
+  const { theme, toggle } = useTheme();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const more = allDestinations.filter((d) => !TAB_PATHS.has(d.to));
+
+  return (
+    <>
+      <button aria-label="Închide" onClick={onClose}
+        className={cn("fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm transition-opacity", open ? "opacity-100" : "pointer-events-none opacity-0")} />
+      <div role="dialog" aria-modal="true"
+        className={cn("fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-border bg-card transition-transform duration-300", open ? "translate-y-0" : "translate-y-full")}>
+        <div className="mx-auto max-w-[680px] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/12 text-sm font-800 text-primary">{(profile.name || "?").slice(0, 2).toUpperCase()}</span>
+            <div className="min-w-0">
+              <p className="truncate font-700">{profile.name || "Cont"}</p>
+              <p className="truncate text-xs text-muted-foreground">{currentAgency.name}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {more.map((d) => (
+              <button key={d.to} onClick={() => onGo(d.to)}
+                className="flex min-h-[52px] items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-left text-sm font-600 transition active:bg-muted">
+                <d.icon className="h-[18px] w-[18px] shrink-0 text-muted-foreground" />
+                <span className="truncate">{d.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button onClick={toggle}
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-600 transition active:bg-muted">
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? "Temă deschisă" : "Temă închisă"}
+            </button>
+            <button onClick={() => { void signOut(); navigate("/login"); }}
+              className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-border text-sm font-600 text-danger transition active:bg-danger/10">
+              <LogOut className="h-4 w-4" /> Deconectare
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

@@ -29,3 +29,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </ThemeProvider>
   </React.StrictMode>
 );
+
+// Register the PWA service worker in production only (it would fight Vite's HMR
+// in dev). Gives fast repeat loads; the SW keeps navigations network-first so
+// Cloudflare deploys are never stuck behind a stale cache.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* non-fatal */ });
+  });
+}

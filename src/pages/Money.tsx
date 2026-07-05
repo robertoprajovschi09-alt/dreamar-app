@@ -4,6 +4,7 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { useClients } from "@/lib/clients";
 import { useMoney, type YanisDeal, type InvoiceStatus } from "@/lib/money";
 import { useToast } from "@/lib/toast";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Client } from "@/data/sample";
 import { Check, Copy, Plus, Trash2, Wallet, Coins, ShieldCheck, Car, FileText } from "lucide-react";
@@ -89,6 +90,7 @@ function Block({ icon: Icon, tone, title, right, children }: { icon: typeof Wall
 /* ── 1 · Încasări luna curentă ───────────────────────────────────────────── */
 function Collections({ money, clients }: { money: MoneyApi; clients: Client[] }) {
   const { collections, overdueCollections, updateCollection, removeCollection, addCollection, generateFromRetainers } = money;
+  const isMobile = useIsMobile();
   const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "Client" : "—"); }, [clients]);
   const rows = [...collections].sort((a, b) => nameOf(a.clientId).localeCompare(nameOf(b.clientId)) || a.dueDay - b.dueDay);
   const overdueDays = useMemo(() => new Map(overdueCollections.map((o) => [o.id, o.daysOverdue] as const)), [overdueCollections]);
@@ -122,18 +124,38 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
       ) : (
         rows.map((r) => {
           const od = overdueDays.get(r.id);
-          return (
-          <div key={r.id} className={cn("group flex items-center gap-2 border-t border-border/60 border-l-2 px-4 py-2 sm:gap-3", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent")}>
-            <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
-              {od !== undefined && <span className="text-[11px] font-700 text-danger">{od === 1 ? "scadent de 1 zi" : `scadent de ${od} zile`}</span>}
+          const overdueLabel = od !== undefined ? <span className="text-[11px] font-700 text-danger">{od === 1 ? "scadent de 1 zi" : `scadent de ${od} zile`}</span> : null;
+          const accent = cn("border-t border-border/60 border-l-2", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent");
+          return isMobile ? (
+            /* Mobile: stacked card — name + status on top, amount + due day below. */
+            <div key={r.id} className={cn("px-4 py-2.5", accent)}>
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
+                  {overdueLabel}
+                </div>
+                <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
+                <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-28 text-right" />
+                <span className="text-xs text-muted-foreground">lei</span>
+                <span className="ml-auto text-xs text-muted-foreground">scadent pe</span>
+                <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
+              </div>
             </div>
-            <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-24 text-right" />
-            <span className="text-xs text-muted-foreground">pe</span>
-            <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
-            <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
-            <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
-          </div>
+          ) : (
+            <div key={r.id} className={cn("group flex items-center gap-2 px-4 py-2 sm:gap-3", accent)}>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
+                {overdueLabel}
+              </div>
+              <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-24 text-right" />
+              <span className="text-xs text-muted-foreground">pe</span>
+              <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
+              <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
+              <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+            </div>
           );
         })
       )}
@@ -202,6 +224,7 @@ function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
 function Yanis({ money }: { money: MoneyApi }) {
   const { deals, addDeal, updateDeal, removeDeal } = money;
   const { push } = useToast();
+  const isMobile = useIsMobile();
   const total = (d: YanisDeal) => d.commission + d.markup;
 
   // Quick-add: 4 câmpuri (dată = azi, mașină, comision, vândută) — sub 10 secunde.
@@ -238,27 +261,50 @@ function Yanis({ money }: { money: MoneyApi }) {
         <div className="bg-card px-4 py-3"><p className="text-xs text-muted-foreground">Luna asta</p><p className="font-display text-xl font-800">{lei(monthSum)}</p></div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[720px]">
-          <div className="flex items-center gap-2 border-t border-border/60 bg-muted/20 px-4 py-2 text-[11px] font-700 uppercase tracking-wide text-muted-foreground">
-            <span className="w-16">Dată</span><span className="flex-1">Mașină</span><span className="w-28">Link clip</span><span className="w-16 text-center">Vândută</span><span className="w-20 text-right">Comision</span><span className="w-20 text-right">Adaos</span><span className="w-16 text-center">Plătit</span><span className="w-6" />
-          </div>
-          {deals.length === 0 ? (
-            <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun rând încă.</p>
-          ) : deals.map((d) => (
-            <div key={d.id} className="group flex items-center gap-2 border-t border-border/60 px-4 py-2">
-              <input type="date" value={d.date} onChange={(e) => void updateDeal(d.id, { date: e.target.value })} className="h-9 w-16 rounded-lg border border-input bg-card px-1 text-[11px] ring-focus" />
-              <span className="flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="ex. VW Golf 2018" /></span>
-              <span className="w-28"><TextInput value={d.clipLink} onCommit={(s) => void updateDeal(d.id, { clipLink: s })} placeholder="link" /></span>
-              <span className="grid w-16 place-items-center"><Toggle on={d.sold} onToggle={() => void updateDeal(d.id, { sold: !d.sold })} onLabel="Da" offLabel="Nu" /></span>
-              <span className="w-20"><NumInput value={d.commission} onCommit={(n) => void updateDeal(d.id, { commission: n })} className="w-full text-right" /></span>
-              <span className="w-20"><NumInput value={d.markup} onCommit={(n) => void updateDeal(d.id, { markup: n })} className="w-full text-right" /></span>
-              <span className="grid w-16 place-items-center"><Toggle on={d.paid} onToggle={() => void updateDeal(d.id, { paid: !d.paid })} onLabel="Da" offLabel="Nu" /></span>
-              <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="w-6 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+      {deals.length === 0 ? (
+        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun rând încă.</p>
+      ) : isMobile ? (
+        /* Mobile: one card per deal — no horizontal scroll. */
+        deals.map((d) => (
+          <div key={d.id} className="border-t border-border/60 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="min-w-0 flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="Mașină — ex. VW Golf 2018" /></span>
+              <span className="shrink-0 font-display text-base font-800">{lei(total(d))}</span>
+              <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
             </div>
-          ))}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="block text-[11px] font-700 text-muted-foreground">Comision<NumInput value={d.commission} onCommit={(n) => void updateDeal(d.id, { commission: n })} className="mt-0.5 block w-full text-right" /></label>
+              <label className="block text-[11px] font-700 text-muted-foreground">Adaos<NumInput value={d.markup} onCommit={(n) => void updateDeal(d.id, { markup: n })} className="mt-0.5 block w-full text-right" /></label>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <input type="date" value={d.date} onChange={(e) => void updateDeal(d.id, { date: e.target.value })} className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-xs ring-focus" />
+              <Toggle on={d.sold} onToggle={() => void updateDeal(d.id, { sold: !d.sold })} onLabel="Vândută" offLabel="Nevândută" />
+              <Toggle on={d.paid} onToggle={() => void updateDeal(d.id, { paid: !d.paid })} onLabel="Plătit" offLabel="Neplătit" />
+            </div>
+            <TextInput value={d.clipLink} onCommit={(s) => void updateDeal(d.id, { clipLink: s })} placeholder="Link clip (opțional)" className="mt-2 w-full" />
+          </div>
+        ))
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[720px]">
+            <div className="flex items-center gap-2 border-t border-border/60 bg-muted/20 px-4 py-2 text-[11px] font-700 uppercase tracking-wide text-muted-foreground">
+              <span className="w-16">Dată</span><span className="flex-1">Mașină</span><span className="w-28">Link clip</span><span className="w-16 text-center">Vândută</span><span className="w-20 text-right">Comision</span><span className="w-20 text-right">Adaos</span><span className="w-16 text-center">Plătit</span><span className="w-6" />
+            </div>
+            {deals.map((d) => (
+              <div key={d.id} className="group flex items-center gap-2 border-t border-border/60 px-4 py-2">
+                <input type="date" value={d.date} onChange={(e) => void updateDeal(d.id, { date: e.target.value })} className="h-9 w-16 rounded-lg border border-input bg-card px-1 text-[11px] ring-focus" />
+                <span className="flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="ex. VW Golf 2018" /></span>
+                <span className="w-28"><TextInput value={d.clipLink} onCommit={(s) => void updateDeal(d.id, { clipLink: s })} placeholder="link" /></span>
+                <span className="grid w-16 place-items-center"><Toggle on={d.sold} onToggle={() => void updateDeal(d.id, { sold: !d.sold })} onLabel="Da" offLabel="Nu" /></span>
+                <span className="w-20"><NumInput value={d.commission} onCommit={(n) => void updateDeal(d.id, { commission: n })} className="w-full text-right" /></span>
+                <span className="w-20"><NumInput value={d.markup} onCommit={(n) => void updateDeal(d.id, { markup: n })} className="w-full text-right" /></span>
+                <span className="grid w-16 place-items-center"><Toggle on={d.paid} onToggle={() => void updateDeal(d.id, { paid: !d.paid })} onLabel="Da" offLabel="Nu" /></span>
+                <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="w-6 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/20 px-4 py-3 sm:flex-row sm:items-center">
         <input type="date" value={qDate} onChange={(e) => setQDate(e.target.value)} className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm ring-focus sm:w-36" />
         <input value={qCar} onChange={(e) => setQCar(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="Mașină (ex. VW Golf 2018)" className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />

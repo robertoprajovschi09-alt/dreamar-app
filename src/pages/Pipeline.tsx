@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader, Panel, Button, Input, Select } from "@/components/ui";
 import { Drawer, Modal } from "@/components/overlay";
 import { PageSkeleton } from "@/components/Skeleton";
-import { useClips, CLIP_STATES, clipStateLabel, type Clip, type ClipState } from "@/lib/clips";
+import { useClips, CLIP_STATES, CLIP_STATE_ORDER, clipStateLabel, type Clip, type ClipState } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useToast } from "@/lib/toast";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { cn } from "@/lib/utils";
-import { Layers, Link2, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Layers, Link2, Plus, Trash2 } from "lucide-react";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -17,6 +18,7 @@ export default function Pipeline() {
   const { clips, loading, updateClip, deleteClip, batchCreate } = useClips();
   const { clients, loading: lc } = useClients();
   const { push } = useToast();
+  const isMobile = useIsMobile();
   const [client, setClient] = useState("all");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<ClipState | null>(null);
@@ -42,14 +44,19 @@ export default function Pipeline() {
     else updateClip(id, { state: target, scheduledDate: null });                  // non-calendar states carry no date
     setDraggingId(null); setOverCol(null);
   }
+  // Touch-safe alternative to drag: advance a clip to the next pipeline state.
+  function advance(c: Clip) {
+    const next = CLIP_STATE_ORDER[CLIP_STATE_ORDER.indexOf(c.state) + 1];
+    if (next) moveTo(c.id, next);
+  }
 
   if (loading || lc) return <PageSkeleton variant="dashboard" />;
 
   return (
     <>
-      <PageHeader title="Pipeline" subtitle="Fiecare clip, de la idee la postare · trage între coloane">
+      <PageHeader title="Pipeline" subtitle={isMobile ? "Apasă Avansează ca să muți un clip mai departe" : "Fiecare clip, de la idee la postare · trage între coloane"}>
         <Select value={client} onChange={(e) => setClient(e.target.value)} className="w-40"><option value="all">Toți clienții</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
-        <Button variant="primary" onClick={() => setBatchOpen(true)}><Layers className="h-4 w-4" /> Adaugă în lot</Button>
+        {!isMobile && <Button variant="primary" onClick={() => setBatchOpen(true)}><Layers className="h-4 w-4" /> Adaugă în lot</Button>}
       </PageHeader>
 
       <div className="overflow-x-auto pb-2">
@@ -68,16 +75,26 @@ export default function Pipeline() {
                   <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{col.length}</span>
                 </div>
                 <Panel className={cn("min-h-[60vh] space-y-2 p-2 transition", isOver && "ring-2 ring-inset ring-primary/40")}>
-                  {col.map((c) => (
-                    <button key={c.id} draggable
-                      onDragStart={() => setDraggingId(c.id)} onDragEnd={() => { setDraggingId(null); setOverCol(null); }}
-                      onClick={() => setEditId(c.id)}
-                      className={cn("block w-full cursor-grab rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary/40 active:cursor-grabbing", draggingId === c.id && "opacity-40")}>
-                      <p className="truncate text-sm font-600">{c.title || "(fără titlu)"}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</p>
-                      {c.scheduledDate && needsDate(c.state) && <p className="mt-1 text-[11px] font-600 text-primary">{c.scheduledDate}</p>}
-                    </button>
-                  ))}
+                  {col.map((c) => {
+                    const next = CLIP_STATE_ORDER[CLIP_STATE_ORDER.indexOf(c.state) + 1];
+                    return (
+                      <div key={c.id} draggable={!isMobile}
+                        onDragStart={() => setDraggingId(c.id)} onDragEnd={() => { setDraggingId(null); setOverCol(null); }}
+                        className={cn("overflow-hidden rounded-xl border border-border bg-card transition hover:border-primary/40", !isMobile && "cursor-grab active:cursor-grabbing", draggingId === c.id && "opacity-40")}>
+                        <button onClick={() => setEditId(c.id)} className="block w-full p-3 text-left">
+                          <p className="truncate text-sm font-600">{c.title || "(fără titlu)"}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</p>
+                          {c.scheduledDate && needsDate(c.state) && <p className="mt-1 text-[11px] font-600 text-primary">{c.scheduledDate}</p>}
+                        </button>
+                        {isMobile && next && (
+                          <button onClick={() => advance(c)}
+                            className="flex min-h-[40px] w-full items-center justify-center gap-1 border-t border-border bg-primary/[0.06] text-xs font-700 text-primary transition active:bg-primary/15">
+                            Avansează <ArrowRight className="h-3.5 w-3.5" /> {clipStateLabel(next)}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                   {col.length === 0 && <p className="py-6 text-center text-xs text-muted-foreground/70">—</p>}
                 </Panel>
               </div>
@@ -85,6 +102,13 @@ export default function Pipeline() {
           })}
         </div>
       </div>
+
+      {isMobile && (
+        <button aria-label="Adaugă în lot" onClick={() => setBatchOpen(true)}
+          className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition active:scale-95">
+          <Layers className="h-6 w-6" />
+        </button>
+      )}
 
       <BatchModal open={batchOpen} onClose={() => setBatchOpen(false)} clients={clients}
         onCreate={async (clientId, state, count, prefix) => {
@@ -105,6 +129,8 @@ export default function Pipeline() {
 
 function DateModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: (date: string) => void }) {
   const [date, setDate] = useState(todayISO());
+  // The modal stays mounted; reset to today each time it reopens for a new clip.
+  useEffect(() => { if (open) setDate(todayISO()); }, [open]);
   return (
     <Modal open={open} onClose={onClose} title="Alege o dată" subtitle="Un clip Programat are nevoie de o dată" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={() => onConfirm(date)}>Programează</Button></>}>
