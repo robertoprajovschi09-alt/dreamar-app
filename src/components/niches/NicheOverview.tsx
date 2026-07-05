@@ -5,6 +5,7 @@ import { Modal } from "@/components/overlay";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/lib/toast";
 import { nicheSpec, nicheItem, NICHE_ICONS, type NicheKey, type MetricField, type ItemField, type NicheItemConfig } from "@/lib/niches";
+import { clipStateLabel, type ClipState } from "@/lib/clips";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -36,7 +37,7 @@ export default function NicheOverview({ clientId, niche }: { clientId: string; n
       supabase.from("clients").select("agency_id").eq("id", clientId).maybeSingle(),
       supabase.from("niche_items").select("id, name, attributes").eq("client_id", clientId).order("sort_order").order("created_at"),
       supabase.from("business_impact_entries").select("source, calls_received, relevant_dms, bookings, appointments, orders, sales, viewings, contracts, revenue_estimate").eq("client_id", clientId).eq("period_month", month),
-      supabase.from("content_posts").select("id, title, platform, status, scheduled_date, created_at").eq("client_id", clientId).order("created_at", { ascending: false }).limit(5),
+      supabase.from("clips").select("id, title, platform, state, scheduled_date, created_at").eq("client_id", clientId).order("created_at", { ascending: false }).limit(5),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows = (im.data ?? []) as any[];
@@ -48,7 +49,7 @@ export default function NicheOverview({ clientId, niche }: { clientId: string; n
     setItems((it.data ?? []) as Item[]);
     setImpact(merged);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setPosts((ps.data ?? []).map((p: any) => ({ id: p.id, title: p.title, platform: p.platform, status: p.status, date: p.scheduled_date || p.created_at })));
+    setPosts((ps.data ?? []).map((p: any) => ({ id: p.id, title: p.title, platform: p.platform, status: p.state, date: p.scheduled_date || p.created_at })));
     setLoading(false);
   }
   useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clientId]);
@@ -118,7 +119,7 @@ export default function NicheOverview({ clientId, niche }: { clientId: string; n
               <div key={p.id} className="flex items-center gap-3 py-2.5">
                 <span className="flex-1 truncate text-sm font-600">{p.title}</span>
                 {p.platform && <Badge tone="neutral">{p.platform}</Badge>}
-                <Badge tone={p.status === "published" ? "success" : p.status === "approved" ? "info" : "neutral"}>{p.status}</Badge>
+                <Badge tone={p.status === "posted" ? "success" : p.status === "scheduled" ? "info" : "neutral"}>{clipStateLabel(p.status as ClipState)}</Badge>
               </div>
             ))}
           </div>

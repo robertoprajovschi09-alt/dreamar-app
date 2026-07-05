@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useContent } from "./content";
+import { useClips } from "./clips";
 import { useClients } from "./clients";
 import { CalendarPlus, type LucideIcon } from "lucide-react";
 
@@ -26,7 +26,7 @@ const RANK: Record<Severity, number> = { red: 0, amber: 1, green: 2, grey: 3 };
 // approvals and ads removed, the remaining signal is content coverage: which
 // clients have nothing scheduled.
 export function useInbox() {
-  const { posts, loading: lc } = useContent();
+  const { clips, loading: lc } = useClips();
   const { clients, loading: lcl } = useClients();
   const loading = lc || lcl;
 
@@ -34,7 +34,7 @@ export function useInbox() {
     const items: InboxItem[] = [];
 
     // 🟡 client with nothing scheduled (match by id)
-    clients.filter((c) => !posts.some((p) => p.clientId === c.id && p.status === "scheduled")).forEach((c) => {
+    clients.filter((c) => !clips.some((cl) => cl.clientId === c.id && cl.state === "scheduled")).forEach((c) => {
       items.push({ id: `nc-${c.id}`, kind: "nocontent", severity: "amber", icon: CalendarPlus, clientName: c.name, title: `${c.name} — fără conținut programat`, subtitle: "Planifică-i săptămâna pe desktop", actionLabel: "" });
     });
 
@@ -43,5 +43,5 @@ export function useInbox() {
     const urgent = items.filter((i) => i.severity === "red").length;
     const review = items.filter((i) => i.severity === "amber").length;
     return { feed, items, urgent, review, count: urgent + review, loading };
-  }, [posts, clients, loading]);
+  }, [clips, clients, loading]);
 }

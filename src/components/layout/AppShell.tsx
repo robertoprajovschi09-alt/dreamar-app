@@ -5,7 +5,7 @@ import { Topbar } from "./Topbar";
 import { cn } from "@/lib/utils";
 import { UIProvider } from "@/lib/ui-context";
 import { ClientsProvider } from "@/lib/clients";
-import { ContentProvider } from "@/lib/content";
+import { ClipsProvider } from "@/lib/clips";
 import { LibraryProvider } from "@/lib/library";
 import { CampaignsProvider } from "@/lib/campaigns";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -15,7 +15,7 @@ export function AppShell() {
   const location = useLocation();
   return (
     <ClientsProvider>
-    <ContentProvider>
+    <ClipsProvider>
     <LibraryProvider>
     <CampaignsProvider>
     <UIProvider>
@@ -60,7 +60,7 @@ export function AppShell() {
     </UIProvider>
     </CampaignsProvider>
     </LibraryProvider>
-    </ContentProvider>
+    </ClipsProvider>
     </ClientsProvider>
   );
 }

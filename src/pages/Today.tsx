@@ -5,14 +5,14 @@ import { PageSkeleton } from "@/components/Skeleton";
 import { QuickAdd } from "@/components/QuickAdd";
 import { useUI } from "@/lib/ui-context";
 import { useWorkspace } from "@/lib/workspace";
-import { useContent, type UIPostStatus } from "@/lib/content";
+import { useClips, clipStateLabel, type Clip } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useFilmShots, type FilmShot } from "@/lib/filmshots";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
 import {
-  CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Minus, Send, Trash2, Video, X, type LucideIcon,
+  CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
 } from "lucide-react";
 
 /*
@@ -34,8 +34,8 @@ export default function Today() {
   const isMobile = useIsMobile();
   const { openNewClient } = useUI();
   const { profile } = useWorkspace();
-  const content = useContent();
-  const { clients, loading: lc, bumpClipBuffer } = useClients();
+  const clipsCtx = useClips();
+  const { clients, loading: lc } = useClients();
   const film = useFilmShots();
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
@@ -45,15 +45,15 @@ export default function Today() {
   const day = today.getDay(); // 0 Sun … 6 Sat
   const active = useMemo(() => clients.filter((c) => c.status === "active"), [clients]);
 
-  if (content.loading || lc) return <PageSkeleton variant="dashboard" />;
+  if (clipsCtx.loading || lc) return <PageSkeleton variant="dashboard" />;
 
   return (
     <>
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} />
 
       <div className="space-y-3">
-        <PostsToday content={content} onCalendar={() => navigate("/content?tab=calendar")} />
-        <ClipBuffer active={active} bump={bumpClipBuffer} />
+        <PostsToday clipsCtx={clipsCtx} onCalendar={() => navigate("/content?tab=calendar")} />
+        <ClipBuffer active={active} clips={clipsCtx.clips} />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
         <FilmList film={film} clients={clients} />
       </div>
@@ -61,9 +61,8 @@ export default function Today() {
       <QuickAdd
         clients={clients}
         mobile={isMobile}
+        onCreateClip={(input) => void clipsCtx.createClip(input)}
         onAddShot={(d, c) => void film.addShot(d, c)}
-        onAddClip={(c) => bumpClipBuffer(c, 1)}
-        onAddPost={(i) => void content.createPost({ clientId: i.clientId, title: i.title, platform: i.platform, status: "scheduled", date: i.date })}
         onNewClient={openNewClient}
       />
     </>
@@ -95,46 +94,40 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: ()
 const countPill = (n: number | string) => <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{n}</span>;
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
+// The clip is the single source of truth. Show today's scheduled/posted clips;
+// the checkbox flips scheduled ⇄ posted on the same clip.
 const POST_TIMES_KEY = "dreamar-post-times";
-const STATUS_LABEL: Record<UIPostStatus, string> = {
-  idea: "Idee", script: "Scenariu", filming: "Filmare", editing: "Editare", approval: "Pentru aprobare",
-  approved: "Aprobat", scheduled: "Programat", published: "Publicat", analyzed: "Analizat",
-};
-const isPosted = (s: UIPostStatus) => s === "published" || s === "analyzed";
-function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useContent>; onCalendar: () => void }) {
-  const { posts, updatePost } = content;
+function PostsToday({ clipsCtx, onCalendar }: { clipsCtx: ReturnType<typeof useClips>; onCalendar: () => void }) {
+  const { clips, updateClip } = clipsCtx;
   const todayISO = isoOf(new Date());
-  // Single source of truth = the calendar. Show EVERY post dated today, whatever
-  // its production status — status is a badge, not a filter (a post placed on the
-  // calendar for today must always appear here). Not-yet-posted rows come first.
-  const list = posts
-    .filter((p) => p.date === todayISO)
-    .sort((a, b) => Number(isPosted(a.status)) - Number(isPosted(b.status)) || a.clientName.localeCompare(b.clientName));
-  const doneCount = list.filter((p) => isPosted(p.status)).length;
+  const list = clips
+    .filter((c) => (c.state === "scheduled" || c.state === "posted") && c.scheduledDate === todayISO)
+    .sort((a, b) => Number(a.state === "posted") - Number(b.state === "posted") || a.clientName.localeCompare(b.clientName));
+  const doneCount = list.filter((c) => c.state === "posted").length;
 
   const [times, setTimes] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem(POST_TIMES_KEY) || "{}"); } catch { return {}; } });
   const setTime = (id: string, t: string) => setTimes((prev) => { const next = { ...prev, [id]: t }; try { localStorage.setItem(POST_TIMES_KEY, JSON.stringify(next)); } catch { /* private */ } return next; });
 
   return (
-    <Section icon={Send} tone="text-primary" title="De postat azi" right={list.length ? countPill(doneCount) : null}>
+    <Section icon={Send} tone="text-primary" title="De postat azi" right={list.length ? countPill(`${doneCount}/${list.length}`) : null}>
       {list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 border-t border-border/60 px-4 py-8 text-center">
           <span className="text-sm text-muted-foreground">Nimic programat astăzi.</span>
           <Button size="sm" variant="outline" onClick={onCalendar}><CalendarPlus className="h-4 w-4" /> Deschide calendarul</Button>
         </div>
       ) : (
-        list.map((p) => {
-          const posted = isPosted(p.status);
+        list.map((c) => {
+          const posted = c.state === "posted";
           return (
-            <div key={p.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
-              <Checkbox checked={posted} onChange={() => void updatePost(p.id, { status: posted ? "scheduled" : "published" })} label={`Marchează „${p.title}” ca postat`} />
-              <input type="time" value={times[p.id] ?? ""} onChange={(e) => setTime(p.id, e.target.value)} aria-label="Ora postării"
+            <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
+              <Checkbox checked={posted} onChange={() => void updateClip(c.id, { state: posted ? "scheduled" : "posted" })} label={`Marchează „${c.title}” ca postat`} />
+              <input type="time" value={times[c.id] ?? ""} onChange={(e) => setTime(c.id, e.target.value)} aria-label="Ora postării"
                 className="h-8 w-[4.5rem] shrink-0 rounded-lg border border-input bg-card px-1.5 text-xs tabular-nums ring-focus" />
               <span className="min-w-0 flex-1">
-                <span className={cn("block truncate text-sm font-600", posted && "text-muted-foreground line-through")}>{p.title}</span>
-                <span className="block truncate text-xs text-muted-foreground">{p.clientName}{p.platform ? ` · ${p.platform}` : ""}</span>
+                <span className={cn("block truncate text-sm font-600", posted && "text-muted-foreground line-through")}>{c.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</span>
               </span>
-              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-700", posted ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}>{STATUS_LABEL[p.status]}</span>
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-700", posted ? "bg-success/15 text-success" : "bg-primary/15 text-primary")}>{clipStateLabel(c.state)}</span>
             </div>
           );
         })
@@ -144,31 +137,32 @@ function PostsToday({ content, onCalendar }: { content: ReturnType<typeof useCon
 }
 
 /* ── 2 · Tampon clipuri ──────────────────────────────────────────────────── */
-// Reads clip_buffer straight off the client (owned by ClientsProvider); mutates
-// via the provider's bumpClipBuffer. No local copy of the value.
-function ClipBuffer({ active, bump }: { active: Client[]; bump: (id: string, delta: number) => void }) {
+// Tampon = how many of the client's clips are in the "Editat" state. Derived,
+// read-only — no manual counter anymore.
+function ClipBuffer({ active, clips }: { active: Client[]; clips: Clip[] }) {
+  const editedByClient = useMemo(() => {
+    const m: Record<string, number> = {};
+    clips.forEach((c) => { if (c.state === "edited" && c.clientId) m[c.clientId] = (m[c.clientId] ?? 0) + 1; });
+    return m;
+  }, [clips]);
   return (
     <Section icon={Video} tone="text-[hsl(var(--warning))]" title="Tampon clipuri"
-      right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX}</span>}>
+      right={<span className="text-[11px] font-600 text-muted-foreground">țintă {BUFFER_MIN}–{BUFFER_MAX} · în Editat</span>}>
       {active.length === 0 ? (
         <p className="border-t border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">Niciun client activ.</p>
       ) : active.map((c) => {
-        const n = c.clipBuffer ?? 0;
-        const state = n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "Sub tampon" }
+        const n = editedByClient[c.id] ?? 0;
+        const st = n < BUFFER_MIN ? { dot: "bg-danger", text: "text-danger", label: "Sub tampon" }
           : n <= BUFFER_MAX ? { dot: "bg-success", text: "text-success", label: "OK" }
           : { dot: "bg-muted-foreground", text: "text-muted-foreground", label: "Buffer mare" };
         return (
           <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-2.5">
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", state.dot)} />
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", st.dot)} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-600">{c.name}</span>
-              <span className={cn("text-[11px] font-700", state.text)}>{state.label}</span>
+              <span className={cn("text-[11px] font-700", st.text)}>{st.label}</span>
             </span>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => bump(c.id, -1)} disabled={n === 0} aria-label="Scade" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"><Minus className="h-4 w-4" /></button>
-              <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", state.text)}>{n}</span>
-              <button onClick={() => bump(c.id, 1)} aria-label="Crește" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-muted-foreground transition hover:bg-muted"><Plus className="h-4 w-4" /></button>
-            </div>
+            <span className={cn("min-w-[2ch] text-center font-display text-xl font-800", st.text)}>{n}</span>
           </div>
         );
       })}

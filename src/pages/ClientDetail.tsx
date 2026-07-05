@@ -9,7 +9,7 @@ import { clients as sampleClients, nicheLabels, billingTypeLabels, videos, type 
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace";
 import { useClients, type ClientPatch } from "@/lib/clients";
-import { useContent } from "@/lib/content";
+import { useClips, clipStateLabel } from "@/lib/clips";
 import { useLibrary } from "@/lib/library";
 import { useToast } from "@/lib/toast";
 import { supabase } from "@/lib/supabase";
@@ -39,10 +39,6 @@ import { downloadReportImage, buildReportText } from "@/lib/reportImage";
 import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clientcounters";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
-const POST_STATUS_LABEL: Record<string, string> = {
-  idea: "Idee", script: "Scenariu", filming: "Filmare", editing: "Editare", approval: "Pentru aprobare",
-  approved: "Aprobat", scheduled: "Programat", published: "Publicat", analyzed: "Analizat",
-};
 const firstOfMonthISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +51,7 @@ export default function ClientDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const cl = useClients();
-  const content = useContent();
+  const clipsCtx = useClips();
   const lib = useLibrary();
   const ws = useWorkspace();
   const { push } = useToast();
@@ -131,12 +127,11 @@ export default function ClientDetail() {
   const det = cl.live ? cl.detailsFor(client.id) : undefined;
   const email = cl.live ? det?.email : `contact@${client.id}.ro`;
   const clientVideos = (cl.live ? lib.videos : videos).filter((v) => v.client === client.name);
-  const clientPosts = content.posts.filter((p) => p.clientId === client.id);
+  const clientClips = clipsCtx.clips.filter((c) => c.clientId === client.id);
 
-  // Report figures (this month). Published posts are counted straight from the
-  // calendar for the current month.
+  // Report figures (this month). Posted clips counted straight from the pipeline.
   const monthKey = new Date().toISOString().slice(0, 7);
-  const publishedThisMonth = clientPosts.filter((p) => p.status === "published" && p.date && p.date.slice(0, 7) === monthKey).length;
+  const publishedThisMonth = clientClips.filter((c) => c.state === "posted" && c.scheduledDate && c.scheduledDate.slice(0, 7) === monthKey).length;
   const monthLabel = new Date().toLocaleDateString("ro-RO", { month: "long", year: "numeric" });
   const isBarter = (client.billingType ?? "retainer") === "barter";
 
@@ -284,23 +279,23 @@ export default function ClientDetail() {
       {tab === "Prezentare" && (cl.live ? <NicheOverview clientId={client.id} niche={client.niche} /> : <NicheDashboard client={client} />)}
 
       {tab === "Conținut" && (
-        <SectionCard title="Conținut programat" subtitle={`${clientPosts.length} ${clientPosts.length === 1 ? "postare" : "postări"} pentru ${client.name}`} action={<Link to="/content" className="text-xs font-700 text-primary">Deschide calendarul</Link>}>
-          {clientPosts.length ? (
+        <SectionCard title="Clipuri" subtitle={`${clientClips.length} ${clientClips.length === 1 ? "clip" : "clipuri"} pentru ${client.name}`} action={<Link to="/pipeline" className="text-xs font-700 text-primary">Deschide Pipeline</Link>}>
+          {clientClips.length ? (
             <Table>
-              <THead><TH>Titlu</TH><TH>Platformă</TH><TH>Dată</TH><TH>Status</TH></THead>
+              <THead><TH>Titlu</TH><TH>Platformă</TH><TH>Dată</TH><TH>Stare</TH></THead>
               <tbody>
-                {clientPosts.slice().sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")).map((p) => (
-                  <TR key={p.id}>
-                    <TD className="max-w-[300px]"><p className="truncate font-600">{p.title}</p></TD>
-                    <TD>{p.platform ? <Badge tone="neutral">{p.platform}</Badge> : <span className="text-muted-foreground">—</span>}</TD>
-                    <TD className="text-muted-foreground">{p.date ?? "—"}</TD>
-                    <TD className="text-muted-foreground">{POST_STATUS_LABEL[p.status] ?? p.status}</TD>
+                {clientClips.slice().sort((a, b) => (a.scheduledDate ?? "9999").localeCompare(b.scheduledDate ?? "9999")).map((c) => (
+                  <TR key={c.id}>
+                    <TD className="max-w-[300px]"><p className="truncate font-600">{c.title}</p></TD>
+                    <TD>{c.platform ? <Badge tone="neutral">{c.platform}</Badge> : <span className="text-muted-foreground">—</span>}</TD>
+                    <TD className="text-muted-foreground">{c.scheduledDate ?? "—"}</TD>
+                    <TD className="text-muted-foreground">{clipStateLabel(c.state)}</TD>
                   </TR>
                 ))}
               </tbody>
             </Table>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun conținut. <Link to="/content" className="font-700 text-primary">Planifică în calendar</Link>.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Încă niciun clip. <Link to="/pipeline" className="font-700 text-primary">Adaugă în Pipeline</Link>.</p>
           )}
         </SectionCard>
       )}

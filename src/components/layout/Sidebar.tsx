@@ -12,6 +12,7 @@ import { Check, ChevronsUpDown, LogOut, X } from "lucide-react";
 // Warm the lazy route chunk on hover so navigation feels instant.
 const PREFETCH: Record<string, () => void> = {
   "/dashboard": () => void import("@/pages/Today"),
+  "/pipeline": () => void import("@/pages/Pipeline"),
   "/money": () => void import("@/pages/Money"),
   "/kill-list": () => void import("@/pages/KillList"),
   "/clients": () => void import("@/pages/Clients"),

@@ -79,7 +79,6 @@ export type Client = {
   retainer: number;
   billingType?: BillingType;
   deliverables?: number; // livrabile pe lună
-  clipBuffer?: number; // clipuri gata de postat (tampon)
   phone?: string;
   notes?: string;
   status: "active" | "paused";

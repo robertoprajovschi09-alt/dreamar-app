@@ -2,6 +2,7 @@ import {
   Anchor,
   Building2,
   CalendarDays,
+  Clapperboard,
   FileText,
   FolderOpen,
   ListTodo,
@@ -32,6 +33,7 @@ export const navGroups: NavGroup[] = [
   {
     items: [
       { label: "Azi", to: "/dashboard", icon: Target, end: true },
+      { label: "Pipeline", to: "/pipeline", icon: Clapperboard },
       { label: "Bani", to: "/money", icon: Wallet },
       { label: "Kill List", to: "/kill-list", icon: Skull },
       { label: "Clienți", to: "/clients", icon: Users, badge: 12 },
@@ -45,6 +47,7 @@ export const navGroups: NavGroup[] = [
 // limits reach. Includes the sub-pages that now live inside workspaces/clients.
 export const allDestinations: NavItem[] = [
   { label: "Azi", to: "/dashboard", icon: Target, end: true },
+  { label: "Pipeline", to: "/pipeline", icon: Clapperboard },
   { label: "Bani", to: "/money", icon: Wallet },
   { label: "Kill List", to: "/kill-list", icon: Skull },
   { label: "Clienți", to: "/clients", icon: Users },

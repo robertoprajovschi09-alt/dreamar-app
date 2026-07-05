@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ClientsProvider } from "@/lib/clients";
-import { ContentProvider } from "@/lib/content";
+import { ClipsProvider } from "@/lib/clips";
 import { LibraryProvider } from "@/lib/library";
 import { UIProvider } from "@/lib/ui-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -18,13 +18,13 @@ type Tab = "home" | "inbox" | "clients" | "account";
 export default function MobileShell() {
   return (
     <ClientsProvider>
-      <ContentProvider>
+      <ClipsProvider>
         <LibraryProvider>
           <UIProvider>
             <MobileInner />
           </UIProvider>
         </LibraryProvider>
-      </ContentProvider>
+      </ClipsProvider>
     </ClientsProvider>
   );
 }
