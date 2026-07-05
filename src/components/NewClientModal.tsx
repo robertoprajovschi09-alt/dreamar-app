@@ -51,6 +51,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
   const [picked, setPicked] = useState<string[]>(["Instagram"]);
   const [objectives, setObjectives] = useState("");
   const [notes, setNotes] = useState("");
+  const [invoiced, setInvoiced] = useState(false);
   const [busy, setBusy] = useState(false);
 
   function reset() {
@@ -58,7 +59,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
     setName(""); setCity(""); setPhone(""); setRetainer(""); setBillingType("retainer"); setDeliverables("");
     setNiche(null);
     setPicked(["Instagram"]);
-    setObjectives(""); setNotes("");
+    setObjectives(""); setNotes(""); setInvoiced(false);
     setBusy(false);
   }
   function close() {
@@ -83,6 +84,7 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
       retainer: retainerNum,
       billingType,
       deliverables: delNum && Number.isFinite(delNum) ? delNum : null,
+      invoiced,
       notes: notes.trim(),
       platforms: picked,
       objectives: objectives.split(/[\n,]/).map((o) => o.trim()).filter(Boolean),
@@ -178,6 +180,13 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <Field label="Obiectivele lunii acesteia" full><textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Câte unul pe linie — ex. Generează 40 de lead-uri calificate, crește TikTok cu 15%…" /></Field>
           <Field label="Notițe" full><Input placeholder="Detalii interne despre client…" value={notes} onChange={(e) => setNotes(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void create(); }} /></Field>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-input bg-card p-3">
+            <input type="checkbox" checked={invoiced} onChange={(e) => setInvoiced(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+            <span className="text-sm">
+              <span className="font-600">Cu factură</span>
+              <span className="block text-xs text-muted-foreground">Apare lunar în blocul „Facturare" din pagina Bani.</span>
+            </span>
+          </label>
           <div className="flex items-center gap-2 rounded-lg bg-primary/[0.06] p-3 text-sm">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-muted-foreground">Un tablou de bord {niche ? nicheLabels[niche] : "personalizat"}, un calendar și un șablon de raport vor fi create automat.</span>

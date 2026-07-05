@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { PageHeader, Panel, Button, Select } from "@/components/ui";
 import { PageSkeleton } from "@/components/Skeleton";
 import { useClients } from "@/lib/clients";
-import { useMoney, type YanisDeal } from "@/lib/money";
+import { useMoney, type YanisDeal, type InvoiceStatus } from "@/lib/money";
 import { useToast } from "@/lib/toast";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Client } from "@/data/sample";
-import { Check, Copy, Plus, Trash2, Wallet, Coins, ShieldCheck, Car } from "lucide-react";
+import { Check, Copy, Plus, Trash2, Wallet, Coins, ShieldCheck, Car, FileText } from "lucide-react";
 
 type MoneyApi = ReturnType<typeof useMoney>;
 
@@ -26,6 +26,7 @@ export default function Money() {
       <PageHeader title="Bani" subtitle="Încasări, deconturi și runway" />
       <div className="space-y-4">
         <Collections money={money} clients={clients} />
+        <Facturare money={money} clients={clients} />
         <Yanis money={money} />
         <Buckets money={money} />
         <Runway money={money} />
@@ -87,9 +88,10 @@ function Block({ icon: Icon, tone, title, right, children }: { icon: typeof Wall
 
 /* ── 1 · Încasări luna curentă ───────────────────────────────────────────── */
 function Collections({ money, clients }: { money: MoneyApi; clients: Client[] }) {
-  const { collections, updateCollection, removeCollection, addCollection, generateFromRetainers } = money;
+  const { collections, overdueCollections, updateCollection, removeCollection, addCollection, generateFromRetainers } = money;
   const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "Client" : "—"); }, [clients]);
   const rows = [...collections].sort((a, b) => nameOf(a.clientId).localeCompare(nameOf(b.clientId)) || a.dueDay - b.dueDay);
+  const overdueDays = useMemo(() => new Map(overdueCollections.map((o) => [o.id, o.daysOverdue] as const)), [overdueCollections]);
 
   const collected = rows.filter((r) => r.collected).reduce((s, r) => s + r.amount, 0);
   const pending = rows.filter((r) => !r.collected).reduce((s, r) => s + r.amount, 0);
@@ -118,16 +120,22 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
           <Button size="sm" variant="outline" onClick={() => void generateFromRetainers(clients)}><Plus className="h-4 w-4" /> Generează din retainere</Button>
         </div>
       ) : (
-        rows.map((r) => (
-          <div key={r.id} className="group flex items-center gap-2 border-t border-border/60 px-4 py-2 sm:gap-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-600">{nameOf(r.clientId)}</span>
+        rows.map((r) => {
+          const od = overdueDays.get(r.id);
+          return (
+          <div key={r.id} className={cn("group flex items-center gap-2 border-t border-border/60 border-l-2 px-4 py-2 sm:gap-3", od !== undefined ? "border-l-danger bg-danger/[0.04]" : "border-l-transparent")}>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-600">{nameOf(r.clientId)}</span>
+              {od !== undefined && <span className="text-[11px] font-700 text-danger">{od === 1 ? "scadent de 1 zi" : `scadent de ${od} zile`}</span>}
+            </div>
             <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-24 text-right" />
             <span className="text-xs text-muted-foreground">pe</span>
             <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
             <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
             <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
           </div>
-        ))
+          );
+        })
       )}
 
       <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/20 px-4 py-3 sm:flex-row sm:items-center">
@@ -143,11 +151,68 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
   );
 }
 
-/* ── 2 · Decont Yanis ────────────────────────────────────────────────────── */
+/* ── 2 · Facturare (pregătire date — nu emite facturi fiscale) ───────────── */
+const RO_MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = { not_issued: "Neemisă", issued: "Emisă", collected: "Încasată" };
+
+function Facturare({ money, clients }: { money: MoneyApi; clients: Client[] }) {
+  const { invoices, setInvoice } = money;
+  const { push } = useToast();
+  const invoiced = clients.filter((c) => c.invoiced);
+  const now = new Date();
+  const monthName = RO_MONTHS[now.getMonth()];
+  const monthLabel = `${monthName} ${now.getFullYear()}`;
+  const byClient = useMemo(() => new Map(invoices.map((i) => [i.clientId, i] as const)), [invoices]);
+
+  function copy(client: Client, amount: number) {
+    const text = `${client.name}\n${amount} lei\n${monthLabel}\nServicii producție și editare video, luna ${monthName}`;
+    void navigator.clipboard?.writeText(text);
+    push({ tone: "success", title: "Date copiate", description: `${client.name} — gata de lipit în programul de facturare.` });
+  }
+
+  return (
+    <Block icon={FileText} tone="text-primary" title="Facturare">
+      {invoiced.length === 0 ? (
+        <p className="border-t border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">Niciun client „cu factură". Bifează „Cu factură" în setările clientului.</p>
+      ) : invoiced.map((c) => {
+        const inv = byClient.get(c.id);
+        const amount = inv?.amount ?? c.retainer ?? 0;
+        const status: InvoiceStatus = inv?.status ?? "not_issued";
+        return (
+          <div key={c.id} className="flex flex-col gap-2 border-t border-border/60 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-600">{c.name}</span>
+            <span className="text-xs text-muted-foreground sm:w-32">{monthLabel}</span>
+            <div className="flex items-center gap-1">
+              <NumInput value={amount} onCommit={(n) => void setInvoice(c.id, n, status)} className="w-24 text-right" />
+              <span className="text-xs text-muted-foreground">lei</span>
+            </div>
+            <Select value={status} onChange={(e) => void setInvoice(c.id, amount, e.target.value as InvoiceStatus)} className="sm:w-32">
+              {(Object.keys(INVOICE_STATUS_LABEL) as InvoiceStatus[]).map((k) => <option key={k} value={k}>{INVOICE_STATUS_LABEL[k]}</option>)}
+            </Select>
+            <Button size="sm" variant="outline" onClick={() => copy(c, amount)}><Copy className="h-4 w-4" /> Copiază datele</Button>
+          </div>
+        );
+      })}
+      <p className="border-t border-border/60 bg-muted/20 px-4 py-2.5 text-[11px] text-muted-foreground">Aplicația nu emite facturi fiscale — doar pregătește datele pentru programul tău de facturare.</p>
+    </Block>
+  );
+}
+
+/* ── 3 · Decont Yanis ────────────────────────────────────────────────────── */
 function Yanis({ money }: { money: MoneyApi }) {
   const { deals, addDeal, updateDeal, removeDeal } = money;
   const { push } = useToast();
   const total = (d: YanisDeal) => d.commission + d.markup;
+
+  // Quick-add: 4 câmpuri (dată = azi, mașină, comision, vândută) — sub 10 secunde.
+  const [qDate, setQDate] = useState(isoOf(new Date()));
+  const [qCar, setQCar] = useState("");
+  const [qComm, setQComm] = useState("");
+  const [qSold, setQSold] = useState(false);
+  function quickAdd() {
+    void addDeal({ date: qDate, car: qCar.trim(), commission: Number(qComm) || 0, sold: qSold });
+    setQCar(""); setQComm(""); setQSold(false); // păstrează data (azi) pentru adăugări rapide succesive
+  }
   const now = new Date();
   const monday = isoOf(mondayOf(now));
   const sunday = isoOf(new Date(mondayOf(now).getTime() + 6 * 86400000));
@@ -194,14 +259,20 @@ function Yanis({ money }: { money: MoneyApi }) {
           ))}
         </div>
       </div>
-      <div className="border-t border-border/60 px-4 py-3">
-        <Button size="sm" variant="outline" onClick={() => void addDeal()}><Plus className="h-4 w-4" /> Adaugă rând</Button>
+      <div className="flex flex-col gap-2 border-t border-border/60 bg-muted/20 px-4 py-3 sm:flex-row sm:items-center">
+        <input type="date" value={qDate} onChange={(e) => setQDate(e.target.value)} className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm ring-focus sm:w-36" />
+        <input value={qCar} onChange={(e) => setQCar(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="Mașină (ex. VW Golf 2018)" className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />
+        <div className="flex items-center gap-2">
+          <input type="number" inputMode="numeric" value={qComm} onChange={(e) => setQComm(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="comision" className="h-9 w-28 rounded-lg border border-input bg-card px-2 text-right text-sm ring-focus" />
+          <Toggle on={qSold} onToggle={() => setQSold((s) => !s)} onLabel="Vândută" offLabel="Nevândută" />
+          <Button size="sm" variant="primary" onClick={quickAdd}><Plus className="h-4 w-4" /> Adaugă</Button>
+        </div>
       </div>
     </Block>
   );
 }
 
-/* ── 3 · Găleți ──────────────────────────────────────────────────────────── */
+/* ── 4 · Găleți ──────────────────────────────────────────────────────────── */
 function Buckets({ money }: { money: MoneyApi }) {
   const { settings, saveSettings, tampon, addTamponEntry, removeTamponEntry } = money;
   const [desc, setDesc] = useState("");
@@ -261,7 +332,7 @@ function BucketCard({ label, value, onCommit }: { label: string; value: number; 
   );
 }
 
-/* ── 4 · Runway ──────────────────────────────────────────────────────────── */
+/* ── 5 · Runway ──────────────────────────────────────────────────────────── */
 function Runway({ money }: { money: MoneyApi }) {
   const { settings, saveSettings } = money;
   const burn = settings.personalFix + settings.operationalBurn;

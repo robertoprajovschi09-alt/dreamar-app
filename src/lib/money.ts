@@ -10,8 +10,12 @@ import { useWorkspace } from "./workspace";
 
 export type MoneySettings = { personalFix: number; operational: number; tampon: number; operationalBurn: number };
 export type Collection = { id: string; clientId: string | null; amount: number; dueDay: number; collected: boolean };
+export type OverdueCollection = Collection & { daysOverdue: number };
 export type YanisDeal = { id: string; date: string; car: string; clipLink: string; sold: boolean; commission: number; markup: number; paid: boolean };
+export type YanisDealInit = { date?: string; car?: string; commission?: number; sold?: boolean; markup?: number; clipLink?: string; paid?: boolean };
 export type TamponEntry = { id: string; date: string; description: string; amount: number };
+export type InvoiceStatus = "not_issued" | "issued" | "collected";
+export type Invoice = { id: string; clientId: string; amount: number; status: InvoiceStatus };
 
 const DEFAULT_SETTINGS: MoneySettings = { personalFix: 2150, operational: 0, tampon: 0, operationalBurn: 0 };
 
@@ -24,6 +28,7 @@ const K = {
   collections: "dreamar-money-collections-demo",
   deals: "dreamar-money-deals-demo",
   tampon: "dreamar-money-tampon-demo",
+  invoices: "dreamar-money-invoices-demo",
 };
 function lsGet<T>(key: string, fallback: T): T {
   try { const raw = localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : fallback; } catch { return fallback; }
@@ -42,6 +47,7 @@ export function useMoney() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [deals, setDeals] = useState<YanisDeal[]>([]);
   const [tampon, setTampon] = useState<TamponEntry[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const reload = useCallback(async () => {
     if (!live) {
@@ -51,22 +57,26 @@ export function useMoney() {
       setCollections(allCol.filter((c) => c.month === month).map(({ month: _m, ...c }) => c));
       setDeals(lsGet<YanisDeal[]>(K.deals, []));
       setTampon(lsGet<TamponEntry[]>(K.tampon, []));
+      const allInv = lsGet<(Invoice & { month?: string })[]>(K.invoices, []);
+      setInvoices(allInv.filter((i) => i.month === month).map(({ month: _m, ...i }) => i));
       setLoading(false);
       return;
     }
     if (!supabase || !agencyId) return;
     setLoading(true);
-    const [s, c, d, t] = await Promise.all([
+    const [s, c, d, t, inv] = await Promise.all([
       supabase.from("money_settings").select("personal_fix, operational, tampon, operational_burn").eq("agency_id", agencyId).maybeSingle(),
       supabase.from("collections").select("id, client_id, amount, due_day, collected").eq("agency_id", agencyId).eq("period_month", month).order("due_day"),
       supabase.from("yanis_deals").select("id, deal_date, car, clip_link, sold, commission, markup, paid").eq("agency_id", agencyId).order("deal_date", { ascending: false }),
       supabase.from("tampon_entries").select("id, entry_date, description, amount").eq("agency_id", agencyId).order("created_at", { ascending: false }),
+      supabase.from("invoices").select("id, client_id, amount, status").eq("agency_id", agencyId).eq("period_month", month),
     ]);
     if (s.data) setSettings({ personalFix: Number(s.data.personal_fix), operational: Number(s.data.operational), tampon: Number(s.data.tampon), operationalBurn: Number(s.data.operational_burn) });
     else { await supabase.from("money_settings").insert({ agency_id: agencyId, personal_fix: DEFAULT_SETTINGS.personalFix }); setSettings(DEFAULT_SETTINGS); }
     setCollections((c.data ?? []).map((r) => ({ id: r.id, clientId: r.client_id, amount: Number(r.amount), dueDay: r.due_day, collected: r.collected })));
     setDeals((d.data ?? []).map((r) => ({ id: r.id, date: r.deal_date, car: r.car, clipLink: r.clip_link ?? "", sold: r.sold, commission: Number(r.commission), markup: Number(r.markup), paid: r.paid })));
     setTampon((t.data ?? []).map((r) => ({ id: r.id, date: r.entry_date, description: r.description, amount: Number(r.amount) })));
+    setInvoices((inv.data ?? []).map((r) => ({ id: r.id, clientId: r.client_id, amount: Number(r.amount), status: r.status as InvoiceStatus })));
     setLoading(false);
   }, [live, agencyId, month]);
 
@@ -129,13 +139,14 @@ export function useMoney() {
   }, [collections, addCollection]);
 
   // ── Yanis deals ──────────────────────────────────────────────────────────────
-  const addDeal = useCallback(async () => {
+  const addDeal = useCallback(async (init?: YanisDealInit) => {
+    const base = { date: init?.date || todayISO(), car: init?.car ?? "", clipLink: init?.clipLink ?? "", sold: init?.sold ?? false, commission: init?.commission ?? 0, markup: init?.markup ?? 0, paid: init?.paid ?? false };
     if (!live || !supabase || !agencyId) {
-      const row: YanisDeal = { id: newId(), date: todayISO(), car: "", clipLink: "", sold: false, commission: 0, markup: 0, paid: false };
+      const row: YanisDeal = { id: newId(), ...base };
       setDeals((prev) => { const next = [row, ...prev]; lsSet(K.deals, next); return next; });
       return;
     }
-    const { data } = await supabase.from("yanis_deals").insert({ agency_id: agencyId }).select("id, deal_date, car, clip_link, sold, commission, markup, paid").single();
+    const { data } = await supabase.from("yanis_deals").insert({ agency_id: agencyId, deal_date: base.date, car: base.car, clip_link: base.clipLink || null, sold: base.sold, commission: base.commission, markup: base.markup, paid: base.paid }).select("id, deal_date, car, clip_link, sold, commission, markup, paid").single();
     if (data) setDeals((prev) => [{ id: data.id, date: data.deal_date, car: data.car, clipLink: data.clip_link ?? "", sold: data.sold, commission: Number(data.commission), markup: Number(data.markup), paid: data.paid }, ...prev]);
   }, [live, agencyId]);
   const updateDeal = useCallback(async (id: string, patch: Partial<Omit<YanisDeal, "id">>) => {
@@ -176,9 +187,34 @@ export function useMoney() {
     if (entry) await saveSettings({ tampon: settings.tampon - entry.amount });
   }, [live, tampon, settings.tampon, saveSettings]);
 
+  // ── Invoices (data prep only — the firm issues the fiscal invoice elsewhere) ──
+  const persistDemoInvoices = (rows: Invoice[]) => {
+    const others = lsGet<(Invoice & { month?: string })[]>(K.invoices, []).filter((i) => i.month !== month);
+    lsSet(K.invoices, [...others, ...rows.map((r) => ({ ...r, month }))]);
+  };
+  const setInvoice = useCallback(async (clientId: string, amount: number, status: InvoiceStatus) => {
+    setInvoices((prev) => {
+      const exists = prev.some((i) => i.clientId === clientId);
+      const next = exists ? prev.map((i) => (i.clientId === clientId ? { ...i, amount, status } : i)) : [...prev, { id: newId(), clientId, amount, status }];
+      if (!live) persistDemoInvoices(next);
+      return next;
+    });
+    if (live && supabase && agencyId) {
+      await supabase.from("invoices").upsert({ agency_id: agencyId, client_id: clientId, period_month: month, amount, status }, { onConflict: "client_id,period_month" });
+    }
+  }, [live, agencyId, month]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Overdue collections (unpaid + due day already passed this month) ─────────
+  const dayOfMonth = new Date().getDate();
+  const overdueCollections: OverdueCollection[] = collections
+    .filter((c) => !c.collected && c.dueDay < dayOfMonth)
+    .map((c) => ({ ...c, daysOverdue: dayOfMonth - c.dueDay }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
   return {
     loading, settings, saveSettings,
-    collections, addCollection, updateCollection, removeCollection, generateFromRetainers,
+    collections, overdueCollections, addCollection, updateCollection, removeCollection, generateFromRetainers,
+    invoices, setInvoice,
     deals, addDeal, updateDeal, removeDeal,
     tampon, addTamponEntry, removeTamponEntry,
   };

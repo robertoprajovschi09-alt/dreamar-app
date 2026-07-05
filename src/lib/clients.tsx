@@ -20,6 +20,7 @@ export type NewClientInput = {
   retainer?: number | null;
   billingType?: BillingType;
   deliverables?: number | null;
+  invoiced?: boolean;
   phone?: string;
   notes?: string;
   platforms: string[];
@@ -29,7 +30,7 @@ export type NewClientInput = {
 export type ClientPatch = {
   name?: string; niche?: Niche; city?: string; website?: string; contact?: string;
   retainer?: number | null; status?: Client["status"]; platforms?: string[];
-  billingType?: BillingType; deliverables?: number | null; phone?: string; notes?: string;
+  billingType?: BillingType; deliverables?: number | null; invoiced?: boolean; phone?: string; notes?: string;
 };
 
 // Per-client extras the list view doesn't need but the detail view does.
@@ -65,6 +66,7 @@ function mapRow(r: any): Client {
     retainer: Number(r.monthly_retainer ?? 0),
     billingType: (r.billing_type ?? "retainer") as BillingType,
     deliverables: r.monthly_deliverables ?? 0,
+    invoiced: r.invoiced ?? false,
     phone: r.contact_phone ?? "",
     notes: r.notes ?? "",
     // "onboarding" is retired — treat any legacy row as active.
@@ -93,7 +95,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
     // until the health-score function + view are wired in.
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, niche, city, contact_person, contact_email, contact_phone, website, monthly_retainer, billing_type, monthly_deliverables, notes, status, platforms, objectives, feedback")
+      .select("id, name, niche, city, contact_person, contact_email, contact_phone, website, monthly_retainer, billing_type, monthly_deliverables, invoiced, notes, status, platforms, objectives, feedback")
       .eq("agency_id", agencyId)
       .is("archived_at", null)
       .order("created_at", { ascending: false });
@@ -126,7 +128,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
         const c: Client = {
           id, name: input.name, niche: input.niche, city: input.city ?? "", contact: input.contact ?? "",
           retainer: input.retainer ?? 0, billingType: input.billingType ?? "retainer", deliverables: input.deliverables ?? 0,
-          phone: input.phone ?? "", notes: input.notes ?? "",
+          invoiced: input.invoiced ?? false, phone: input.phone ?? "", notes: input.notes ?? "",
           status: "active", health: 0, risk: "low", platforms: input.platforms, trend: 0,
         };
         setClients((prev) => [c, ...prev]);
@@ -146,6 +148,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
           monthly_retainer: input.billingType && input.billingType !== "retainer" ? null : (input.retainer ?? null),
           billing_type: input.billingType ?? "retainer",
           monthly_deliverables: input.deliverables ?? null,
+          invoiced: input.invoiced ?? false,
           notes: input.notes || null,
           status: "active",
           platforms: input.platforms.map((p) => p.toLowerCase()),
@@ -179,6 +182,7 @@ export function ClientsProvider({ children }: { children: ReactNode }) {
       if (patch.billingType !== "retainer") db.monthly_retainer = null;
     }
     if (patch.deliverables !== undefined) db.monthly_deliverables = patch.deliverables;
+    if (patch.invoiced !== undefined) db.invoiced = patch.invoiced;
     if (patch.phone !== undefined) db.contact_phone = patch.phone || null;
     if (patch.notes !== undefined) db.notes = patch.notes || null;
     if (patch.status !== undefined) db.status = patch.status;

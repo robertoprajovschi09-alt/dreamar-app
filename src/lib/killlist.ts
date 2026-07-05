@@ -9,8 +9,8 @@ import { formatCurrency } from "./utils";
  * consecutive months over a threshold) or are manual toggles. Unlock is STICKY:
  * once achieved it stays unlocked even if the numbers later dip.
  *
- * income(month) = sum of that month's `collections` amounts (the invoiced total
- * shown in Bani → Încasări), NOT only what's marked collected.
+ * income(month) = sum of that month's `collections` amounts that are marked
+ * Încasat (collected) — money actually in the bank, NOT the invoiced total.
  */
 
 export type Condition =
@@ -59,9 +59,10 @@ export function useKillList() {
       try { setState(JSON.parse(localStorage.getItem(DEMO_KEY) || "{}")); } catch { setState({}); }
       try { const s = JSON.parse(localStorage.getItem("dreamar-money-settings-demo") || "{}"); setTampon(Number(s.tampon) || 0); } catch { setTampon(0); }
       try {
-        const cols = JSON.parse(localStorage.getItem("dreamar-money-collections-demo") || "[]") as { amount: number; month?: string }[];
+        const cols = JSON.parse(localStorage.getItem("dreamar-money-collections-demo") || "[]") as { amount: number; month?: string; collected?: boolean }[];
         const by: Record<string, number> = {};
-        cols.forEach((c) => { const k = (c.month ?? "").slice(0, 7); if (k) by[k] = (by[k] ?? 0) + Number(c.amount || 0); });
+        // Income = money actually COLLECTED (marked Încasat), not invoiced.
+        cols.forEach((c) => { const k = (c.month ?? "").slice(0, 7); if (k && c.collected) by[k] = (by[k] ?? 0) + Number(c.amount || 0); });
         setIncomeByMonth(by);
       } catch { setIncomeByMonth({}); }
       setLoading(false);
@@ -72,12 +73,13 @@ export function useKillList() {
     const [st, ms, col] = await Promise.all([
       supabase.from("kill_list_state").select("state").eq("agency_id", agencyId).maybeSingle(),
       supabase.from("money_settings").select("tampon").eq("agency_id", agencyId).maybeSingle(),
-      supabase.from("collections").select("period_month, amount").eq("agency_id", agencyId),
+      supabase.from("collections").select("period_month, amount, collected").eq("agency_id", agencyId),
     ]);
     setState((st.data?.state as State) ?? {});
     setTampon(Number(ms.data?.tampon) || 0);
     const by: Record<string, number> = {};
-    (col.data ?? []).forEach((c) => { const k = String(c.period_month).slice(0, 7); by[k] = (by[k] ?? 0) + Number(c.amount || 0); });
+    // Income = money actually COLLECTED (marked Încasat), not invoiced.
+    (col.data ?? []).forEach((c) => { const k = String(c.period_month).slice(0, 7); if (c.collected) by[k] = (by[k] ?? 0) + Number(c.amount || 0); });
     setIncomeByMonth(by);
     setLoading(false);
   }, [live, agencyId]);

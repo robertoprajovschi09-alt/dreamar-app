@@ -437,6 +437,7 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
   const [retainer, setRetainer] = useState("");
   const [billingType, setBillingType] = useState<BillingType>("retainer");
   const [deliverables, setDeliverables] = useState("");
+  const [invoiced, setInvoiced] = useState(false);
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Client["status"]>("active");
   const [platforms, setPlatforms] = useState<string[]>([]);
@@ -449,6 +450,7 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
     setRetainer(client.retainer ? String(client.retainer) : "");
     setBillingType(client.billingType ?? "retainer");
     setDeliverables(client.deliverables ? String(client.deliverables) : "");
+    setInvoiced(client.invoiced ?? false);
     setNotes(client.notes ?? "");
     setStatus(client.status); setPlatforms(client.platforms);
   }, [open, client, website]);
@@ -466,7 +468,7 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
       phone: phone.trim(), contact: phone.trim(),
       retainer: billingType === "retainer" ? retNum : null,
       billingType, deliverables: delNum && Number.isFinite(delNum) ? delNum : null,
-      notes: notes.trim(), status, platforms,
+      invoiced, notes: notes.trim(), status, platforms,
     });
     setBusy(false);
     if (!res.error) onClose();
@@ -490,6 +492,13 @@ function EditClientModal({ open, onClose, client, website, onSave, onArchive }: 
           <Field label="Livrabile pe lună"><Input type="number" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
           <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value as Client["status"])} className="w-full"><option value="active">Activ</option><option value="paused">În pauză</option></Select></Field>
         </div>
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-input bg-card p-3">
+          <input type="checkbox" checked={invoiced} onChange={(e) => setInvoiced(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+          <span className="text-sm">
+            <span className="font-600">Cu factură</span>
+            <span className="block text-xs text-muted-foreground">Apare lunar în blocul „Facturare" din pagina Bani.</span>
+          </span>
+        </label>
         <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[72px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii interne despre client…" /></Field>
         <div>
           <p className="mb-1.5 text-xs font-700 text-muted-foreground">Platforme</p>

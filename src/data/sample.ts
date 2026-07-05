@@ -79,6 +79,7 @@ export type Client = {
   retainer: number;
   billingType?: BillingType;
   deliverables?: number; // livrabile pe lună
+  invoiced?: boolean; // "cu factură" — apare în blocul Facturare
   phone?: string;
   notes?: string;
   status: "active" | "paused";

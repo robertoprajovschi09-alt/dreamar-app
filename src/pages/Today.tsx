@@ -7,12 +7,13 @@ import { useUI } from "@/lib/ui-context";
 import { useWorkspace } from "@/lib/workspace";
 import { useClips, clipStateLabel, type Clip } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
+import { useMoney } from "@/lib/money";
 import { useFilmShots, type FilmShot } from "@/lib/filmshots";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import {
-  CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
+  AlertTriangle, CalendarPlus, Check, ChevronDown, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
 } from "lucide-react";
 
 /*
@@ -37,6 +38,7 @@ export default function Today() {
   const clipsCtx = useClips();
   const { clients, loading: lc } = useClients();
   const film = useFilmShots();
+  const money = useMoney();
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bună dimineața" : h < 18 ? "Bună ziua" : "Bună seara"; })();
@@ -52,6 +54,7 @@ export default function Today() {
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)} />
 
       <div className="space-y-3">
+        <OverdueCollections money={money} clients={clients} onOpen={() => navigate("/money")} />
         <PostsToday clipsCtx={clipsCtx} onCalendar={() => navigate("/content?tab=calendar")} />
         <ClipBuffer active={active} clips={clipsCtx.clips} />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
@@ -92,6 +95,26 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: ()
   );
 }
 const countPill = (n: number | string) => <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{n}</span>;
+
+/* ── 0 · Scadențe depășite (încasări neîncasate cu ziua trecută) ──────────── */
+// Citește lista expusă de useMoney; se afișează doar când există restanțe.
+function OverdueCollections({ money, clients, onOpen }: { money: ReturnType<typeof useMoney>; clients: Client[]; onOpen: () => void }) {
+  const overdue = money.overdueCollections;
+  if (money.loading || overdue.length === 0) return null;
+  const nameOf = (id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? "Client" : "Fără client");
+  return (
+    <Section icon={AlertTriangle} tone="text-danger" title="Scadențe depășite"
+      right={<button onClick={onOpen} className="text-xs font-700 text-primary hover:underline">Vezi în Bani</button>}>
+      {overdue.map((o) => (
+        <div key={o.id} className="flex items-center gap-3 border-t border-l-2 border-border/60 border-l-danger bg-danger/[0.04] px-4 py-2.5">
+          <span className="min-w-0 flex-1 truncate text-sm font-600">{nameOf(o.clientId)}</span>
+          <span className="shrink-0 text-[11px] font-700 text-danger">{o.daysOverdue === 1 ? "scadent de 1 zi" : `scadent de ${o.daysOverdue} zile`}</span>
+          <span className="shrink-0 text-sm font-700">{formatCurrency(o.amount)}</span>
+        </div>
+      ))}
+    </Section>
+  );
+}
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
 // The clip is the single source of truth. Show today's scheduled/posted clips;
