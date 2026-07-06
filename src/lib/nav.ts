@@ -2,6 +2,7 @@ import {
   Building2,
   CalendarDays,
   Clapperboard,
+  Compass,
   ScrollText,
   Settings,
   Skull,
@@ -21,7 +22,7 @@ export type NavItem = {
 
 export type NavGroup = { heading?: string; items: NavItem[] };
 
-// The nav inventory is LOCKED by the constitution to exactly these nine.
+// The nav inventory is LOCKED by the constitution to exactly these ten.
 // Nothing else may appear in the sidebar, the mobile "Mai mult" sheet, or ⌘K.
 export const navGroups: NavGroup[] = [
   {
@@ -29,6 +30,7 @@ export const navGroups: NavGroup[] = [
       { label: "Azi", to: "/dashboard", icon: Target, end: true },
       { label: "Pipeline", to: "/pipeline", icon: Clapperboard },
       { label: "Bani", to: "/money", icon: Wallet },
+      { label: "Strategul", to: "/strateg", icon: Compass },
       { label: "Clienți", to: "/clients", icon: Users },
       { label: "Calendar", to: "/calendar", icon: CalendarDays },
       { label: "Scripturi", to: "/scripts", icon: ScrollText },

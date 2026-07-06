@@ -42,6 +42,9 @@
     --danger-foreground: 0 0% 100%;
     --info: 213 90% 56%;
     --info-foreground: 0 0% 100%;
+    /* Strategul: the section's own accent, distinct from the app's indigo. */
+    --strateg: 174 62% 38%;
+    --strateg-foreground: 0 0% 100%;
 
     --sidebar: 0 0% 100%;
     --sidebar-foreground: 234 14% 34%;
@@ -91,6 +94,9 @@
     --danger-foreground: 0 0% 100%;
     --info: 210 92% 66%;
     --info-foreground: 210 40% 8%;
+    /* Strategul: the section's own accent, distinct from the app's indigo. */
+    --strateg: 174 65% 50%;
+    --strateg-foreground: 174 60% 8%;
 
     --sidebar: 233 22% 8%;
     --sidebar-foreground: 230 13% 70%;

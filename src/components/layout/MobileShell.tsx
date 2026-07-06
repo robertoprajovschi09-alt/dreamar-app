@@ -14,11 +14,11 @@ import { allDestinations } from "@/lib/nav";
 import { useWorkspace } from "@/lib/workspace";
 import { useTheme } from "@/lib/theme";
 import { useAuth } from "@/lib/auth";
-import { Clapperboard, LayoutGrid, LogOut, Moon, Sun, Target, Wallet, type LucideIcon } from "lucide-react";
+import { Clapperboard, Compass, LayoutGrid, LogOut, Moon, Sun, Target, Wallet, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// The three primary tabs; everything else lives behind "Mai mult".
-const TAB_PATHS = new Set(["/dashboard", "/pipeline", "/money"]);
+// The four primary tabs; everything else lives behind "Mai mult".
+const TAB_PATHS = new Set(["/dashboard", "/pipeline", "/money", "/strateg"]);
 
 export default function MobileShell() {
   return (
@@ -51,6 +51,7 @@ function MobileInner() {
 
   const active = path.startsWith("/pipeline") ? "pipeline"
     : path.startsWith("/money") ? "money"
+    : path.startsWith("/strateg") ? "strateg"
     : path.startsWith("/dashboard") ? "home"
     : "more";
   const go = (to: string) => { setMoreOpen(false); navigate(to); };
@@ -86,6 +87,7 @@ function MobileInner() {
           <TabBtn label="Azi" icon={Target} active={active === "home"} onClick={() => go("/dashboard")} help={HELP.azi} onPress={setPressHelp} />
           <TabBtn label="Pipeline" icon={Clapperboard} active={active === "pipeline"} onClick={() => go("/pipeline")} help={HELP.pipeline} onPress={setPressHelp} />
           <TabBtn label="Bani" icon={Wallet} active={active === "money"} onClick={() => go("/money")} help={HELP.bani} onPress={setPressHelp} />
+          <TabBtn label="Strategul" icon={Compass} active={active === "strateg"} onClick={() => go("/strateg")} help={HELP.strateg} onPress={setPressHelp} />
           <TabBtn label="Mai mult" icon={LayoutGrid} active={active === "more" || moreOpen} onClick={() => setMoreOpen(true)} help={MORE_HELP} onPress={setPressHelp} />
         </div>
       </nav>

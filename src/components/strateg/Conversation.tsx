@@ -1,0 +1,201 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui";
+import { useClients } from "@/lib/clients";
+import { useClips } from "@/lib/clips";
+import { useScripts } from "@/lib/scripts";
+import { useKillList } from "@/lib/killlist";
+import { useSnapshotBuilder } from "@/lib/strategSnapshot";
+import { streamStrateg, titleFrom, STRATEG_ROOMS, useStrategStore, type StrategConvo, type StrategMsg, type StrategRoom } from "@/lib/strateg";
+import { parseSegments, BlockCard, type BlockKind, type SavedRef, type ScriptBlock, type ObiectivBlock, type ClipBlock } from "./blocks";
+import { ArrowLeft, ArrowUp, Compass } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+/*
+ * One Strateg conversation: the thread, the streaming reply ("Strategul citește
+ * datele" until the first token) and the composer. Assistant replies are parsed
+ * into text + action blocks.
+ */
+
+type Store = ReturnType<typeof useStrategStore>;
+export type DraftConvo = { room: StrategRoom; clientId: string | null };
+
+const roomLabel = (r: StrategRoom) => (r === "analiza" ? "Analiza săptămânii" : STRATEG_ROOMS.find((x) => x.key === r)?.label ?? r);
+
+export function Conversation({ convo, draft, store, initialMessage, onCreated, onBack }: {
+  convo: StrategConvo | null;          // null while still a draft (no message sent yet)
+  draft: DraftConvo | null;
+  store: Store;
+  initialMessage?: string;             // auto-sent once (the analysis generator)
+  onCreated: (c: StrategConvo) => void;
+  onBack: () => void;
+}) {
+  const { clients } = useClients();
+  const { createClip } = useClips();
+  const { createScript } = useScripts();
+  const { addCustomItem } = useKillList();
+  const buildSnapshot = useSnapshotBuilder();
+
+  const room = convo?.room ?? draft?.room ?? "brainstorm";
+  const clientId = convo?.clientId ?? draft?.clientId ?? null;
+  const clientName = clientId ? clients.find((c) => c.id === clientId)?.name ?? null : null;
+
+  const [msgs, setMsgs] = useState<StrategMsg[]>([]);
+  const msgsRef = useRef(msgs); msgsRef.current = msgs;
+  const [pending, setPending] = useState<string | null>(null); // "" = waiting for the first token
+  const [err, setErr] = useState<string | null>(null);
+  const [input, setInput] = useState("");
+  const [saved, setSaved] = useState<Record<string, SavedRef>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const convoRef = useRef<StrategConvo | null>(convo);
+  const skipLoad = useRef<string | null>(null); // a convo we just created locally: don't clobber optimistic msgs
+  const endRef = useRef<HTMLDivElement>(null);
+  const streaming = pending !== null;
+
+  useEffect(() => {
+    convoRef.current = convo;
+    if (!convo) { setMsgs([]); return; }
+    if (skipLoad.current === convo.id) return;
+    let on = true;
+    void store.loadMessages(convo.id).then((m) => { if (on) setMsgs(m); });
+    return () => { on = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convo?.id]);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs.length, pending]);
+
+  const send = useCallback(async (raw: string) => {
+    const text = raw.trim();
+    if (!text || pending !== null) return;
+    setErr(null);
+    let c = convoRef.current;
+    if (!c) {
+      const d = draft ?? { room, clientId };
+      const title = d.room === "analiza"
+        ? "Analiza · " + new Date().toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })
+        : titleFrom(text);
+      c = await store.createConvo(d.room, d.clientId, title);
+      if (!c) { setErr("Nu am putut porni conversația. Încearcă din nou."); return; }
+      convoRef.current = c;
+      skipLoad.current = c.id;
+      onCreated(c);
+    }
+    const userMsg = await store.addMessage(c.id, "user", text);
+    setMsgs((prev) => [...prev, userMsg]);
+    setInput("");
+    setPending(""); // "Strategul citește datele"
+
+    const apiMsgs = [...msgsRef.current, userMsg].map((m) => ({ role: m.role, content: m.content }));
+    let snapshot: unknown = {};
+    try { snapshot = await buildSnapshot(c.clientId); } catch { snapshot = {}; }
+    const res = await streamStrateg({ room: c.room, messages: apiMsgs, snapshot, clientId: c.clientId, onToken: setPending });
+    if (res.error && !res.text) { setErr(res.error); setPending(null); return; }
+    const aMsg = await store.addMessage(c.id, "assistant", res.text);
+    setMsgs((prev) => [...prev, aMsg]);
+    setPending(null);
+    if (res.error) setErr(res.error);
+  }, [pending, draft, room, clientId, store, onCreated, buildSnapshot]);
+
+  // Auto-send exactly once (Generează analiza).
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (initialMessage && !autoSent.current && !convo && msgs.length === 0) {
+      autoSent.current = true;
+      void send(initialMessage);
+    }
+  }, [initialMessage, convo, msgs.length, send]);
+
+  const findClient = useCallback((name?: string) => {
+    if (!name) return clientId;
+    const q = name.trim().toLowerCase();
+    const hit = clients.find((c) => c.name.toLowerCase() === q) ?? clients.find((c) => c.name.toLowerCase().includes(q));
+    return hit?.id ?? clientId;
+  }, [clients, clientId]);
+
+  const saveBlock = useCallback(async (key: string, kind: BlockKind, data: ScriptBlock & ObiectivBlock & ClipBlock) => {
+    if (saved[key] || savingKey) return;
+    setSavingKey(key);
+    try {
+      if (kind === "script") {
+        const cid = findClient(data.client);
+        const res = await createScript({ clientId: cid, title: data.titlu, hook: data.hook ?? "", body: data.desfasurare ?? "", cta: data.cta ?? "", status: "to_test" });
+        if (!res.error) setSaved((p) => ({ ...p, [key]: { label: "Salvat în Scripturi", to: "/scripts" } }));
+        else setErr("Nu am putut salva scriptul. Încearcă din nou.");
+      } else if (kind === "obiectiv") {
+        addCustomItem(data.titlu, (data as ObiectivBlock).descriere ?? "");
+        setSaved((p) => ({ ...p, [key]: { label: "Adăugat în Kill List", to: "/kill-list" } }));
+      } else {
+        const cid = findClient(data.client);
+        const res = await createClip({ clientId: cid, title: data.titlu, state: "idea" });
+        if (!res.error) setSaved((p) => ({ ...p, [key]: { label: "Creat în Idee", to: cid ? `/pipeline?client=${cid}` : "/pipeline" } }));
+        else setErr("Nu am putut crea clipul. Încearcă din nou.");
+      }
+    } finally {
+      setSavingKey(null);
+    }
+  }, [saved, savingKey, findClient, createScript, addCustomItem, createClip]);
+
+  function AssistantBody({ msgId, content }: { msgId: string; content: string }) {
+    const segments = parseSegments(content);
+    return (
+      <div className="min-w-0">
+        {segments.map((s, i) => s.kind === "text"
+          ? (s.text.trim() ? <p key={i} className="whitespace-pre-wrap text-sm leading-relaxed">{s.text.trim()}</p> : null)
+          : <BlockCard key={i} kind={s.kind} data={s.data as ScriptBlock & ObiectivBlock & ClipBlock}
+              saved={saved[`${msgId}-${i}`] ?? null} busy={savingKey === `${msgId}-${i}`}
+              onSave={() => void saveBlock(`${msgId}-${i}`, s.kind as BlockKind, s.data as ScriptBlock & ObiectivBlock & ClipBlock)} />)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-[70vh] flex-col">
+      <div className="flex items-center gap-2">
+        <button onClick={onBack} aria-label="Înapoi" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition active:bg-muted"><ArrowLeft className="h-5 w-5" /></button>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-lg font-800">{convo?.title || roomLabel(room)}</h1>
+          <p className="text-xs text-muted-foreground">{roomLabel(room)}{clientName ? ` · ${clientName}` : ""}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex-1 space-y-4">
+        {msgs.map((m) => m.role === "user" ? (
+          <div key={m.id} className="flex justify-end">
+            <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-muted px-3.5 py-2.5 text-sm">{m.content}</p>
+          </div>
+        ) : (
+          <div key={m.id} className="flex gap-2.5">
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--strateg))]/12 text-[hsl(var(--strateg))]"><Compass className="h-4 w-4" /></span>
+            <AssistantBody msgId={m.id} content={m.content} />
+          </div>
+        ))}
+
+        {pending !== null && (
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--strateg))]/12 text-[hsl(var(--strateg))]"><Compass className="h-4 w-4 animate-pulse" /></span>
+            {pending === "" ? (
+              <p className="py-1 text-sm text-muted-foreground">Strategul citește datele<span className="animate-pulse">…</span></p>
+            ) : (
+              <p className="min-w-0 whitespace-pre-wrap text-sm leading-relaxed">{pending}</p>
+            )}
+          </div>
+        )}
+
+        {err && <p className="rounded-xl border border-danger/30 bg-danger/[0.06] px-3.5 py-2.5 text-sm text-danger">{err}</p>}
+        <div ref={endRef} />
+      </div>
+
+      <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] mt-4 flex items-end gap-2 rounded-2xl border border-border bg-card p-2 md:bottom-4">
+        <textarea
+          value={input} onChange={(e) => setInput(e.target.value)} rows={1}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(input); } }}
+          placeholder={clientName ? `Întreabă despre ${clientName}…` : "Întreabă Strategul…"}
+          className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none"
+        />
+        <Button aria-label="Trimite" disabled={!input.trim() || streaming} onClick={() => void send(input)}
+          className={cn("h-11 w-11 shrink-0 rounded-xl p-0 text-[hsl(var(--strateg-foreground))]", "bg-[hsl(var(--strateg))] hover:bg-[hsl(var(--strateg))]/90")}>
+          <ArrowUp className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -1,10 +1,10 @@
-import { Button, IconButton } from "@/components/ui";
+import { IconButton } from "@/components/ui";
 import { useTheme } from "@/lib/theme";
 import { useUI } from "@/lib/ui-context";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { UserMenu } from "@/components/UserMenu";
 import { DateRangeMenu } from "@/components/DateRangeMenu";
-import { Menu, Moon, Search, Sparkles, Sun } from "lucide-react";
+import { Menu, Moon, Search, Sun } from "lucide-react";
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { theme, toggle } = useTheme();
@@ -28,10 +28,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
 
       <div className="ml-auto flex items-center gap-2">
         <DateRangeMenu />
-
-        <Button variant="primary" size="md" className="hidden sm:inline-flex" onClick={openCommand}>
-          <Sparkles className="h-4 w-4" /> Asistent AI
-        </Button>
 
         <IconButton onClick={toggle} aria-label="Comută tema">
           {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}

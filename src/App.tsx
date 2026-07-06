@@ -20,6 +20,7 @@ const Today = lazy(() => import("@/pages/Today"));
 const Pipeline = lazy(() => import("@/pages/Pipeline"));
 const Money = lazy(() => import("@/pages/Money"));
 const Scripts = lazy(() => import("@/pages/Scripts"));
+const Strateg = lazy(() => import("@/pages/Strateg"));
 const KillList = lazy(() => import("@/pages/KillList"));
 const ContentWorkspace = lazy(() => import("@/pages/ContentWorkspace"));
 const AgencyWorkspace = lazy(() => import("@/pages/AgencyWorkspace"));
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="money" element={<Money />} />
         <Route path="scripts" element={<Scripts />} />
+        <Route path="strateg" element={<Strateg />} />
         <Route path="kill-list" element={<KillList />} />
         <Route path="content" element={<ContentWorkspace />} />
         <Route path="agency" element={<AgencyWorkspace />} />

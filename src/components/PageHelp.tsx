@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * feeds the mobile bottom-bar long-press popover.
  */
 
-export type HelpKey = "azi" | "pipeline" | "bani" | "calendar" | "scripturi" | "clienti" | "killlist";
+export type HelpKey = "azi" | "pipeline" | "bani" | "strateg" | "calendar" | "scripturi" | "clienti" | "killlist";
 
 export const HELP: Record<HelpKey, { title: string; short: string; body: string }> = {
   azi: {
@@ -27,6 +27,11 @@ export const HELP: Record<HelpKey, { title: string; short: string; body: string 
     title: "Bani",
     short: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și împărțirea banilor.",
     body: "Încasări cu scadențe, facturi de pregătit, decontul Yanis și împărțirea banilor. Ce e depășit aici urcă singur în Azi. Pragurile de aici deblochează Kill List.",
+  },
+  strateg: {
+    title: "Strategul",
+    short: "Specialistul tău de marketing: analize, scripturi, obiective, idei.",
+    body: "Specialistul tău de marketing: analize, scripturi, obiective, idei. Pornește mereu de la datele reale din aplicație. Ce propune se salvează cu un buton în Scripturi, Kill List sau Pipeline.",
   },
   calendar: {
     title: "Calendar",
