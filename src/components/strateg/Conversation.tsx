@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { useClients } from "@/lib/clients";
-import { useClips } from "@/lib/clips";
-import { useScripts } from "@/lib/scripts";
-import { useKillList } from "@/lib/killlist";
 import { useSnapshotBuilder } from "@/lib/strategSnapshot";
+import { useActionExecutor } from "@/lib/strategActions";
 import { streamStrateg, titleFrom, STRATEG_ROOMS, useStrategStore, type StrategConvo, type StrategMsg, type StrategRoom } from "@/lib/strateg";
 import { parseSegments, BlockCard, type BlockKind, type SavedRef, type ScriptBlock, type ObiectivBlock, type ClipBlock } from "./blocks";
+import { ActionsCard } from "./ActionsCard";
 import { ArrowLeft, ArrowUp, Compass } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,18 +20,17 @@ export type DraftConvo = { room: StrategRoom; clientId: string | null };
 
 const roomLabel = (r: StrategRoom) => (r === "analiza" ? "Analiza săptămânii" : STRATEG_ROOMS.find((x) => x.key === r)?.label ?? r);
 
-export function Conversation({ convo, draft, store, initialMessage, onCreated, onBack }: {
+export function Conversation({ convo, draft, store, initialMessage, onCreated, onBack, onApplied }: {
   convo: StrategConvo | null;          // null while still a draft (no message sent yet)
   draft: DraftConvo | null;
   store: Store;
   initialMessage?: string;             // auto-sent once (the analysis generator)
   onCreated: (c: StrategConvo) => void;
   onBack: () => void;
+  onApplied: (action: string, label: string) => void;   // journal write (page-owned)
 }) {
   const { clients } = useClients();
-  const { createClip } = useClips();
-  const { createScript } = useScripts();
-  const { addCustomItem } = useKillList();
+  const executor = useActionExecutor();
   const buildSnapshot = useSnapshotBuilder();
 
   const room = convo?.room ?? draft?.room ?? "brainstorm";
@@ -104,12 +102,7 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
     }
   }, [initialMessage, convo, msgs.length, send]);
 
-  const findClient = useCallback((name?: string) => {
-    if (!name) return clientId;
-    const q = name.trim().toLowerCase();
-    const hit = clients.find((c) => c.name.toLowerCase() === q) ?? clients.find((c) => c.name.toLowerCase().includes(q));
-    return hit?.id ?? clientId;
-  }, [clients, clientId]);
+  const findClient = useCallback((name?: string) => executor.findClient(name) ?? clientId, [executor, clientId]);
 
   const saveBlock = useCallback(async (key: string, kind: BlockKind, data: ScriptBlock & ObiectivBlock & ClipBlock) => {
     if (saved[key] || savingKey) return;
@@ -117,35 +110,23 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
     try {
       if (kind === "script") {
         const cid = findClient(data.client);
-        const res = await createScript({ clientId: cid, title: data.titlu, hook: data.hook ?? "", body: data.desfasurare ?? "", cta: data.cta ?? "", status: "to_test" });
+        const res = await executor.createScript({ clientId: cid, title: data.titlu, hook: data.hook ?? "", body: data.desfasurare ?? "", cta: data.cta ?? "", status: "to_test" });
         if (!res.error) setSaved((p) => ({ ...p, [key]: { label: "Salvat în Scripturi", to: "/scripts" } }));
         else setErr("Nu am putut salva scriptul. Încearcă din nou.");
       } else if (kind === "obiectiv") {
-        addCustomItem(data.titlu, (data as ObiectivBlock).descriere ?? "");
+        executor.addCustomItem(data.titlu, (data as ObiectivBlock).descriere ?? "");
         setSaved((p) => ({ ...p, [key]: { label: "Adăugat în Kill List", to: "/kill-list" } }));
       } else {
         const cid = findClient(data.client);
-        const res = await createClip({ clientId: cid, title: data.titlu, state: "idea" });
+        const res = await executor.createClip({ clientId: cid, title: data.titlu, state: "idea" });
         if (!res.error) setSaved((p) => ({ ...p, [key]: { label: "Creat în Idee", to: cid ? `/pipeline?client=${cid}` : "/pipeline" } }));
         else setErr("Nu am putut crea clipul. Încearcă din nou.");
       }
     } finally {
       setSavingKey(null);
     }
-  }, [saved, savingKey, findClient, createScript, addCustomItem, createClip]);
+  }, [saved, savingKey, findClient, executor]);
 
-  function AssistantBody({ msgId, content }: { msgId: string; content: string }) {
-    const segments = parseSegments(content);
-    return (
-      <div className="min-w-0">
-        {segments.map((s, i) => s.kind === "text"
-          ? (s.text.trim() ? <p key={i} className="whitespace-pre-wrap text-sm leading-relaxed">{s.text.trim()}</p> : null)
-          : <BlockCard key={i} kind={s.kind} data={s.data as ScriptBlock & ObiectivBlock & ClipBlock}
-              saved={saved[`${msgId}-${i}`] ?? null} busy={savingKey === `${msgId}-${i}`}
-              onSave={() => void saveBlock(`${msgId}-${i}`, s.kind as BlockKind, s.data as ScriptBlock & ObiectivBlock & ClipBlock)} />)}
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-[70vh] flex-col">
@@ -165,7 +146,7 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
         ) : (
           <div key={m.id} className="flex gap-2.5">
             <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--strateg))]/12 text-[hsl(var(--strateg))]"><Compass className="h-4 w-4" /></span>
-            <AssistantBody msgId={m.id} content={m.content} />
+            <AssistantBody msgId={m.id} content={m.content} executor={executor} saved={saved} savingKey={savingKey} onSaveBlock={saveBlock} onApplied={onApplied} />
           </div>
         ))}
 
@@ -196,6 +177,30 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
           <ArrowUp className="h-5 w-5" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+// Module-level (NOT nested in Conversation): a nested definition would get a new
+// component identity on every parent render, remounting ActionsCard and wiping
+// its checklist state mid-apply.
+function AssistantBody({ msgId, content, executor, saved, savingKey, onSaveBlock, onApplied }: {
+  msgId: string; content: string;
+  executor: ReturnType<typeof useActionExecutor>;
+  saved: Record<string, SavedRef>; savingKey: string | null;
+  onSaveBlock: (key: string, kind: BlockKind, data: ScriptBlock & ObiectivBlock & ClipBlock) => Promise<void>;
+  onApplied: (action: string, label: string) => void;
+}) {
+  const segments = parseSegments(content);
+  return (
+    <div className="min-w-0 flex-1">
+      {segments.map((s, i) => {
+        if (s.kind === "text") return s.text.trim() ? <p key={i} className="whitespace-pre-wrap text-sm leading-relaxed">{s.text.trim()}</p> : null;
+        if (s.kind === "actiuni") return <ActionsCard key={i} ops={s.ops} executor={executor} onApplied={onApplied} />;
+        return <BlockCard key={i} kind={s.kind} data={s.data as ScriptBlock & ObiectivBlock & ClipBlock}
+          saved={saved[`${msgId}-${i}`] ?? null} busy={savingKey === `${msgId}-${i}`}
+          onSave={() => void onSaveBlock(`${msgId}-${i}`, s.kind as BlockKind, s.data as ScriptBlock & ObiectivBlock & ClipBlock)} />;
+      })}
     </div>
   );
 }

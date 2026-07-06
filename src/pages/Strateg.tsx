@@ -3,8 +3,9 @@ import { PageHeader, Panel, Button } from "@/components/ui";
 import { Modal } from "@/components/overlay";
 import { useClients } from "@/lib/clients";
 import { useStrategStore, STRATEG_ROOMS, ANALIZA_TEACH, type StrategConvo, type StrategRoom } from "@/lib/strateg";
+import { useStrategJournal } from "@/lib/strategJournal";
 import { Conversation, type DraftConvo } from "@/components/strateg/Conversation";
-import { FileText, Lightbulb, Plus, RotateCcw, ScrollText, Sparkles, Target, Trash2, type LucideIcon } from "lucide-react";
+import { FileText, History, Lightbulb, Plus, RotateCcw, ScrollText, Sparkles, Target, Trash2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
@@ -18,6 +19,17 @@ const ROOM_ICON: Record<StrategRoom, LucideIcon> = {
 };
 const A = "text-[hsl(var(--strateg))]";
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("ro-RO", { day: "numeric", month: "short" }).replace(".", "");
+// Journal timestamps read naturally: "azi, 14:20" / "ieri, 09:05" / "3 iul, 14:20".
+function fmtWhen(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const day = (x: Date) => `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const hm = d.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" });
+  if (day(d) === day(now)) return `azi, ${hm}`;
+  if (day(d) === day(yesterday)) return `ieri, ${hm}`;
+  return `${fmtDate(iso)}, ${hm}`;
+}
 
 type View =
   | { mode: "home" }
@@ -26,6 +38,7 @@ type View =
 
 export default function Strateg() {
   const store = useStrategStore();
+  const { events, addEvent } = useStrategJournal();
   const { clients } = useClients();
   const [view, setView] = useState<View>({ mode: "home" });
   const [pickFor, setPickFor] = useState<StrategRoom | null>(null); // client chips before scripturi/reincercat
@@ -48,6 +61,7 @@ export default function Strateg() {
         initialMessage={view.mode === "draft" ? view.initialMessage : undefined}
         onCreated={(c) => setView({ mode: "convo", convo: c })}
         onBack={() => setView({ mode: "home" })}
+        onApplied={(action, label) => void addEvent(action, label)}
       />
     );
   }
@@ -99,6 +113,21 @@ export default function Strateg() {
           );
         })}
       </div>
+
+      {/* Jurnalul Strategului: one event per applied operation (autor, acțiune, obiect, dată) */}
+      <Panel className="mt-4 p-0">
+        <div className="flex items-center gap-2.5 px-4 py-3">
+          <History className={cn("h-4 w-4 shrink-0", A)} />
+          <p className="font-display text-sm font-800">Jurnal</p>
+        </div>
+        {events.length === 0 ? (
+          <p className="border-t border-border/60 px-4 py-5 text-sm text-muted-foreground">Aici rămâne scris tot ce aplică Strategul în aplicație, cu data fiecărei operații.</p>
+        ) : events.slice(0, 12).map((e) => (
+          <p key={e.id} className="border-t border-border/60 px-4 py-2 text-sm">
+            <span className="text-muted-foreground">{fmtWhen(e.createdAt)}: </span>{e.object}
+          </p>
+        ))}
+      </Panel>
 
       {/* Client chips before a Scripturi / De reîncercat conversation */}
       <Modal open={pickFor !== null} onClose={() => setPickFor(null)} title="Pentru ce client?" subtitle="Camera asta lucrează pe un client anume" size="sm">

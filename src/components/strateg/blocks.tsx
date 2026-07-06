@@ -14,9 +14,10 @@ export type ObiectivBlock = { titlu: string; descriere?: string };
 export type ClipBlock = { titlu: string; client?: string };
 export type Segment =
   | { kind: "text"; text: string }
-  | { kind: BlockKind; data: ScriptBlock | ObiectivBlock | ClipBlock };
+  | { kind: BlockKind; data: ScriptBlock | ObiectivBlock | ClipBlock }
+  | { kind: "actiuni"; ops: unknown[] };
 
-const FENCE = /```(script|obiectiv|clip)\s*\n([\s\S]*?)```/g;
+const FENCE = /```(script|obiectiv|clip|actiuni)\s*\n([\s\S]*?)```/g;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function valid(kind: BlockKind, v: any): boolean {
@@ -34,8 +35,14 @@ export function parseSegments(content: string): Segment[] {
     if (idx > last) out.push({ kind: "text", text: content.slice(last, idx) });
     let parsed: unknown = null;
     try { parsed = JSON.parse(body.trim()); } catch { parsed = null; }
-    if (parsed && valid(kind as BlockKind, parsed)) out.push({ kind: kind as BlockKind, data: parsed as ScriptBlock & ObiectivBlock & ClipBlock });
-    else out.push({ kind: "text", text: body.trim() }); // invalid JSON: plain text, no crash
+    if (kind === "actiuni") {
+      if (Array.isArray(parsed) && parsed.length > 0) out.push({ kind: "actiuni", ops: parsed });
+      else out.push({ kind: "text", text: body.trim() }); // invalid JSON: plain text, no crash
+    } else if (parsed && valid(kind as BlockKind, parsed)) {
+      out.push({ kind: kind as BlockKind, data: parsed as ScriptBlock & ObiectivBlock & ClipBlock });
+    } else {
+      out.push({ kind: "text", text: body.trim() }); // invalid JSON: plain text, no crash
+    }
     last = idx + whole.length;
   }
   if (last < content.length) out.push({ kind: "text", text: content.slice(last) });

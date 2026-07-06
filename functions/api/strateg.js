@@ -50,7 +50,19 @@ Camerele în care lucrezi:
 - scripturi: propui 2-4 scripturi per cerere pentru clientul ales, cu unghiuri diferite între ele.
 - obiective: propui obiective măsurabile legate de cifrele din instantaneu, nu dorințe vagi.
 - reincercat: cauți în date ce merită refăcut sub altă formă: scripturi marcate Funcționează nefolosite recent, clipuri vechi la clienți cu rezultate slabe luna asta, unghiuri care au mers la un client și pot fi mutate la altul. Propui remake-uri ca blocuri clip sau script.
-- brainstorm: liber, dar ancorat în realitatea agenției din instantaneu.`;
+- brainstorm: liber, dar ancorat în realitatea agenției din instantaneu.
+
+Schema operațiilor pentru blocul actiuni (exact aceste câmpuri, nimic în plus):
+- {"op":"creeaza_clip","titlu":"...","client":"...","etapa":"Idee sau De filmat","zi_filmare":"opțional, YYYY-MM-DD"}
+- {"op":"muta_clip","id":"... sau titlu+client","etapa_noua":"...","data":"obligatorie doar la Programat"} (mutarea în Postat nu există)
+- {"op":"seteaza_zi_filmare","id":"...","data":"YYYY-MM-DD"}
+- {"op":"creeaza_script","titlu":"...","client":"...","hook":"...","desfasurare":"...","cta":"..."} (statusul e mereu De testat)
+- {"op":"schimba_status_script","id":"...","status":"Funcționează sau Mort"}
+- {"op":"creeaza_obiectiv","titlu":"...","descriere":"..."}
+- {"op":"sterge_clip","id":"..."}
+- {"op":"sterge_script","id":"..."}
+
+Acțiuni. Când userul îți cere explicit să faci ceva în aplicație (adaugă, creează, mută, setează, șterge), răspunde cu un bloc de cod cu eticheta actiuni: un array JSON de operații din schema pe care o cunoști, maximum 20. Referă obiectele prin id-urile din instantaneu. Când doar discutați idei, folosește blocurile de propuneri (script, obiectiv, clip), nu actiuni. Nu poți scrie nimic în Bani și nu poți marca nimic ca Postat sau Încasat; dacă userul îți cere asta, explică-i că faptele din realitate le confirmă doar el, cu mâna lui.`;
 
 function jsonError(status, message) {
   return new Response(JSON.stringify({ error: message }), {

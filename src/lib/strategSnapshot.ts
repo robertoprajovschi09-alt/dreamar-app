@@ -65,18 +65,23 @@ export function useSnapshotBuilder() {
 
     const postedIn = (clientId: string, k: string) => clips.filter((c) => c.clientId === clientId && c.state === "posted" && (c.scheduledDate ?? "").startsWith(k)).length;
 
+    // Every clip and script carries its id so the Strateg can reference objects
+    // precisely (the action executor resolves by id first).
     const pipeline: Record<string, unknown> = {};
     for (const c of clients) {
       const own = clips.filter((x) => x.clientId === c.id);
       const etape: Record<string, number> = {};
       CLIP_STATES.forEach((s) => { etape[s.label] = own.filter((x) => x.state === s.key).length; });
+      const stateLabel = (k: string) => CLIP_STATES.find((s) => s.key === k)?.label ?? k;
       pipeline[c.name] = {
         etape,
-        ideiTitluri: own.filter((x) => x.state === "idea").map((x) => t60(x.title)),
-        deFilmatTitluri: own.filter((x) => x.state === "to_film").map((x) => t60(x.title)),
+        clipuri: own.filter((x) => x.state !== "posted").map((x) => ({
+          id: x.id, titlu: t60(x.title), etapa: stateLabel(x.state),
+          ...(x.filmDate ? { ziFilmare: x.filmDate } : {}), ...(x.scheduledDate ? { ziPostare: x.scheduledDate } : {}),
+        })),
         ultimelePostate: own.filter((x) => x.state === "posted" && x.scheduledDate)
           .sort((a, b) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? "")).slice(0, 10)
-          .map((x) => ({ titlu: t60(x.title), data: x.scheduledDate })),
+          .map((x) => ({ id: x.id, titlu: t60(x.title), data: x.scheduledDate })),
       };
     }
 
@@ -112,7 +117,7 @@ export function useSnapshotBuilder() {
       })),
       pipeline,
       rezultate: { lunaCurenta: curKey, lunaTrecuta: prevKey, perClient: rezultatePerClient },
-      scripturi: scripts.map((s) => ({ titlu: t60(s.title), client: s.clientId ? s.clientName : s.niche ?? "general", status: scriptStatusLabel(s.status), folosit: usageCount(s.id) })),
+      scripturi: scripts.map((s) => ({ id: s.id, titlu: t60(s.title), client: s.clientId ? s.clientName : s.niche ?? "general", status: scriptStatusLabel(s.status), folosit: usageCount(s.id) })),
       bani: {
         incasatLunaAstaLei: incasat,
         deIncasatLunaAstaLei: deIncasat,
