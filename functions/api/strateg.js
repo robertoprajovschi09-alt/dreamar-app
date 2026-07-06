@@ -148,10 +148,13 @@ function streamContentOnly(upstreamBody) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  // Config problems are NOT auth problems: say exactly what is missing (by name,
+  // never by value) so a misconfigured deploy doesn't masquerade as "not logged in".
+  const missing = ["NVIDIA_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"].filter((k) => !env[k]);
+  if (missing.length) return jsonError(503, `Strategul nu e configurat momentan (lipsește ${missing.join(", ")} în Cloudflare).`);
+
   const user = await getUser(request, env);
   if (!user) return jsonError(401, "Trebuie să fii autentificat.");
-
-  if (!env.NVIDIA_API_KEY) return jsonError(503, "Strategul nu e configurat momentan.");
 
   if (!(await withinRateLimit(env, user.id))) {
     return jsonError(429, "Strategul are nevoie de o pauză scurtă. Încearcă din nou într-un minut.");
