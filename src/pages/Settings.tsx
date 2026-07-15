@@ -70,6 +70,7 @@ export default function Settings() {
             <Field label="Nume agenție"><Input value={agencyInfo.name} onChange={(e) => setAgencyInfo({ name: e.target.value })} /></Field>
             <Field label="Website"><Input value={agencyInfo.website} onChange={(e) => setAgencyInfo({ website: e.target.value })} /></Field>
             <Field label="Oraș"><Input value={agencyInfo.city} onChange={(e) => setAgencyInfo({ city: e.target.value })} /></Field>
+            <Field label="WhatsApp (pentru portalul clientului)"><Input value={agencyInfo.whatsapp} placeholder="+40 ..." onChange={(e) => setAgencyInfo({ whatsapp: e.target.value })} /></Field>
             <Field label="Plan"><Input value={currentAgency.plan} disabled /></Field>
           </div>
           <div className="mt-5"><Button variant="primary" disabled={saving === "agency"} onClick={() => save("agency", saveAgency, "Detalii agenție salvate")}>{saving === "agency" && <Loader2 className="h-4 w-4 animate-spin" />} Salvează modificările</Button></div>

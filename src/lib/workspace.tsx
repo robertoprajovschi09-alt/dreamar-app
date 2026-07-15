@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase, storageUpload, storagePublicUrl } from "./supabase";
 import { useAuth, PENDING_AGENCY_KEY } from "./auth";
+import { INVITE_ACCEPT_FLAG } from "./clientAccess";
 
 export type Agency = { id: string; name: string; plan: string; initials: string; gradient: string };
 
 export type Profile = { name: string; email: string; phone: string; role: string; avatarUrl?: string };
 export type Branding = { brandColor: string | null; customDomain: string; logoUrl?: string };
-export type AgencyInfo = { name: string; website: string; city: string };
+export type AgencyInfo = { name: string; website: string; city: string; whatsapp: string };
 export type ClientNotes = { objectives: string[]; feedback: string };
 
 export const DEFAULT_OBJECTIVES = [
@@ -126,7 +127,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const persisted = load({
     currentAgencyId: "nova",
     profile: { name: "Robert Casco", email: "robert@cascodent.ro", phone: "", role: "Proprietar agenție" } as Profile,
-    agencyInfo: { name: "Nova Creative", website: "novacreative.ro", city: "Cluj-Napoca" } as AgencyInfo,
+    agencyInfo: { name: "Nova Creative", website: "novacreative.ro", city: "Cluj-Napoca", whatsapp: "" } as AgencyInfo,
     branding: { brandColor: null, customDomain: "" } as Branding,
     clientData: {
       altmark: {
@@ -166,7 +167,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const loadRows = () =>
         supabase!
           .from("agency_members")
-          .select("agency:agencies(id, name, city, website, brand_color, custom_domain, logo_url, current_plan_tier)")
+          .select("agency:agencies(id, name, city, website, whatsapp, brand_color, custom_domain, logo_url, current_plan_tier)")
           .eq("profile_id", user.id);
       const first = await loadRows();
       // A read error must NOT be treated as "no agency" — provisioning then
@@ -179,33 +180,49 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
       let rows = first.data ?? [];
       if (rows.length === 0) {
-        // No agency membership — a client VIEWER (linked via client_users) must
-        // NOT trigger agency provisioning. A viewer can have MULTIPLE links
-        // (invited to a second client) and links to archived clients, so never
-        // use maybeSingle() here: with >1 row it errors, cu.data comes back
-        // null, and the invited client would fall through into agency
-        // provisioning. Pick the newest non-archived link instead.
-        const cu = await supabase!
-          .from("client_users")
-          .select("client_id, created_at, client:clients(name, niche, onboarding_completed_at, archived_at, agency:agencies(name))")
-          .eq("profile_id", user.id)
-          .order("created_at", { ascending: false });
-        if (cu.error) {
-          // Same rule as the membership read: an error is NOT "no viewer" —
-          // provisioning here would hand an invited client a whole agency.
-          console.error("[workspace] viewer read failed:", cu.error.message);
+        // No agency membership. Is this an ACTIVE client viewer? Read the
+        // whitelist view (client_me): it is already scoped to this user AND
+        // excludes revoked links, and is the only client-readable source of the
+        // client/agency names (raw clients/agencies are owner-only since Phase 1).
+        const me = await supabase!
+          .from("client_me")
+          .select("client_id, client_name, niche, agency_name")
+          .limit(1);
+        if (me.error) {
+          // A read error is NOT "no viewer" — provisioning here would hand an
+          // invited client a whole agency. Bail; a reload retries.
+          console.error("[workspace] client_me read failed:", me.error.message);
           if (active) setAgencyReady(true);
           return;
         }
-        const links = cu.data ?? [];
-        if (links.length > 0) {
+        const meRow = me.data?.[0];
+        if (meRow) {
           if (!active) return;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const c: any = links.find((l: any) => !l.client?.archived_at) ?? links[0];
-          setViewer({ clientId: c.client_id, clientName: c.client?.name ?? "Brandul tău", agencyName: c.client?.agency?.name ?? "", niche: c.client?.niche ?? "custom", onboardedAt: c.client?.onboarding_completed_at ?? null });
+          setViewer({ clientId: meRow.client_id, clientName: meRow.client_name ?? "Brandul tău", agencyName: meRow.agency_name ?? "", niche: meRow.niche ?? "custom", onboardedAt: "ok" });
           setProfileState((p) => ({ ...p, name: user.name, email: user.email, role: "Vizualizator client" }));
+          try { sessionStorage.removeItem(INVITE_ACCEPT_FLAG); } catch { /* ignore */ }
           setAgencyReady(true);
           return; // client viewer — never provision an agency
+        }
+        // Not an active viewer. Do they still have a client link (revoked)?
+        const cu = await supabase!.from("client_users").select("id").eq("profile_id", user.id).limit(1);
+        if (cu.error) {
+          console.error("[workspace] client_users read failed:", cu.error.message);
+          if (active) setAgencyReady(true);
+          return;
+        }
+        if ((cu.data ?? []).length > 0) {
+          // Has a link but client_me is empty → access was revoked. Drop the
+          // session so the revoked client can't keep a stale portal open.
+          console.warn("[workspace] client access revoked — signing out");
+          await supabase!.auth.signOut();
+          return;
+        }
+        // Mid-acceptance: the accept page is writing the client link right now.
+        // Do NOT provision an agency; it will full-reload into the portal.
+        if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(INVITE_ACCEPT_FLAG) === "1") {
+          if (active) setAgencyReady(false);
+          return;
         }
         // Platform (SaaS) admin — no agency, no client. Render the admin control
         // room directly; NEVER provision an agency for them.
@@ -258,7 +275,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cur = liveAgencyRows.find((a: any) => a.id === liveCurrentId);
     if (!cur) return;
-    setAgencyInfoState({ name: cur.name, website: cur.website ?? "", city: cur.city ?? "" });
+    setAgencyInfoState({ name: cur.name, website: cur.website ?? "", city: cur.city ?? "", whatsapp: cur.whatsapp ?? "" });
     setBrandingState({ brandColor: cur.brand_color ?? null, customDomain: cur.custom_domain ?? "", logoUrl: cur.logo_url ?? "" });
   }, [liveMode, liveCurrentId, liveAgencyRows]);
 
@@ -330,10 +347,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (!liveMode || !supabase) return {};
       const id = currentAgency.id;
       if (!id) return { error: "Nicio agenție selectată" };
-      const { error } = await supabase.from("agencies").update({ name: agencyInfo.name, website: agencyInfo.website || null, city: agencyInfo.city || null }).eq("id", id);
+      const { error } = await supabase.from("agencies").update({ name: agencyInfo.name, website: agencyInfo.website || null, city: agencyInfo.city || null, whatsapp: agencyInfo.whatsapp || null }).eq("id", id);
       if (error) return { error: error.message };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setLiveAgencyRows((rows) => rows.map((a: any) => (a.id === id ? { ...a, name: agencyInfo.name, website: agencyInfo.website, city: agencyInfo.city } : a)));
+      setLiveAgencyRows((rows) => rows.map((a: any) => (a.id === id ? { ...a, name: agencyInfo.name, website: agencyInfo.website, city: agencyInfo.city, whatsapp: agencyInfo.whatsapp } : a)));
       setLiveAgencies((ags) => ags.map((a) => (a.id === id ? { ...a, name: agencyInfo.name, initials: agencyInfo.name.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "AG" } : a)));
       return {};
     },

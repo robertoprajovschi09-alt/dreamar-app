@@ -30,12 +30,14 @@ import {
   Target,
   Trash2,
   Upload,
+  UserPlus,
   Users,
   Wand2,
   X,
 } from "lucide-react";
 import { downloadReportImage, buildReportText } from "@/lib/reportImage";
 import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clientcounters";
+import { ClientAccessModal } from "@/components/ClientAccessModal";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
@@ -63,6 +65,7 @@ export default function ClientDetail() {
   }, [searchParams]);
   const [newObj, setNewObj] = useState("");
   const [editOpen, setEditOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [brand, setBrand] = useState<BrandProfile | null>(null);
   // Rezultate tab: selected month (YYYY-MM) + its manual figures.
   const [monthKey, setMonthKey] = useState(() => new Date().toISOString().slice(0, 7));
@@ -196,6 +199,9 @@ export default function ClientDetail() {
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {cl.live && !id.startsWith("demo") && (
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => setInviteOpen(true)}><UserPlus className="h-4 w-4" /> Invită clientul</Button>
+            )}
             <Button variant="primary" className="w-full sm:w-auto" onClick={() => setEditOpen(true)}><Pencil className="h-4 w-4" /> Editează</Button>
           </div>
         </div>
@@ -369,6 +375,11 @@ export default function ClientDetail() {
           if (res.error) { push({ tone: "danger", title: "Arhivarea nu a reușit", description: res.error }); return; }
           push({ tone: "warning", title: "Client arhivat", description: client.name });
         }} />
+
+      {cl.live && !id.startsWith("demo") && (
+        <ClientAccessModal open={inviteOpen} onClose={() => setInviteOpen(false)}
+          clientId={client.id} clientName={client.name} defaultEmail={email ?? ""} />
+      )}
     </>
   );
 }

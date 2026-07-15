@@ -1,7 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { ViewerShell } from "@/components/layout/ViewerShell";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { RequireAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -12,6 +11,7 @@ import { MarketingLayout } from "@/marketing/MarketingLayout";
 const LandingPage = lazy(() => import("@/marketing/LandingPage"));
 const LoginPage = lazy(() => import("@/marketing/LoginPage"));
 const SignupPage = lazy(() => import("@/marketing/SignupPage"));
+const AcceptInvite = lazy(() => import("@/pages/AcceptInvite"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const MobileShell = lazy(() => import("@/components/layout/MobileShell"));
 
@@ -55,7 +55,9 @@ function GatedShell() {
     return <div className="grid min-h-screen place-items-center bg-background"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" /></div>;
   }
   if (isPlatformAdmin) return <AdminShell />;
-  if (isViewer) return <ViewerShell />;
+  // Client viewers live entirely in the separate /portal world — any internal
+  // route bounces them there, so they never see the agency app's skeleton.
+  if (isViewer) return <Navigate to="/portal" replace />;
   // Agency owners on a phone get the native mobile product, not a shrunk desktop.
   return isMobile ? S(<MobileShell />) : <AppShell />;
 }
@@ -69,6 +71,7 @@ export default function App() {
       </Route>
       <Route path="login" element={S(<LoginPage />)} />
       <Route path="signup" element={S(<SignupPage />)} />
+      <Route path="accept-invite" element={S(<AcceptInvite />)} />
       <Route path="admin/login" element={S(<AdminLogin />)} />
 
       {/* ---- Authenticated app ---- */}
@@ -102,8 +105,11 @@ export default function App() {
             Any stray agency user hitting /admin is bounced to their dashboard. */}
         <Route path="admin" element={<Navigate to="/dashboard" replace />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="portal" element={<ClientPortal />} />
       </Route>
+
+      {/* Client portal — a standalone authenticated world, NOT inside the agency
+          shell. ClientPortal itself redirects non-viewers back to /dashboard. */}
+      <Route path="portal" element={<RequireAuth>{S(<ClientPortal />)}</RequireAuth>} />
     </Routes>
   );
 }
