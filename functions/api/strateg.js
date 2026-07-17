@@ -214,6 +214,11 @@ export async function onRequestPost(context) {
         temperature: params.temperature,
         max_tokens: params.max_tokens,
         stream: true,
+        // DeepSeek pe NVIDIA pornește cu "thinking" implicit; îl oprim ca
+        // răspunsul să vină direct (reasoning-ul oricum nu ajunge la client).
+        ...((env.STRATEG_MODEL || DEFAULT_MODEL).includes("deepseek")
+          ? { chat_template_kwargs: { thinking: false } }
+          : {}),
       }),
       signal: controller.signal,
     });

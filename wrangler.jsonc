@@ -13,6 +13,7 @@
   },
   "vars": {
     // Public values (they ship in the frontend bundle anyway); RLS guards the data.
+    "STRATEG_MODEL": "deepseek-ai/deepseek-v4-pro",
     "SUPABASE_URL": "https://vpvvkjyymkqmtvwexroa.supabase.co",
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdnZranl5bWtxbXR2d2V4cm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyODA5NzMsImV4cCI6MjA5OTg1Njk3M30.9EcYl0hfgM1odqVL63cu0Su4xQnEBPfjTuY7iP5vWiA"
   }
