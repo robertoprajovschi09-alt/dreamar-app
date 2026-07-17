@@ -3,7 +3,7 @@
   // runs functions/worker.js for /api/* (the Strateg proxy).
   // Secrets (NVIDIA_API_KEY) are set ONLY in the Cloudflare dashboard, never here.
   "name": "dreamar-app",
-  "compatibility_date": "2026-07-18",
+  "compatibility_date": "2026-07-17",
   "main": "./functions/worker.js",
   "assets": {
     "directory": "./dist",
