@@ -1,0 +1,19 @@
+{
+  // Cloudflare Worker config: serves the built Vite app as static assets and
+  // runs functions/worker.js for /api/* (the Strateg proxy).
+  // Secrets (NVIDIA_API_KEY) are set ONLY in the Cloudflare dashboard, never here.
+  "name": "dreamar-app",
+  "compatibility_date": "2026-07-18",
+  "main": "./functions/worker.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    // Public values (they ship in the frontend bundle anyway); RLS guards the data.
+    "SUPABASE_URL": "https://vpvvkjyymkqmtvwexroa.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdnZranl5bWtxbXR2d2V4cm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyODA5NzMsImV4cCI6MjA5OTg1Njk3M30.9EcYl0hfgM1odqVL63cu0Su4xQnEBPfjTuY7iP5vWiA"
+  }
+}

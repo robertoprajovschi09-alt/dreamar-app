@@ -1,11 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Env-driven client. Until VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY are set
-// (see .env.example), `supabase` is null and the app keeps running on its
-// sample data — so Phase 8 wiring can land page-by-page behind this flag
-// without breaking the demo or the marketing site.
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Public Supabase config, baked in as fallback so builds need no env setup.
+// The anon key is PUBLISHABLE by design (it ships in the frontend bundle
+// regardless); data stays protected by RLS. Env vars still override these
+// (local dev against another project, TEMP_QA demo mode).
+const FALLBACK_URL = "https://vpvvkjyymkqmtvwexroa.supabase.co";
+const FALLBACK_ANON =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdnZranl5bWtxbXR2d2V4cm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyODA5NzMsImV4cCI6MjA5OTg1Njk3M30.9EcYl0hfgM1odqVL63cu0Su4xQnEBPfjTuY7iP5vWiA";
+
+const url = import.meta.env.VITE_SUPABASE_URL || FALLBACK_URL;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY || FALLBACK_ANON;
 
 export const isSupabaseConfigured = Boolean(url && anon);
 
