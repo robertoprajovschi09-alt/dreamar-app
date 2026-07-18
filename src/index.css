@@ -195,9 +195,29 @@ body {
   overflow-x: clip;
   max-width: 100%;
 }
+/* iOS auto-inflates text on orientation change; lock it. Manual pinch-zoom
+   stays allowed (accessibility) — no maximum-scale/user-scalable anywhere. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* Kill the double-tap zoom + 300ms tap delay on interactive controls.
+   `manipulation` keeps scrolling and pinch-zoom; SwipeRow is unaffected
+   (it runs on pointer events, on a div outside this selector list). */
+a,
+button,
+input,
+select,
+textarea,
+label,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
 /* iOS zooms the whole page when focusing a control smaller than 16px.
-   Force a 16px touch target on phones so tapping a field no longer zooms. */
-@media (max-width: 640px) {
+   Force 16px up to 767px — the same breakpoint as the mobile shell
+   (src/lib/useIsMobile.ts), so every phone viewport is covered. */
+@media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
