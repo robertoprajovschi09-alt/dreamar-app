@@ -14,6 +14,7 @@ export type PortalMe = {
   agencyWebsite: string | null;
   agencyCity: string | null;
   agencyWhatsapp: string | null;
+  onboardedAt: string | null;
 };
 
 export type PortalClip = {
@@ -29,7 +30,7 @@ export async function fetchPortalMe(): Promise<{ me?: PortalMe; error?: string }
   if (!supabase) return { error: "Portalul nu este configurat." };
   const { data, error } = await supabase
     .from("client_me")
-    .select("client_id, client_name, niche, agency_name, agency_website, agency_city, agency_whatsapp")
+    .select("client_id, client_name, niche, agency_name, agency_website, agency_city, agency_whatsapp, onboarding_completed_at")
     .limit(1);
   if (error) return { error: error.message };
   const r = data?.[0];
@@ -43,8 +44,64 @@ export async function fetchPortalMe(): Promise<{ me?: PortalMe; error?: string }
       agencyWebsite: r.agency_website ?? null,
       agencyCity: r.agency_city ?? null,
       agencyWhatsapp: r.agency_whatsapp ?? null,
+      onboardedAt: r.onboarding_completed_at ?? null,
     },
   };
+}
+
+// ── Client-writable data (via SECURITY DEFINER RPCs; RLS blocks direct writes) ──
+
+export type PortalProfile = {
+  brandVoice: string; targetAudience: string;
+  objectives: string[]; goals: string[];
+  brandProfile: Record<string, unknown>;
+  onboardedAt: string | null;
+};
+
+export async function fetchMyProfile(): Promise<{ profile?: PortalProfile; error?: string }> {
+  if (!supabase) return { error: "Portalul nu este configurat." };
+  const { data, error } = await supabase.rpc("client_my_profile");
+  if (error) return { error: error.message };
+  const r = Array.isArray(data) ? data[0] : data;
+  return {
+    profile: {
+      brandVoice: r?.brand_voice ?? "",
+      targetAudience: r?.target_audience ?? "",
+      objectives: Array.isArray(r?.objectives) ? r.objectives : [],
+      goals: Array.isArray(r?.goals) ? r.goals : [],
+      brandProfile: r?.brand_profile ?? {},
+      onboardedAt: r?.onboarding_completed_at ?? null,
+    },
+  };
+}
+
+export async function submitOnboarding(input: {
+  brandVoice: string; targetAudience: string; objectives: string[]; goals: string[]; brandProfile: Record<string, unknown>;
+}): Promise<{ error?: string }> {
+  if (!supabase) return { error: "Portalul nu este configurat." };
+  const { error } = await supabase.rpc("client_submit_onboarding", {
+    p_brand_voice: input.brandVoice || null,
+    p_target_audience: input.targetAudience || null,
+    p_objectives: input.objectives,
+    p_goals: input.goals,
+    p_brand_profile: input.brandProfile,
+  });
+  return { error: error?.message };
+}
+
+// The metrics object keys are business_impact_entries columns (see the niche's monthlyMetrics).
+export async function fetchMyResults(periodMonth: string): Promise<{ metrics?: Record<string, number | null>; error?: string }> {
+  if (!supabase) return { error: "Portalul nu este configurat." };
+  const { data, error } = await supabase.rpc("client_my_results", { p_period_month: periodMonth });
+  if (error) return { error: error.message };
+  const r = Array.isArray(data) ? data[0] : data;
+  return { metrics: (r ?? {}) as Record<string, number | null> };
+}
+
+export async function submitResults(periodMonth: string, metrics: Record<string, string>): Promise<{ error?: string }> {
+  if (!supabase) return { error: "Portalul nu este configurat." };
+  const { error } = await supabase.rpc("client_submit_results", { p_period_month: periodMonth, p_metrics: metrics });
+  return { error: error?.message };
 }
 
 export async function fetchPortalClips(): Promise<{ clips?: PortalClip[]; error?: string }> {

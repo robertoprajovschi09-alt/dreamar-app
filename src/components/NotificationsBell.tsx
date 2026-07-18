@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useNotifications, type Notif } from "@/lib/notifications";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Bell, CalendarClock, FileText, Target, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Bell, CalendarClock, ClipboardCheck, FileText, Target, type LucideIcon } from "lucide-react";
 
 const META: Record<Notif["kind"], { icon: LucideIcon; cls: string }> = {
   money_overdue: { icon: AlertTriangle, cls: "text-danger bg-danger/12" },
   money_invoice: { icon: FileText, cls: "text-[hsl(var(--warning))] bg-warning/15" },
   evening_plan: { icon: CalendarClock, cls: "text-primary bg-primary/12" },
   kill_unlock: { icon: Target, cls: "text-success bg-success/12" },
+  client_submission: { icon: ClipboardCheck, cls: "text-info bg-info/12" },
 };
 
 function timeAgo(ts: number): string {

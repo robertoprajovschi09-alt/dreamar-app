@@ -4,22 +4,24 @@ import { useMoney } from "./money";
 import { useKillList } from "./killlist";
 import { useClients } from "./clients";
 import { useClips } from "./clips";
+import { fetchUnseenSubmissions, markSubmissionsSeen, type ClientSubmission } from "./submissions";
 import { formatCurrency } from "./utils";
 import { Modal } from "@/components/overlay";
 import { Button, Input, Select } from "@/components/ui";
 import { Clapperboard, MapPin, Plus, Send } from "lucide-react";
 
 /*
- * The one notification center. Exactly THREE kinds, all derived (nothing else in
- * the app is allowed to nag the user):
- *   money   - overdue collections + invoices still not issued past the 1st;
- *   evening - one "Planifică ziua de mâine" per evening, at the set time;
- *   kill    - a Kill List goal that just unlocked.
- * "Seen" state lives in localStorage (single-user tool); money alerts stay until
- * the underlying problem is actually resolved.
+ * The one notification center. A small, fixed set of kinds (nothing else in the
+ * app is allowed to nag the user):
+ *   money      - overdue collections + invoices still not issued past the 1st;
+ *   evening    - one "Planifică ziua de mâine" per evening, at the set time;
+ *   kill       - a Kill List goal that just unlocked;
+ *   submission - a client filled their brand questions or monthly numbers in the portal.
+ * Most kinds are derived; "seen" state lives in localStorage. Client submissions
+ * are the exception: they come from the DB and are marked seen there on panel open.
  */
 
-export type NotifKind = "money_overdue" | "money_invoice" | "evening_plan" | "kill_unlock";
+export type NotifKind = "money_overdue" | "money_invoice" | "evening_plan" | "kill_unlock" | "client_submission";
 export type Notif = {
   id: string;
   kind: NotifKind;
@@ -90,6 +92,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = window.setInterval(() => setNow(Date.now()), 60000); return () => window.clearInterval(t); }, []);
 
+  // Unseen client portal submissions (brand questions / monthly numbers). Polled
+  // so the bell lights up within a minute of a client filling something in.
+  const [submissions, setSubmissions] = useState<ClientSubmission[]>([]);
+  useEffect(() => {
+    let on = true;
+    const load = () => { void fetchUnseenSubmissions().then((s) => { if (on) setSubmissions(s); }); };
+    load();
+    const t = window.setInterval(load, 60000);
+    return () => { on = false; window.clearInterval(t); };
+  }, []);
+
   // Record when each Kill List goal first appears unlocked (for chronological order).
   useEffect(() => {
     const unlocked = killItems.filter((it) => it.unlocked).map((it) => it.id);
@@ -140,8 +153,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       resolved: killSeen.includes(it.id), to: "/kill-list",
     }));
 
+    // 4 · client portal — a client filled their brand questions or monthly numbers
+    submissions.forEach((s) => out.push({
+      id: `cs-${s.id}`, kind: "client_submission", ts: new Date(s.createdAt).getTime(),
+      title: s.kind === "onboarding"
+        ? `${nameOf(s.clientId)} a completat chestionarul de brand`
+        : `${nameOf(s.clientId)} a trimis rezultatele lunii`,
+      desc: "Vezi profilul clientului.", resolved: false, to: `/clients/${s.clientId}`,
+    }));
+
     return out.sort((a, b) => b.ts - a.ts);
-  }, [money.overdueCollections, money.invoices, clients, killItems, killFirst, killSeen, settings.eveningTime, eveningSeen, now, nameOf]);
+  }, [money.overdueCollections, money.invoices, clients, killItems, killFirst, killSeen, settings.eveningTime, eveningSeen, now, nameOf, submissions]);
 
   const unresolvedCount = useMemo(() => notifications.filter((n) => !n.resolved).length, [notifications]);
 
@@ -150,7 +172,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const onPanelOpen = useCallback(() => {
     const fresh = killItems.filter((it) => it.unlocked).map((it) => it.id);
     setKillSeen((prev) => { const next = Array.from(new Set([...prev, ...fresh])); lsSet(K.killSeen, next); return next; });
-  }, [killItems]);
+    // Client submissions: mark seen in the DB and drop them from the bell.
+    if (submissions.length) {
+      const ids = submissions.map((s) => s.id);
+      void markSubmissionsSeen(ids);
+      setSubmissions([]);
+    }
+  }, [killItems, submissions]);
 
   const [tomorrowOpen, setTomorrowOpen] = useState(false);
   const openTomorrow = useCallback(() => {

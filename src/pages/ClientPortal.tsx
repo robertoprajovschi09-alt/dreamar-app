@@ -2,17 +2,22 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { fetchPortalMe, fetchPortalClips, whatsappLink, type PortalMe, type PortalClip, type PortalStatus } from "@/lib/portal";
-import { CalendarDays, Clapperboard, Home, Loader2, LogOut, MessageCircle, ArrowUpRight } from "lucide-react";
+import {
+  fetchPortalMe, fetchPortalClips, whatsappLink, fetchMyProfile, submitOnboarding, fetchMyResults, submitResults,
+  type PortalMe, type PortalClip, type PortalStatus,
+} from "@/lib/portal";
+import { nicheSpec, SHARED_QUESTIONS, type OnboardingQuestion } from "@/lib/niches";
+import { ArrowLeft, ArrowUpRight, BarChart3, CalendarDays, Check, ClipboardList, Clapperboard, Home, Loader2, LogOut, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
  * Client portal — a world of its own, fully separate from the internal app.
  * Always dark (ignores the app theme), DR DREAM red as the only accent, mono
- * uppercase labels, mobile-first. Reads ONLY the whitelist views.
+ * uppercase labels, mobile-first. Reads the whitelist views; writes (brand
+ * profile + monthly numbers) go through SECURITY DEFINER RPCs.
  */
 
-type Tab = "acasa" | "clipuri" | "calendar" | "contact";
+type Tab = "acasa" | "clipuri" | "calendar" | "rezultate" | "contact";
 
 // Self-contained palette (warm near-black, warm white, DR DREAM red).
 const PALETTE = {
@@ -46,6 +51,7 @@ export default function ClientPortal() {
   const [me, setMe] = useState<PortalMe | null>(null);
   const [clips, setClips] = useState<PortalClip[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState(false);
 
   useEffect(() => {
     if (!isViewer) return;
@@ -60,6 +66,10 @@ export default function ClientPortal() {
     })();
     return () => { on = false; };
   }, [isViewer]);
+
+  // Re-read the profile after the client submits onboarding (clears the nudge).
+  const refreshMe = async () => { const m = await fetchPortalMe(); if (m.me) setMe(m.me); };
+  const goTab = (id: Tab) => { setOnboarding(false); setTab(id); };
 
   const onSignOut = () => { void signOut(); navigate("/login"); };
 
@@ -91,11 +101,14 @@ export default function ClientPortal() {
           <Center><Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--p-muted))]" /></Center>
         ) : err ? (
           <p className="mt-10 rounded-xl border border-[hsl(var(--p-line))] px-4 py-3 text-sm text-[hsl(var(--p-muted))]">{err}</p>
+        ) : onboarding ? (
+          <OnboardingView me={me} onDone={async () => { await refreshMe(); setOnboarding(false); setTab("acasa"); }} onCancel={() => setOnboarding(false)} />
         ) : (
           <>
-            {tab === "acasa" && <Overview clips={clips} />}
+            {tab === "acasa" && <Overview clips={clips} onboarded={!!me?.onboardedAt} onStartOnboarding={() => setOnboarding(true)} />}
             {tab === "clipuri" && <Clips clips={clips} />}
             {tab === "calendar" && <CalendarList clips={clips} />}
+            {tab === "rezultate" && <ResultsForm me={me} />}
             {tab === "contact" && <Contact me={me} agencyName={agencyName} />}
           </>
         )}
@@ -107,9 +120,10 @@ export default function ClientPortal() {
             { id: "acasa", label: "Acasă", icon: Home },
             { id: "clipuri", label: "Clipuri", icon: Clapperboard },
             { id: "calendar", label: "Calendar", icon: CalendarDays },
+            { id: "rezultate", label: "Rezultate", icon: BarChart3 },
             { id: "contact", label: "Contact", icon: MessageCircle },
           ] as { id: Tab; label: string; icon: typeof Home }[]).map((n) => (
-            <button key={n.id} onClick={() => setTab(n.id)}
+            <button key={n.id} onClick={() => goTab(n.id)}
               className={cn("flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-600 transition",
                 tab === n.id ? "text-[hsl(var(--p-red))]" : "text-[hsl(var(--p-muted))]")}>
               <n.icon className="h-[22px] w-[22px]" strokeWidth={2} />
@@ -133,7 +147,22 @@ function Label({ children }: { children: ReactNode }) {
 }
 
 /* ------------------------------- Overview -------------------------------- */
-function Overview({ clips }: { clips: PortalClip[] }) {
+function OnboardingNudge({ onStart }: { onStart: () => void }) {
+  return (
+    <button onClick={onStart}
+      className="w-full rounded-2xl border border-[hsl(var(--p-red))]/40 bg-[hsl(var(--p-red))]/10 p-5 text-left transition active:scale-[0.99]">
+      <div className="flex items-start gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--p-red))] text-white"><ClipboardList className="h-4.5 w-4.5" /></span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-700">Spune-ne despre brandul tău</p>
+          <p className="mt-1 text-sm text-[hsl(var(--p-muted))]">Câteva întrebări scurte ca să facem conținut pe măsura ta. Durează 2 minute.</p>
+          <span className="mt-2.5 inline-flex items-center gap-1 text-xs font-700 text-[hsl(var(--p-red))]">Completează acum <ArrowUpRight className="h-3.5 w-3.5" /></span>
+        </div>
+      </div>
+    </button>
+  );
+}
+function Overview({ clips, onboarded, onStartOnboarding }: { clips: PortalClip[]; onboarded: boolean; onStartOnboarding: () => void }) {
   const today = todayISO();
   const thisMonth = monthKey(today);
   const delivered = clips.filter((c) => c.status === "Livrat" && c.postDate && monthKey(c.postDate) === thisMonth).length;
@@ -144,6 +173,7 @@ function Overview({ clips }: { clips: PortalClip[] }) {
   if (clips.length === 0) {
     return (
       <div className="space-y-5">
+        {!onboarded && <OnboardingNudge onStart={onStartOnboarding} />}
         <Label>Luna aceasta</Label>
         <div className="rounded-2xl border border-[hsl(var(--p-line))] bg-[hsl(var(--p-surface))] p-6">
           <p className="text-lg font-700">Începem în curând</p>
@@ -155,6 +185,7 @@ function Overview({ clips }: { clips: PortalClip[] }) {
 
   return (
     <div className="space-y-4">
+      {!onboarded && <OnboardingNudge onStart={onStartOnboarding} />}
       <Label>{monthLabel(thisMonth)}</Label>
       <div className="grid grid-cols-2 gap-3">
         <Stat n={delivered} label="Clipuri livrate" />
@@ -312,6 +343,202 @@ function Contact({ me, agencyName }: { me: PortalMe | null; agencyName: string }
           </a>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------- Shared form bits --------------------------- */
+const inputCls = "w-full rounded-xl border border-[hsl(var(--p-line))] bg-[hsl(var(--p-surface-2))] px-3.5 py-3 text-[15px] text-[hsl(var(--p-text))] outline-none placeholder:text-[hsl(var(--p-muted))]/70 focus:border-[hsl(var(--p-red))]";
+
+// Renders one onboarding question in the portal palette. Chips answers are
+// string[]; every other type is a string.
+function PortalField({ q, value, onChange }: { q: OnboardingQuestion; value: string | string[]; onChange: (v: string | string[]) => void }) {
+  const arr = Array.isArray(value) ? value : [];
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-sm font-700">{q.label}</p>
+        {q.help && <p className="mt-0.5 text-xs text-[hsl(var(--p-muted))]">{q.help}</p>}
+      </div>
+      {q.type === "chips" ? (
+        <div className="flex flex-wrap gap-2">
+          {(q.options ?? []).map((opt) => {
+            const on = arr.includes(opt);
+            return (
+              <button key={opt} type="button"
+                onClick={() => onChange(on ? arr.filter((x) => x !== opt) : [...arr, opt])}
+                className={cn("rounded-full border px-3.5 py-2 text-xs font-600 transition",
+                  on ? "border-[hsl(var(--p-red))] bg-[hsl(var(--p-red))]/12 text-[hsl(var(--p-red))]"
+                     : "border-[hsl(var(--p-line))] text-[hsl(var(--p-muted))]")}>
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      ) : q.type === "select" ? (
+        <select className={inputCls} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Alege…</option>
+          {(q.options ?? []).map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      ) : q.type === "textarea" ? (
+        <textarea rows={3} className={cn(inputCls, "resize-none")} placeholder={q.placeholder}
+          value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+      ) : (
+        <input type={q.type === "number" ? "number" : "text"} inputMode={q.type === "number" ? "numeric" : undefined}
+          className={inputCls} placeholder={q.placeholder}
+          value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------ Onboarding ------------------------------- */
+// Brand questions the client fills once. Maps to clients.* via the
+// client_submit_onboarding RPC. Prefills from the current profile so re-opening
+// shows what was already answered (and preserves objectives the agency set).
+function OnboardingView({ me, onDone, onCancel }: { me: PortalMe | null; onDone: () => void; onCancel: () => void }) {
+  const spec = nicheSpec(me?.niche);
+  const questions = useMemo(() => [...SHARED_QUESTIONS, ...spec.extraQuestions], [spec]);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [objectives, setObjectives] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const { profile } = await fetchMyProfile();
+      if (!on) return;
+      const a: Record<string, string | string[]> = {};
+      if (profile) {
+        if (profile.brandVoice) a.brand_voice = profile.brandVoice.split(",").map((s) => s.trim()).filter(Boolean);
+        if (profile.targetAudience) a.target_audience = profile.targetAudience;
+        if (profile.goals.length) a.top_goals = profile.goals.join("\n");
+        for (const [k, v] of Object.entries(profile.brandProfile)) {
+          a[k] = Array.isArray(v) ? (v as string[]) : String(v ?? "");
+        }
+        setObjectives(profile.objectives);
+      }
+      setAnswers(a);
+      setLoading(false);
+    })();
+    return () => { on = false; };
+  }, []);
+
+  const set = (id: string) => (v: string | string[]) => setAnswers((p) => ({ ...p, [id]: v }));
+
+  const submit = async () => {
+    setSaving(true); setError(null);
+    const asStr = (id: string) => { const v = answers[id]; return Array.isArray(v) ? v.join(", ") : (v ?? "").toString().trim(); };
+    const brandProfile: Record<string, unknown> = {};
+    for (const q of questions) {
+      if (["brand_voice", "target_audience", "top_goals"].includes(q.id)) continue;
+      const v = answers[q.id];
+      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+      brandProfile[q.id] = v;
+    }
+    const { error } = await submitOnboarding({
+      brandVoice: asStr("brand_voice"),
+      targetAudience: asStr("target_audience"),
+      objectives,
+      goals: (asStr("top_goals")).split("\n").map((s) => s.trim()).filter(Boolean),
+      brandProfile,
+    });
+    setSaving(false);
+    if (error) { setError(error); return; }
+    onDone();
+  };
+
+  if (loading) return <Center><Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--p-muted))]" /></Center>;
+
+  return (
+    <div className="space-y-5">
+      <button onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm font-600 text-[hsl(var(--p-muted))]">
+        <ArrowLeft className="h-4 w-4" /> Înapoi
+      </button>
+      <div>
+        <Label>Despre brandul tău</Label>
+        <p className="mt-2 text-sm text-[hsl(var(--p-muted))]">Răspunsurile ne ajută să facem conținut care sună a tine. Poți reveni oricând să le schimbi.</p>
+      </div>
+      <div className="space-y-6">
+        {questions.map((q) => <PortalField key={q.id} q={q} value={answers[q.id] ?? (q.type === "chips" ? [] : "")} onChange={set(q.id)} />)}
+      </div>
+      {error && <p className="rounded-xl border border-[hsl(var(--p-red))]/40 bg-[hsl(var(--p-red))]/10 px-4 py-3 text-sm text-[hsl(var(--p-red))]">{error}</p>}
+      <button onClick={submit} disabled={saving}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--p-red))] py-3.5 text-[15px] font-700 text-white transition active:scale-[0.99] disabled:opacity-60">
+        {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Check className="h-5 w-5" /> Trimite răspunsurile</>}
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------- Rezultate ------------------------------- */
+// Monthly numbers the client reports. Prefilled from their own past entries;
+// saved via client_submit_results (source='client').
+function ResultsForm({ me }: { me: PortalMe | null }) {
+  const spec = nicheSpec(me?.niche);
+  const metrics = spec.monthlyMetrics;
+  const period = monthKey(todayISO()) + "-01"; // first of current month, YYYY-MM-01
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const { metrics: m } = await fetchMyResults(period);
+      if (!on) return;
+      const v: Record<string, string> = {};
+      if (m) for (const f of metrics) { const raw = m[f.field]; if (raw !== null && raw !== undefined) v[f.field] = String(raw); }
+      setValues(v);
+      setLoading(false);
+    })();
+    return () => { on = false; };
+  }, [period]);
+
+  const submit = async () => {
+    setSaving(true); setError(null);
+    const payload: Record<string, string> = {};
+    for (const f of metrics) { const raw = (values[f.field] ?? "").trim(); if (raw !== "") payload[f.field] = raw; }
+    const { error } = await submitResults(period, payload);
+    setSaving(false);
+    if (error) { setError(error); return; }
+    setSaved(true);
+  };
+
+  if (loading) return <Center><Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--p-muted))]" /></Center>;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <Label>Rezultatele mele — {monthLabel(monthKey(todayISO()))}</Label>
+        <p className="mt-2 text-sm text-[hsl(var(--p-muted))]">Trece cifrele lunii. Ne ajută să vedem ce aduce conținutul și ce merită împins mai tare.</p>
+      </div>
+      <div className="space-y-4">
+        {metrics.map((f) => (
+          <div key={f.field} className="flex items-center gap-3">
+            <label htmlFor={`m-${f.field}`} className="min-w-0 flex-1 text-sm font-600">{f.label}</label>
+            <input id={`m-${f.field}`} type="number" inputMode="numeric" min={0}
+              className="w-28 shrink-0 rounded-xl border border-[hsl(var(--p-line))] bg-[hsl(var(--p-surface-2))] px-3 py-2.5 text-right text-[15px] text-[hsl(var(--p-text))] outline-none focus:border-[hsl(var(--p-red))]"
+              placeholder="0" value={values[f.field] ?? ""}
+              onChange={(e) => { setSaved(false); setValues((p) => ({ ...p, [f.field]: e.target.value })); }} />
+          </div>
+        ))}
+      </div>
+      {error && <p className="rounded-xl border border-[hsl(var(--p-red))]/40 bg-[hsl(var(--p-red))]/10 px-4 py-3 text-sm text-[hsl(var(--p-red))]">{error}</p>}
+      {saved ? (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-[hsl(var(--p-line))] bg-[hsl(var(--p-surface))] py-3.5 text-[15px] font-700 text-[hsl(var(--p-text))]">
+          <Check className="h-5 w-5 text-[hsl(var(--p-red))]" /> Trimis. Mulțumim!
+        </div>
+      ) : (
+        <button onClick={submit} disabled={saving}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--p-red))] py-3.5 text-[15px] font-700 text-white transition active:scale-[0.99] disabled:opacity-60">
+          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Trimite cifrele"}
+        </button>
+      )}
     </div>
   );
 }
