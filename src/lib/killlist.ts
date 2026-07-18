@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { useWorkspace } from "./workspace";
+import { useToast } from "./toast";
 import { formatCurrency } from "./utils";
 
 /*
@@ -38,6 +39,7 @@ type State = Record<string, ItemState>;
 // Custom objectives (added by the Strateg or by hand) live in the same persisted
 // blob under a reserved key, so no data migration is needed.
 export type CustomKill = { id: string; title: string; note: string };
+export type RemovedCustom = { item: CustomKill; index: number; itemState?: ItemState };
 const CUSTOM_KEY = "_customItems";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function splitState(raw: any): { state: State; custom: CustomKill[] } {
@@ -58,6 +60,7 @@ const lei = (n: number) => formatCurrency(n);
 
 export function useKillList() {
   const { live, currentAgency, agencyReady } = useWorkspace();
+  const toast = useToast();
   const agencyId = currentAgency.id;
   const [loading, setLoading] = useState(live);
   const [state, setState] = useState<State>({});
@@ -66,6 +69,8 @@ export function useKillList() {
   const [incomeByMonth, setIncomeByMonth] = useState<Record<string, number>>({});
   const stateRef = useRef(state); stateRef.current = state;
   const customRef = useRef(custom); customRef.current = custom;
+  // Toast lives in a ref so persist's identity doesn't churn with the provider.
+  const toastRef = useRef(toast); toastRef.current = toast;
 
   const reload = useCallback(async () => {
     if (!live) {
@@ -104,17 +109,48 @@ export function useKillList() {
     void reload();
   }, [live, agencyReady, agencyId, reload]);
 
-  const persist = useCallback((next: State, nextCustom?: CustomKill[]) => {
+  // Writes are awaited and CHECKED: a failed save must never be silent, or the
+  // user finds out only when the tick is gone after a refresh.
+  const persist = useCallback(async (next: State, nextCustom?: CustomKill[]) => {
     const blob = { ...next, [CUSTOM_KEY]: nextCustom ?? customRef.current };
-    if (live && supabase && agencyId) void supabase.from("kill_list_state").upsert({ agency_id: agencyId, state: blob }, { onConflict: "agency_id" });
-    else try { localStorage.setItem(DEMO_KEY, JSON.stringify(blob)); } catch { /* private mode */ }
+    if (live && supabase && agencyId) {
+      const { error } = await supabase.from("kill_list_state").upsert({ agency_id: agencyId, state: blob }, { onConflict: "agency_id" });
+      if (error) toastRef.current.push({ tone: "danger", title: "Nu s-a putut salva", description: "Modificarea se pierde la refresh." });
+    } else {
+      try { localStorage.setItem(DEMO_KEY, JSON.stringify(blob)); } catch { /* private mode */ }
+    }
   }, [live, agencyId]);
 
   // A custom objective = a manual condition; unlocks when you tick it, like the rest.
   const addCustomItem = useCallback((title: string, note: string) => {
     const item: CustomKill = { id: `custom-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, title: title.trim() || "Obiectiv", note: note.trim() };
-    setCustom((prev) => { const next = [...prev, item]; persist(stateRef.current, next); return next; });
+    setCustom((prev) => { const next = [...prev, item]; void persist(stateRef.current, next); return next; });
     return item;
+  }, [persist]);
+
+  // Removing a custom objective returns a snapshot so Undo can put it back
+  // IDENTICAL (id, title, note, ticked state, position). Fixed KILL_LIST items
+  // are not removable: they are not in `custom`, so the lookup misses them.
+  const removeCustomItem = useCallback((id: string): RemovedCustom | null => {
+    const index = customRef.current.findIndex((c) => c.id === id);
+    if (index < 0) return null;
+    const item = customRef.current[index];
+    const itemState = stateRef.current[id];
+    const nextCustom = customRef.current.filter((c) => c.id !== id);
+    const { [id]: _gone, ...nextState } = stateRef.current;
+    setCustom(nextCustom);
+    setState(nextState as State);
+    void persist(nextState as State, nextCustom);
+    return { item, index, itemState };
+  }, [persist]);
+
+  const restoreCustomItem = useCallback((snap: RemovedCustom) => {
+    const nextCustom = [...customRef.current];
+    nextCustom.splice(Math.min(snap.index, nextCustom.length), 0, snap.item);
+    const nextState = snap.itemState ? { ...stateRef.current, [snap.item.id]: snap.itemState } : stateRef.current;
+    setCustom(nextCustom);
+    setState(nextState);
+    void persist(nextState, nextCustom);
   }, [persist]);
 
   const consecutive = useCallback((threshold: number) => {
@@ -157,7 +193,7 @@ export function useKillList() {
     setState((prev) => {
       const next = { ...prev };
       toFlip.forEach((it) => { next[it.id] = { ...next[it.id], unlocked: true }; });
-      persist(next);
+      void persist(next);
       return next;
     });
   }, [evaluated, state, persist]);
@@ -166,11 +202,11 @@ export function useKillList() {
     setState((prev) => {
       const cur = prev[itemId] ?? {};
       const next = { ...prev, [itemId]: { ...cur, manual: { ...(cur.manual ?? {}), [key]: !cur.manual?.[key] } } };
-      persist(next);
+      void persist(next);
       return next;
     });
   }, [persist]);
 
   const items: EvalItem[] = evaluated.map(({ currentlyMet: _c, ...it }) => it);
-  return { loading, items, toggleManual, addCustomItem };
+  return { loading, items, custom, toggleManual, addCustomItem, removeCustomItem, restoreCustomItem };
 }

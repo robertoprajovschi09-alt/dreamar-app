@@ -1130,7 +1130,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     },
     {
       "field": "revenue_estimate",
-      "label": "Venituri estimate din rezervări (EUR)"
+      "label": "Venituri estimate din rezervări (lei)"
     }
   ],
   "portalKpis": [
@@ -1144,7 +1144,7 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
     },
     {
       "field": "revenue_estimate",
-      "label": "Venituri din rezervări (EUR)"
+      "label": "Venituri din rezervări (lei)"
     }
   ],
   "portalNote": "Pune accent pe cum social-ul umple camerele: solicitări de rezervare directă și rezervări confirmate generate de conținut, cu venitul estimat și nopțile-cameră pentru a dovedi ROI-ul raportat la ritmul de vârf/extrasezon al proprietății. Ține dovada socială (recenzii, UGC de la oaspeți) și rata de ocupare în extrasezon în prim-plan, pentru că acolo simt proprietarii cel mai mult impactul."
