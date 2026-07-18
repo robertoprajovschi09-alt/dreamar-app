@@ -38,6 +38,7 @@ import {
 import { downloadReportImage, buildReportText } from "@/lib/reportImage";
 import { useClientCounters, BARTER_COUNTERS, BARTER_DEADLINE } from "@/lib/clientcounters";
 import { ClientAccessModal } from "@/components/ClientAccessModal";
+import { BaselineCard, WeeklyCard, MonthlyInsights } from "@/components/results/ClientMetrics";
 
 const PLATFORMS = ["Instagram", "TikTok", "Facebook", "YouTube", "LinkedIn"];
 type BrandProfile = { brandVoice: string; audience: string; goals: string[]; brandProfile: Record<string, unknown>; onboardedAt: string | null };
@@ -323,6 +324,9 @@ export default function ClientDetail() {
 
       {activeTab === "Rezultate" && !isYanis && (
         <div className="space-y-4">
+          <BaselineCard clientId={client.id} niche={client.niche} />
+          <WeeklyCard clientId={client.id} />
+          <MonthlyInsights clientId={client.id} clientName={client.name} niche={client.niche} monthKey={monthKey} />
           <SectionCard title="Rezultate" subtitle="Rezultatele lunii, plus raportul pentru client" icon={FileText}
             action={<input type="month" value={monthKey} onChange={(e) => setMonthKey(e.target.value)} aria-label="Alege luna" className="h-9 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />}>
             <div className="space-y-4">

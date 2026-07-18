@@ -7,7 +7,7 @@ export type HookRow = { id: string; text: string; niche: string; platform: strin
 
 export type NewVideoInput = {
   clientId: string; hook: string; platform: string; date: string | null;
-  format: string; views: number; aiScore: number | null; rec: "repeat" | "improve" | "stop";
+  format: string; views: number; saves: number; shares: number; aiScore: number | null; rec: "repeat" | "improve" | "stop";
 };
 export type VideoPatch = {
   hook?: string; format?: string; platform?: string; views?: number; reach?: number;
@@ -107,7 +107,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       agency_id: agencyId, client_id: input.clientId, hook: input.hook,
       platform: input.platform ? input.platform.toLowerCase() : null,
       publish_date: input.date, video_format: input.format || null,
-      views: input.views, ai_score: input.aiScore, recommendation: input.rec,
+      views: input.views, saves: input.saves, shares: input.shares, ai_score: input.aiScore, recommendation: input.rec,
     });
     if (error) return { error: error.message };
     await reload();

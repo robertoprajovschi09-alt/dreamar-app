@@ -45,9 +45,9 @@ export default function VideoTracker() {
   const repeatWorthy = inWindow.filter((v) => v.rec === "repeat").length;
 
   function exportVideos() {
-    const data = rows.map((v) => [v.hook, v.client, v.platform, fmtDate(v.date), v.views, v.aiScore, v.retention3s, recLabel[v.rec] ?? v.rec]);
+    const data = rows.map((v) => [v.hook, v.client, v.platform, fmtDate(v.date), v.views, v.saves, v.shares, v.aiScore, v.retention3s, recLabel[v.rec] ?? v.rec]);
     if (!data.length) { push({ tone: "info", title: "Nimic de exportat", description: "Niciun video nu corespunde filtrelor curente." }); return; }
-    downloadCsv(`videos-${new Date().toISOString().slice(0, 10)}.csv`, ["Hook", "Client", "Platformă", "Dată", "Vizualizări", "Scor AI", "Retenție 3s %", "Recomandare"], data);
+    downloadCsv(`videos-${new Date().toISOString().slice(0, 10)}.csv`, ["Hook", "Client", "Platformă", "Dată", "Vizualizări", "Salvări", "Distribuiri", "Scor AI", "Retenție 3s %", "Recomandare"], data);
     push({ tone: "success", title: "Exportat", description: `${data.length} video${data.length === 1 ? "" : "uri"} → CSV` });
   }
 
@@ -94,6 +94,7 @@ export default function VideoTracker() {
             <TH className="text-right">Ret. 3s</TH>
             <TH className="text-right">Compl.</TH>
             <TH className="text-right">Salvări</TH>
+            <TH className="text-right">Distribuiri</TH>
             <TH className="text-right">DM-uri</TH>
             <TH>Scor AI</TH>
             <TH>Acțiune</TH>
@@ -112,6 +113,7 @@ export default function VideoTracker() {
                 <TD className="text-right">{v.retention3s}%</TD>
                 <TD className="text-right">{v.completion}%</TD>
                 <TD className="text-right">{formatNumber(v.saves)}</TD>
+                <TD className="text-right">{formatNumber(v.shares)}</TD>
                 <TD className="text-right">{v.dms}</TD>
                 <TD><span className={`font-display text-sm font-800 ${scoreColor(v.aiScore)}`}>{v.aiScore}</span></TD>
                 <TD><Badge tone={recTone[v.rec]}>{recLabel[v.rec]}</Badge></TD>
@@ -192,15 +194,18 @@ function LogVideoComposer({ open, onClose, clients, onCreate }: {
   const [date, setDate] = useState("");
   const [format, setFormat] = useState("");
   const [views, setViews] = useState("");
+  const [saves, setSaves] = useState("");
+  const [shares, setShares] = useState("");
   const [aiScore, setAiScore] = useState("");
   const [rec, setRec] = useState<"repeat" | "improve" | "stop">("improve");
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setHook(""); setPlatform("Instagram"); setDate(""); setFormat(""); setViews(""); setAiScore(""); setRec("improve"); } }, [open, clients]);
+  useEffect(() => { if (open) { setClientId(clients[0]?.id ?? ""); setHook(""); setPlatform("Instagram"); setDate(""); setFormat(""); setViews(""); setSaves(""); setShares(""); setAiScore(""); setRec("improve"); } }, [open, clients]);
 
+  const numOr0 = (s: string) => (s && Number.isFinite(Number(s)) ? Number(s) : 0);
   async function submit() {
     if (!hook.trim() || !clientId || busy) return;
     setBusy(true);
-    const res = await onCreate({ clientId, hook: hook.trim(), platform, date: date || null, format: format.trim(), views: Number.isFinite(Number(views)) && views ? Number(views) : 0, aiScore: aiScore && Number.isFinite(Number(aiScore)) ? Number(aiScore) : null, rec });
+    const res = await onCreate({ clientId, hook: hook.trim(), platform, date: date || null, format: format.trim(), views: numOr0(views), saves: numOr0(saves), shares: numOr0(shares), aiScore: aiScore && Number.isFinite(Number(aiScore)) ? Number(aiScore) : null, rec });
     setBusy(false);
     if (!res.error) onClose();
   }
@@ -216,8 +221,12 @@ function LogVideoComposer({ open, onClose, clients, onCreate }: {
         </div>
         <VField label="Format"><Input value={format} onChange={(e) => setFormat(e.target.value)} placeholder="ex. Tur proprietate, Transformare" /></VField>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <VField label="Vizualizări"><Input type="number" value={views} onChange={(e) => setViews(e.target.value)} placeholder="0" /></VField>
-          <VField label="Scor AI"><Input type="number" value={aiScore} onChange={(e) => setAiScore(e.target.value)} placeholder="0–100" /></VField>
+          <VField label="Vizualizări"><Input type="number" inputMode="numeric" value={views} onChange={(e) => setViews(e.target.value)} placeholder="0" /></VField>
+          <VField label="Salvări"><Input type="number" inputMode="numeric" value={saves} onChange={(e) => setSaves(e.target.value)} placeholder="0" /></VField>
+          <VField label="Distribuiri"><Input type="number" inputMode="numeric" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="0" /></VField>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <VField label="Scor AI"><Input type="number" inputMode="numeric" value={aiScore} onChange={(e) => setAiScore(e.target.value)} placeholder="0–100" /></VField>
           <VField label="Recomandare"><Select value={rec} onChange={(e) => setRec(e.target.value as "repeat" | "improve" | "stop")} className="w-full"><option value="repeat">Repetă</option><option value="improve">Îmbunătățește</option><option value="stop">Oprește</option></Select></VField>
         </div>
       </div>
@@ -275,8 +284,8 @@ function EditVideoModal({ open, onClose, video, onSave }: {
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           <VField label="Aprecieri"><Input type="number" value={f.likes ?? ""} onChange={(e) => set("likes", e.target.value)} /></VField>
           <VField label="Comentarii"><Input type="number" value={f.comments ?? ""} onChange={(e) => set("comments", e.target.value)} /></VField>
-          <VField label="Distribuiri"><Input type="number" value={f.shares ?? ""} onChange={(e) => set("shares", e.target.value)} /></VField>
-          <VField label="Salvări"><Input type="number" value={f.saves ?? ""} onChange={(e) => set("saves", e.target.value)} /></VField>
+          <VField label="Distribuiri"><Input type="number" inputMode="numeric" value={f.shares ?? ""} onChange={(e) => set("shares", e.target.value)} /></VField>
+          <VField label="Salvări"><Input type="number" inputMode="numeric" value={f.saves ?? ""} onChange={(e) => set("saves", e.target.value)} /></VField>
           <VField label="DM-uri"><Input type="number" value={f.dms ?? ""} onChange={(e) => set("dms", e.target.value)} /></VField>
         </div>
       </div>

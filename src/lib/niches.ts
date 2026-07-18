@@ -9,7 +9,7 @@ export type NicheKey =
   | "real_estate" | "restaurant" | "lounge" | "dental_clinic" | "fitness_gym"
   | "local_store" | "beauty" | "auto" | "hotel" | "custom";
 
-export type QuestionType = "text" | "textarea" | "chips" | "select";
+export type QuestionType = "text" | "textarea" | "chips" | "select" | "number";
 export type OnboardingQuestion = {
   id: string;
   label: string;
@@ -17,6 +17,8 @@ export type OnboardingQuestion = {
   type: QuestionType;
   placeholder?: string;
   options?: string[];
+  // For "number" baseline questions: the client_counters key the value saves to.
+  counterKey?: string;
 };
 
 export type MetricField =
@@ -28,11 +30,26 @@ export type NicheSpec = {
   niche: NicheKey;
   displayLabel: string;
   extraQuestions: OnboardingQuestion[];
+  // "Cifre de pornire (săptămâna 0)" — numeric baseline captured at onboarding,
+  // saved to client_counters. Falls back to GENERIC_BASELINE when a niche has none.
+  baselineQuestions?: OnboardingQuestion[];
   objectivePresets: string[];
   monthlyMetrics: Metric[];
   portalKpis: Metric[];
   portalNote: string;
 };
+
+// The minimal generic baseline used by every niche that has no specific set.
+export const GENERIC_BASELINE: OnboardingQuestion[] = [
+  { id: "baseline_followers", counterKey: "baseline_followers", type: "number", label: "Followeri totali pe conturile existente", help: "Suma pe toate conturile de social media." },
+  { id: "baseline_avg_views", counterKey: "baseline_avg_views", type: "number", label: "Views medii pe clip până acum", help: "Cât face în medie un clip acum." },
+  { id: "baseline_monthly_clients", counterKey: "baseline_monthly_clients", type: "number", label: "Clienți / comenzi pe lună acum", help: "Câți clienți sau comenzi ai lunar în acest moment." },
+];
+
+// The baseline questions for a niche (its own, or the generic fallback).
+export function baselineFor(niche: string): OnboardingQuestion[] {
+  return nicheSpec(niche).baselineQuestions ?? GENERIC_BASELINE;
+}
 
 // Questions every client answers regardless of niche. brand_voice -> clients.brand_voice,
 // target_audience -> clients.target_audience, top_goals -> clients.goals; the rest land in
@@ -1037,6 +1054,16 @@ export const NICHE_SPECS: Record<NicheKey, NicheSpec> = {
   hotel: {
   "niche": "hotel",
   "displayLabel": "Hotel / Ospitalitate",
+  baselineQuestions: [
+    { id: "baseline_bookings_total", counterKey: "baseline_bookings_total", type: "number", label: "Rezervări totale pe lună (toate canalele)", help: "Câte rezervări ai lunar acum, din toate sursele." },
+    { id: "baseline_bookings_direct", counterKey: "baseline_bookings_direct", type: "number", label: "Din ele, câte vin direct (telefon/WhatsApp/site)", help: "Rezervările fără comision de portal (Booking, Airbnb etc.)." },
+    { id: "baseline_followers", counterKey: "baseline_followers", type: "number", label: "Followeri totali pe conturile existente", help: "Suma pe toate conturile de social media." },
+    { id: "baseline_avg_views", counterKey: "baseline_avg_views", type: "number", label: "Views medii pe clip până acum", help: "Cât face în medie un clip acum." },
+    { id: "baseline_reviews_google", counterKey: "baseline_reviews_google", type: "number", label: "Recenzii Google în acest moment", help: "Numărul total de recenzii Google la start." },
+    { id: "baseline_reviews_tripadvisor", counterKey: "baseline_reviews_tripadvisor", type: "number", label: "Recenzii Tripadvisor în acest moment", help: "Numărul total de recenzii Tripadvisor la start." },
+    { id: "baseline_club_members", counterKey: "baseline_club_members", type: "number", label: "Membri în club / emailuri strânse", help: "Câți oameni ai deja în baza ta de contacte." },
+    { id: "baseline_avg_basket_eur", counterKey: "baseline_avg_basket_eur", type: "number", label: "Valoarea medie a unei rezervări (EUR)", help: "Cât aduce în medie o rezervare, în euro (număr întreg)." },
+  ],
   "extraQuestions": [
     {
       "id": "property_type",

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { useWorkspace } from "./workspace";
+import { useToast } from "./toast";
 
 // The fixed set of barter deliverable counters (Super Pasta et al.). Values
 // persist per client in client_counters (live) / localStorage (demo).
@@ -13,6 +14,8 @@ export const BARTER_DEADLINE = "31 august";
 
 export function useClientCounters(clientId: string) {
   const { live, currentAgency, agencyReady } = useWorkspace();
+  const toast = useToast();
+  const toastRef = useRef(toast); toastRef.current = toast;
   const agencyId = currentAgency.id;
   const [values, setValues] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(live);
@@ -55,5 +58,22 @@ export function useClientCounters(clientId: string) {
     });
   }, [persist]);
 
-  return { values, loading, bump };
+  // Direct set (not a delta) — for baseline figures. client_counters.value is an
+  // int column, so the value is rounded. A failed save surfaces a toast.
+  const setValue = useCallback((key: string, label: string, value: number) => {
+    const val = Math.max(0, Math.round(value));
+    setValues((prev) => {
+      const next = { ...prev, [key]: val };
+      if (live && supabase && agencyId) {
+        void supabase.from("client_counters")
+          .upsert({ agency_id: agencyId, client_id: clientId, key, label, value: val }, { onConflict: "client_id,key" })
+          .then(({ error }) => { if (error) toastRef.current.push({ tone: "danger", title: "Nu s-a putut salva", description: "Cifra nu s-a salvat. Reîncearcă." }); });
+      } else {
+        try { localStorage.setItem(demoKey, JSON.stringify(next)); } catch { /* private */ }
+      }
+      return next;
+    });
+  }, [live, agencyId, clientId, demoKey]);
+
+  return { values, loading, bump, setValue };
 }
