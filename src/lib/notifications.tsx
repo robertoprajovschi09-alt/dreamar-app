@@ -5,6 +5,9 @@ import { useKillList } from "./killlist";
 import { useClients } from "./clients";
 import { useClips } from "./clips";
 import { fetchUnseenSubmissions, markSubmissionsSeen, type ClientSubmission } from "./submissions";
+import { ensurePushSubscription, disablePushSubscription, isPushSupported, isStandalone } from "./push";
+import { useToast } from "./toast";
+import { useWorkspace } from "./workspace";
 import { formatCurrency } from "./utils";
 import { Modal } from "@/components/overlay";
 import { Button, Input, Select } from "@/components/ui";
@@ -77,6 +80,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { items: killItems } = useKillList();
   const { clients } = useClients();
   const clips = useClips();
+  const { push: toast } = useToast();
+  const { currentAgency } = useWorkspace();
+  const isIOS = typeof navigator !== "undefined" && /iP(hone|ad|od)/.test(navigator.userAgent);
 
   const [settings, setSettings] = useState<Settings>(() => {
     const s = lsGet<Partial<Settings>>(K.settings, {});
@@ -191,12 +197,28 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // at the evening time. (Server-scheduled Web Push needs cron infra we don't run.)
   const pushSupported = typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
   const setPush = useCallback(async (b: boolean) => {
-    if (b && pushSupported && Notification.permission !== "granted") {
-      try { await Notification.requestPermission(); } catch { /* denied */ }
+    if (!b) {
+      await disablePushSubscription();
+      persistSettings({ ...settings, push: false });
+      return;
     }
-    const granted = !pushSupported || Notification.permission === "granted";
-    persistSettings({ ...settings, push: b && granted });
-  }, [settings, pushSupported]); // eslint-disable-line react-hooks/exhaustive-deps
+    // iOS delivers push only to a home-screen install — guide the user there.
+    if (isIOS && !isStandalone()) {
+      toast({ tone: "info", title: "Instalează aplicația pe ecranul principal ca să primești notificări." });
+      return;
+    }
+    if (!isPushSupported()) {
+      toast({ tone: "danger", title: "Dispozitivul acesta nu acceptă notificări push." });
+      return;
+    }
+    const res = await ensurePushSubscription(currentAgency.id);
+    if (res.error) {
+      toast({ tone: "danger", title: "Nu s-au putut activa notificările", description: res.error });
+      return;
+    }
+    persistSettings({ ...settings, push: true });
+    toast({ tone: "success", title: "Notificările push sunt active pe telefonul ăsta." });
+  }, [settings, isIOS, currentAgency.id, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const firedRef = useRef<string>(lsGet<string>(K.pushFired, ""));
   useEffect(() => {

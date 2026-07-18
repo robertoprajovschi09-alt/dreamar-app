@@ -32,6 +32,7 @@ export type Clip = {
   state: ClipState;
   platform: string;          // proper-cased label, "" if none
   scheduledDate: string | null; // yyyy-mm-dd post day (only for scheduled/posted)
+  scheduledTime: string | null; // "HH:MM" post time (optional; drives push reminders)
   filmDate: string | null;      // yyyy-mm-dd film day (optional; set in idea/to_film/filmed)
   assigned: string;
   notes: string;
@@ -44,6 +45,7 @@ export type NewClipInput = {
   state: ClipState;
   platform?: string;
   scheduledDate?: string | null;
+  scheduledTime?: string | null;
   filmDate?: string | null;
   notes?: string;
   finalLink?: string;
@@ -59,7 +61,7 @@ const platformDb = (p?: string) => (p ? p.toLowerCase() : null);
 // Demo clips spread across every state so the pipeline/calendar/tampon all show
 // data in the sandbox. Dates around the prototype "today" (early July 2026).
 let demoSeq = 0;
-const SAMPLE_CLIPS: Clip[] = [
+const SAMPLE_CLIPS: Clip[] = ([
   { id: "c1", clientId: "altmark", clientName: "Altmark Residences", title: "Idee: tur apartament nou", state: "idea", platform: "TikTok", scheduledDate: null, filmDate: "2026-07-07", assigned: "", notes: "", finalLink: "" },
   { id: "c2", clientId: "verde", clientName: "Verde Bistro", title: "Idee: meniu de vară", state: "idea", platform: "Instagram", scheduledDate: null, filmDate: null, assigned: "", notes: "", finalLink: "" },
   { id: "c3", clientId: "ironpeak", clientName: "IronPeak Gym", title: "De filmat: transformare client", state: "to_film", platform: "Instagram", scheduledDate: null, filmDate: "2026-07-05", assigned: "", notes: "", finalLink: "" },
@@ -73,7 +75,7 @@ const SAMPLE_CLIPS: Clip[] = [
   { id: "c11", clientId: "verde", clientName: "Verde Bistro", title: "Programat: scenetă meniu", state: "scheduled", platform: "Instagram", scheduledDate: "2026-07-11", filmDate: null, assigned: "", notes: "", finalLink: "" },
   { id: "c12", clientId: "mareluna", clientName: "Mare Luna Hotel", title: "Postat: dezvăluire suită", state: "posted", platform: "Instagram", scheduledDate: "2026-07-01", filmDate: null, assigned: "", notes: "", finalLink: "" },
   { id: "c13", clientId: "drivex", clientName: "DriveX Motors", title: "Postat: noutăți în stoc", state: "posted", platform: "Facebook", scheduledDate: "2026-06-28", filmDate: null, assigned: "", notes: "", finalLink: "" },
-];
+] as Omit<Clip, "scheduledTime">[]).map((c) => ({ ...c, scheduledTime: null }));
 
 type ClipsCtx = {
   clips: Clip[];
@@ -98,6 +100,7 @@ function mapRow(r: any): Clip {
     state: r.state as ClipState,
     platform: platformLabel(r.platform),
     scheduledDate: r.scheduled_date ?? null,
+    scheduledTime: r.scheduled_time ? String(r.scheduled_time).slice(0, 5) : null,
     filmDate: r.film_date ?? null,
     assigned: r.assigned ?? "",
     notes: r.notes ?? "",
@@ -119,7 +122,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     const { data, error } = await supabase
       .from("clips")
-      .select("id, client_id, title, state, platform, scheduled_date, film_date, assigned, notes, final_link, client:clients(name)")
+      .select("id, client_id, title, state, platform, scheduled_date, scheduled_time, film_date, assigned, notes, final_link, client:clients(name)")
       .eq("agency_id", agencyId)
       .order("created_at", { ascending: true });
     if (agencyRef.current !== agencyId) return; // drop stale response after an agency switch
@@ -142,6 +145,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
       setClips((prev) => [...prev, {
         id, clientId: input.clientId, clientName: clientName(input.clientId), title: input.title,
         state: input.state, platform: input.platform ?? "", scheduledDate: input.scheduledDate ?? null,
+        scheduledTime: input.scheduledTime ?? null,
         filmDate: input.filmDate ?? null, assigned: "", notes: input.notes ?? "", finalLink: input.finalLink ?? "",
       }]);
       return { id };
@@ -149,6 +153,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.from("clips").insert({
       agency_id: agencyId, client_id: input.clientId, title: input.title, state: input.state,
       platform: platformDb(input.platform), scheduled_date: input.scheduledDate ?? null,
+      scheduled_time: input.scheduledTime ?? null,
       film_date: input.filmDate ?? null, notes: input.notes ?? "", final_link: input.finalLink ?? null,
     }).select("id").single();
     if (error) return { error: error.message };
@@ -166,6 +171,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     if (patch.state !== undefined) db.state = patch.state;
     if (patch.platform !== undefined) db.platform = platformDb(patch.platform);
     if (patch.scheduledDate !== undefined) db.scheduled_date = patch.scheduledDate;
+    if (patch.scheduledTime !== undefined) db.scheduled_time = patch.scheduledTime;
     if (patch.filmDate !== undefined) db.film_date = patch.filmDate;
     if (patch.assigned !== undefined) db.assigned = patch.assigned;
     if (patch.notes !== undefined) db.notes = patch.notes;

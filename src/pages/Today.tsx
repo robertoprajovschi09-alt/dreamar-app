@@ -107,9 +107,10 @@ const countPill = (n: number | string) => <span className="rounded-full bg-muted
 // list; when the last one is done we show "Gata pe azi." instead of an empty box.
 function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id: string, posted: boolean) => void; onPipeline: () => void }) {
   const todayISO = isoOf(new Date());
+  // Timed posts come first in clock order; the ones with no time sink to the end.
   const scheduled = clips
     .filter((c) => c.state === "scheduled" && c.scheduledDate === todayISO)
-    .sort((a, b) => a.clientName.localeCompare(b.clientName) || a.title.localeCompare(b.title));
+    .sort((a, b) => (a.scheduledTime ?? "99:99").localeCompare(b.scheduledTime ?? "99:99") || a.clientName.localeCompare(b.clientName) || a.title.localeCompare(b.title));
   const postedCount = clips.filter((c) => c.state === "posted" && c.scheduledDate === todayISO).length;
   const total = scheduled.length + postedCount;
 
@@ -130,6 +131,7 @@ function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id:
               <span className="block truncate text-sm font-600">{c.title}</span>
               <span className="block truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</span>
             </span>
+            {c.scheduledTime && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-700 text-muted-foreground">{c.scheduledTime}</span>}
             <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-700 text-primary">Programat</span>
           </div>
         ))

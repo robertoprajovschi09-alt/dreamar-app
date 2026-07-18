@@ -74,12 +74,12 @@ export function PipelineMobile() {
     haptic();
     push({ tone: "success", title: `Mutat în ${clipStateLabel(next)}`, action: { label: "Anulează", run: () => updateClip(clip.id, { state: prevState, scheduledDate: prevDate }) } });
   }
-  function confirmDate(d: string) {
+  function confirmDate(d: string, t: string | null) {
     const clip = clips.find((c) => c.id === dateFor);
     setDateFor(null);
     if (!clip) return;
     const prevState = clip.state, prevDate = clip.scheduledDate;
-    updateClip(clip.id, { state: "scheduled", scheduledDate: d });
+    updateClip(clip.id, { state: "scheduled", scheduledDate: d, scheduledTime: t });
     haptic();
     push({ tone: "success", title: "Mutat în Programat", action: { label: "Anulează", run: () => updateClip(clip.id, { state: prevState, scheduledDate: prevDate }) } });
   }

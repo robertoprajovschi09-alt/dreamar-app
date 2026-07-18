@@ -105,7 +105,7 @@ export default function Pipeline() {
         }} />
 
       <DateModal open={dateFor !== null} onClose={() => setDateFor(null)}
-        onConfirm={(d) => { if (dateFor) updateClip(dateFor, { state: "scheduled", scheduledDate: d }); setDateFor(null); }} />
+        onConfirm={(d, t) => { if (dateFor) updateClip(dateFor, { state: "scheduled", scheduledDate: d, scheduledTime: t }); setDateFor(null); }} />
 
       <ClipEditor clip={editing} clients={clients} onClose={() => setEditId(null)}
         onSave={(patch) => { if (editing) { void updateClip(editing.id, patch); push({ tone: "success", title: "Clip salvat" }); } setEditId(null); }}
@@ -114,14 +114,19 @@ export default function Pipeline() {
   );
 }
 
-export function DateModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: (date: string) => void }) {
+export function DateModal({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: (date: string, time: string | null) => void }) {
   const [date, setDate] = useState(todayISO());
-  // The modal stays mounted; reset to today each time it reopens for a new clip.
-  useEffect(() => { if (open) setDate(todayISO()); }, [open]);
+  const [time, setTime] = useState("");
+  // The modal stays mounted; reset each time it reopens for a new clip.
+  useEffect(() => { if (open) { setDate(todayISO()); setTime(""); } }, [open]);
   return (
     <Modal open={open} onClose={onClose} title="Alege o dată" subtitle="Un clip Programat are nevoie de o dată" size="sm"
-      footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={() => onConfirm(date)}>Programează</Button></>}>
-      <Input autoFocus type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={() => onConfirm(date, time || null)}>Programează</Button></>}>
+      <div className="space-y-3">
+        <div><p className="mb-1.5 text-xs font-700 text-muted-foreground">Zi de postare</p><Input autoFocus type="date" className="h-12" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        <div><p className="mb-1.5 text-xs font-700 text-muted-foreground">Oră (opțional)</p><Input type="time" className="h-12" value={time} onChange={(e) => setTime(e.target.value)} /></div>
+        <p className="text-xs text-muted-foreground">Cu oră setată primești o notificare pe telefon fix la ora postării.</p>
+      </div>
     </Modal>
   );
 }
@@ -165,13 +170,14 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
   const [state, setState] = useState<ClipState>("idea");
   const [platform, setPlatform] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [filmDate, setFilmDate] = useState("");
   const [notes, setNotes] = useState("");
   const [finalLink, setFinalLink] = useState("");
   useEffect(() => {
     if (clip) {
       setTitle(clip.title); setClientId(clip.clientId ?? ""); setState(clip.state);
-      setPlatform(clip.platform || ""); setDate(clip.scheduledDate ?? ""); setFilmDate(clip.filmDate ?? "");
+      setPlatform(clip.platform || ""); setDate(clip.scheduledDate ?? ""); setTime(clip.scheduledTime ?? ""); setFilmDate(clip.filmDate ?? "");
       setNotes(clip.notes || ""); setFinalLink(clip.finalLink || "");
     }
   }, [clip]);
@@ -181,7 +187,7 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
       badge={clip && <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-700 text-muted-foreground">{clipStateLabel(clip.state)}</span>}
       footer={<>
         <Button variant="ghost" size="sm" className="text-danger" onClick={onDelete}><Trash2 className="h-4 w-4" /> Șterge</Button>
-        <Button variant="primary" size="sm" className="ml-auto" onClick={() => onSave({ title, clientId: clientId || null, state, platform, scheduledDate: needsDate(state) ? (date || todayISO()) : null, filmDate: filmDate || null, notes, finalLink })}>Salvează</Button>
+        <Button variant="primary" size="sm" className="ml-auto" onClick={() => onSave({ title, clientId: clientId || null, state, platform, scheduledDate: needsDate(state) ? (date || todayISO()) : null, scheduledTime: needsDate(state) ? (time || null) : null, filmDate: filmDate || null, notes, finalLink })}>Salvează</Button>
       </>}>
       {clip && (
         <div className="space-y-4">
@@ -193,6 +199,7 @@ export function ClipEditor({ clip, clients, onClose, onSave, onDelete }: {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Platformă"><Select value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-full"><option value="">Fără platformă</option>{PLATFORMS.map((p) => <option key={p}>{p}</option>)}</Select></Field>
             {needsDate(state) && <Field label="Zi de postare"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>}
+            {needsDate(state) && <Field label="Oră postare (opțional)"><Input type="time" className="h-12" value={time} onChange={(e) => setTime(e.target.value)} /></Field>}
             {canSetFilmDate(state) && <Field label="Zi de filmare"><Input type="date" value={filmDate} onChange={(e) => setFilmDate(e.target.value)} /></Field>}
           </div>
           <Field label="Notițe"><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[90px] w-full rounded-lg border border-input bg-card p-3 text-sm ring-focus" placeholder="Detalii scurte…" /></Field>

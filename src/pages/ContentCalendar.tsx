@@ -109,6 +109,9 @@ export function CalendarView({ lockedClientId }: { lockedClientId?: string }) {
     shown.filter((e) => inMonth(e.date, ym.y, ym.m)).forEach((e) => {
       const d = dayOf(e.date); const a = m.get(d) ?? []; a.push(e); m.set(d, a);
     });
+    // Within a day: filmings first, then postings in clock order (timeless last).
+    const keyOf = (e: CalEntry) => (e.type === "post" ? (e.clip.scheduledTime ?? "99:99") : "00:00");
+    m.forEach((a) => a.sort((x, y) => keyOf(x).localeCompare(keyOf(y))));
     return m;
   }, [shown, ym]);
   const monthCount = useMemo(() => [...byDay.values()].reduce((n, a) => n + a.length, 0), [byDay]);
@@ -267,7 +270,7 @@ function EntryChip({ entry, showClient, onOpen, onDragStart, onDragEnd }: {
         ? <Clapperboard className="mt-px h-3 w-3 shrink-0" style={{ color }} />
         : <span className="mt-1 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />}
       <span className="min-w-0">
-        <span className="block truncate">{entry.clip.title || "(fără titlu)"}</span>
+        <span className="block truncate">{!isFilm && entry.clip.scheduledTime && <span className="font-800">{entry.clip.scheduledTime} </span>}{entry.clip.title || "(fără titlu)"}</span>
         {showClient && <span className="block truncate opacity-70">{entry.clip.clientName}</span>}
       </span>
     </button>
