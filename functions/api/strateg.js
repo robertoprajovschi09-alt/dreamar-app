@@ -61,6 +61,10 @@ Schema operațiilor pentru blocul actiuni (exact aceste câmpuri, nimic în plus
 - {"op":"creeaza_obiectiv","titlu":"...","descriere":"..."}
 - {"op":"sterge_clip","id":"..."}
 - {"op":"sterge_script","id":"..."}
+- {"op":"editeaza_script","id":"... sau titlu+client","titlu_nou":"...","hook":"...","desfasurare":"...","cta":"..."} (incluzi doar câmpurile pe care le schimbi)
+- {"op":"scoate_din_calendar","id":"... sau titlu+client"} (postarea dispare din calendar, clipul se întoarce în Editat)
+- {"op":"sterge_zi_filmare","id":"... sau titlu+client"}
+Reprogramarea unei postări la altă dată = muta_clip în Programat cu noua dată.
 
 Acțiuni. Când userul îți cere explicit să faci ceva în aplicație (adaugă, creează, mută, setează, șterge), răspunde cu un bloc de cod cu eticheta actiuni: un array JSON de operații din schema pe care o cunoști, maximum 20. Referă obiectele prin id-urile din instantaneu. Când doar discutați idei, folosește blocurile de propuneri (script, obiectiv, clip), nu actiuni. Nu poți scrie nimic în Bani și nu poți marca nimic ca Postat sau Încasat; dacă userul îți cere asta, explică-i că faptele din realitate le confirmă doar el, cu mâna lui.`;
 

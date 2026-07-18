@@ -20,10 +20,11 @@ import { useClients } from "./clients";
 
 export type OpKind =
   | "creeaza_clip" | "muta_clip" | "seteaza_zi_filmare" | "creeaza_script"
-  | "schimba_status_script" | "creeaza_obiectiv" | "sterge_clip" | "sterge_script";
+  | "schimba_status_script" | "creeaza_obiectiv" | "sterge_clip" | "sterge_script"
+  | "editeaza_script" | "scoate_din_calendar" | "sterge_zi_filmare";
 
-export const SAFE_OPS: OpKind[] = ["creeaza_clip", "creeaza_script", "creeaza_obiectiv", "seteaza_zi_filmare", "muta_clip"];
-export const SENSITIVE_OPS: OpKind[] = ["sterge_clip", "sterge_script", "schimba_status_script"];
+export const SAFE_OPS: OpKind[] = ["creeaza_clip", "creeaza_script", "creeaza_obiectiv", "seteaza_zi_filmare", "muta_clip", "scoate_din_calendar", "sterge_zi_filmare"];
+export const SENSITIVE_OPS: OpKind[] = ["sterge_clip", "sterge_script", "schimba_status_script", "editeaza_script"];
 const ALL_OPS = new Set<string>([...SAFE_OPS, ...SENSITIVE_OPS]);
 
 export const MAX_OPS_PER_BLOCK = 20;
@@ -59,6 +60,12 @@ function summarize(o: RawOp, kind: OpKind): string {
     case "creeaza_obiectiv": return `Adaugă obiectivul ${t} în Kill List`;
     case "sterge_clip": return `Șterge clipul ${t}`;
     case "sterge_script": return `Șterge scriptul ${t}`;
+    case "editeaza_script": {
+      const parts = [isStr(o.titlu_nou) && "titlul", isStr(o.hook) && "hook-ul", isStr(o.desfasurare) && "desfășurarea", isStr(o.cta) && "CTA-ul"].filter(Boolean);
+      return `Rescrie ${parts.join(", ")} la scriptul ${t}`;
+    }
+    case "scoate_din_calendar": return `Scoate clipul ${t} din calendar (înapoi în Editat)`;
+    case "sterge_zi_filmare": return `Șterge ziua de filmare a clipului ${t}`;
   }
 }
 
@@ -98,6 +105,14 @@ function validateOne(o: RawOp): { ok: true; kind: OpKind } | { ok: false; kind: 
     case "sterge_clip":
     case "sterge_script":
       if (!hasRef(o)) return { ok: false, kind: k, error: "Lipsește id-ul sau titlul." };
+      return { ok: true, kind: k };
+    case "editeaza_script":
+      if (!hasRef(o)) return { ok: false, kind: k, error: "Lipsește id-ul sau titlul scriptului." };
+      if (![o.titlu_nou, o.hook, o.desfasurare, o.cta].some(isStr)) return { ok: false, kind: k, error: "Nimic de schimbat (titlu_nou, hook, desfasurare sau cta)." };
+      return { ok: true, kind: k };
+    case "scoate_din_calendar":
+    case "sterge_zi_filmare":
+      if (!hasRef(o)) return { ok: false, kind: k, error: "Lipsește id-ul sau titlul clipului." };
       return { ok: true, kind: k };
   }
 }
@@ -165,8 +180,9 @@ export function useActionExecutor() {
       case "creeaza_clip": case "creeaza_script": case "creeaza_obiectiv":
         return { kind: "none" };
       case "muta_clip": case "seteaza_zi_filmare": case "sterge_clip":
+      case "scoate_din_calendar": case "sterge_zi_filmare":
         return resolveIn<Clip>(clips, row.raw, (c) => c.title, (c) => c.clientName);
-      case "schimba_status_script": case "sterge_script":
+      case "schimba_status_script": case "sterge_script": case "editeaza_script":
         return resolveIn<Script>(scripts, row.raw, (s) => s.title, (s) => s.clientName);
     }
   }, [clips, scripts, resolveIn]);
@@ -232,6 +248,34 @@ export function useActionExecutor() {
           const res = await deleteScript(script.id);
           if (res.error) return { ok: false, error: "Nu am putut șterge scriptul." };
           return { ok: true, label: `șters scriptul „${script.title}"` };
+        }
+        case "editeaza_script": {
+          const script = scripts.find((s) => s.id === resolvedId);
+          if (!script) return { ok: false, error: "Scriptul nu mai există." };
+          const patch: Partial<Script> = {};
+          if (isStr(o.titlu_nou)) patch.title = o.titlu_nou.trim();
+          if (isStr(o.hook)) patch.hook = o.hook;
+          if (isStr(o.desfasurare)) patch.body = o.desfasurare;
+          if (isStr(o.cta)) patch.cta = o.cta;
+          const res = await updateScript(script.id, patch);
+          if (res.error) return { ok: false, error: "Nu am putut edita scriptul." };
+          return { ok: true, label: `rescris scriptul „${script.title}"`, to: "/scripts" };
+        }
+        case "scoate_din_calendar": {
+          const clip = clips.find((c) => c.id === resolvedId);
+          if (!clip) return { ok: false, error: "Clipul nu mai există." };
+          if (clip.state !== "scheduled") return { ok: false, error: "Clipul nu e în calendar (nu e Programat)." };
+          const res = await updateClip(clip.id, { state: "edited", scheduledDate: null });
+          if (res.error) return { ok: false, error: "Nu am putut scoate clipul din calendar." };
+          return { ok: true, label: `scos clipul „${clip.title}" din calendar (înapoi în Editat)`, to: "/calendar" };
+        }
+        case "sterge_zi_filmare": {
+          const clip = clips.find((c) => c.id === resolvedId);
+          if (!clip) return { ok: false, error: "Clipul nu mai există." };
+          if (!clip.filmDate) return { ok: false, error: "Clipul nu are zi de filmare." };
+          const res = await updateClip(clip.id, { filmDate: null });
+          if (res.error) return { ok: false, error: "Nu am putut șterge ziua de filmare." };
+          return { ok: true, label: `șters ziua de filmare a clipului „${clip.title}"`, to: "/calendar" };
         }
       }
     } catch {
