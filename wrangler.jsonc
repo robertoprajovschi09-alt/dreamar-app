@@ -16,6 +16,10 @@
     // Public values (they ship in the frontend bundle anyway); RLS guards the data.
     "STRATEG_MODEL": "deepseek-ai/deepseek-v4-pro",
     "SUPABASE_URL": "https://vpvvkjyymkqmtvwexroa.supabase.co",
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdnZranl5bWtxbXR2d2V4cm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyODA5NzMsImV4cCI6MjA5OTg1Njk3M30.9EcYl0hfgM1odqVL63cu0Su4xQnEBPfjTuY7iP5vWiA"
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwdnZranl5bWtxbXR2d2V4cm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyODA5NzMsImV4cCI6MjA5OTg1Njk3M30.9EcYl0hfgM1odqVL63cu0Su4xQnEBPfjTuY7iP5vWiA",
+    // Web Push application server key — PUBLIC by design (browsers receive it as
+    // the subscribe key). Its matching private half lives ONLY as the
+    // VAPID_PRIVATE_KEY secret in Cloudflare, never here.
+    "VAPID_PUBLIC_KEY": "BFgOHFVKWa0n3oBD1olDitacg518QQkBsJ44OxouUo2q9UG1lahUE5JFND3_QDoYB3ZcnB88S7VxH7LuTKUq-w0"
   }
 }
