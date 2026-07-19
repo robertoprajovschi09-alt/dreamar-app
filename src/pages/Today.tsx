@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PageHeader, Panel, Button, Input, Select } from "@/components/ui";
 import { PageSkeleton } from "@/components/Skeleton";
 import { QuickAdd } from "@/components/QuickAdd";
+import { ClipEditor } from "@/pages/Pipeline";
 import { useUI } from "@/lib/ui-context";
 import { useWorkspace } from "@/lib/workspace";
 import { useClips, type Clip } from "@/lib/clips";
@@ -41,11 +42,28 @@ export default function Today() {
   const money = useMoney();
   const { push } = useToast();
 
+  const [editId, setEditId] = useState<string | null>(null);
+  const editing = clipsCtx.clips.find((c) => c.id === editId) ?? null;
+
   // Create a clip and only report the outcome after the insert resolves.
   const createClip = async (input: Parameters<typeof clipsCtx.createClip>[0], successTitle?: string) => {
     const res = await clipsCtx.createClip(input);
     if (res?.error) push({ tone: "danger", title: "Nu s-a putut crea clipul." });
     else if (successTitle) push({ tone: "success", title: successTitle });
+  };
+
+  // Move a scheduled clip to Postat, with an "Anulează" that returns it to
+  // scheduled on the same day.
+  const markPosted = (id: string) => {
+    const prevDate = clipsCtx.clips.find((c) => c.id === id)?.scheduledDate ?? null;
+    void clipsCtx.updateClip(id, { state: "posted" });
+    push({ tone: "success", title: "Marcat ca Postat", action: { label: "Anulează", run: () => void clipsCtx.updateClip(id, { state: "scheduled", scheduledDate: prevDate }) } });
+  };
+  // Move a to_film clip to Filmat, with an "Anulează" that restores its film day.
+  const markFilmed = (id: string) => {
+    const prevFilm = clipsCtx.clips.find((c) => c.id === id)?.filmDate ?? null;
+    void clipsCtx.updateClip(id, { state: "filmed" });
+    push({ tone: "success", title: "Marcat ca Filmat", action: { label: "Anulează", run: () => void clipsCtx.updateClip(id, { state: "to_film", filmDate: prevFilm }) } });
   };
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
@@ -63,17 +81,22 @@ export default function Today() {
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} help="azi" />
 
       <div className="space-y-3">
-        <PostsToday clips={clipsCtx.clips} onPost={(id, posted) => void clipsCtx.updateClip(id, { state: posted ? "posted" : "scheduled" })} onPipeline={() => navigate("/pipeline")} />
+        <PostsToday clips={clipsCtx.clips} onPost={markPosted} onOpen={setEditId} onPipeline={() => navigate("/pipeline")} />
         <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} onNewClient={openNewClient} />
         <FilmQueue
           clips={clipsCtx.clips}
           clients={clients}
           onCreate={(clientId, title) => void createClip({ clientId, title, state: "to_film" })}
-          onFilmed={(id) => void clipsCtx.updateClip(id, { state: "filmed" })}
+          onFilmed={markFilmed}
+          onOpen={setEditId}
           onDelete={(id) => clipsCtx.deleteClipWithUndo(id)}
         />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
       </div>
+
+      <ClipEditor clip={editing} clients={clients} onClose={() => setEditId(null)}
+        onSave={async (patch) => { if (editing) { const res = await clipsCtx.updateClip(editing.id, patch); if (!res?.error) push({ tone: "success", title: "Clip salvat" }); } setEditId(null); }}
+        onDelete={() => { if (editing) clipsCtx.deleteClipWithUndo(editing.id); setEditId(null); }} />
 
       <QuickAdd
         clients={clients}
@@ -114,7 +137,7 @@ const countPill = (n: number | string) => <span className="rounded-full bg-muted
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
 // Today's Programat clips. Checking one moves it to Postat, so it leaves the
 // list; when the last one is done we show "Gata pe azi." instead of an empty box.
-function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id: string, posted: boolean) => void; onPipeline: () => void }) {
+function PostsToday({ clips, onPost, onOpen, onPipeline }: { clips: Clip[]; onPost: (id: string) => void; onOpen: (id: string) => void; onPipeline: () => void }) {
   const todayISO = isoOf(new Date());
   // Timed posts come first in clock order; the ones with no time sink to the end.
   const scheduled = clips
@@ -135,11 +158,11 @@ function PostsToday({ clips, onPost, onPipeline }: { clips: Clip[]; onPost: (id:
       ) : (
         scheduled.map((c) => (
           <div key={c.id} className="flex items-center gap-3 border-t border-border/60 px-4 py-3">
-            <Checkbox checked={false} onChange={() => onPost(c.id, true)} label={`Marchează „${c.title}” ca postat`} />
-            <span className="min-w-0 flex-1">
+            <Checkbox checked={false} onChange={() => onPost(c.id)} label={`Marchează „${c.title}” ca postat`} />
+            <button type="button" onClick={() => onOpen(c.id)} className="flex min-h-[44px] min-w-0 flex-1 flex-col justify-center text-left">
               <span className="block truncate text-sm font-600">{c.title}</span>
               <span className="block truncate text-xs text-muted-foreground">{c.clientName}{c.platform ? ` · ${c.platform}` : ""}</span>
-            </span>
+            </button>
             {c.scheduledTime && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-700 text-muted-foreground">{c.scheduledTime}</span>}
             <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-700 text-primary">Programat</span>
           </div>
@@ -198,11 +221,12 @@ function ClipBuffer({ active, clips, onClient, onNewClient }: { active: Client[]
 /* ── 3 · De filmat ───────────────────────────────────────────────────────── */
 // The pipeline's to_film clips, ordered by film day: today ("azi") first, then
 // overdue ("restant"), then undated, then future. Checkbox moves a clip to Filmat.
-function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
+function FilmQueue({ clips, clients, onCreate, onFilmed, onOpen, onDelete }: {
   clips: Clip[];
   clients: { id: string; name: string }[];
   onCreate: (clientId: string | null, title: string) => void;
   onFilmed: (id: string) => void;
+  onOpen: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const [qClient, setQClient] = useState("");
@@ -237,10 +261,10 @@ function FilmQueue({ clips, clients, onCreate, onFilmed, onDelete }: {
       ) : ordered.map((c) => (
         <div key={c.id} className="group flex items-center gap-3 border-t border-border/60 px-4 py-3">
           <Checkbox checked={false} onChange={() => onFilmed(c.id)} label={`Marchează „${c.title}” ca filmat`} />
-          <span className="min-w-0 flex-1">
+          <button type="button" onClick={() => onOpen(c.id)} className="flex min-h-[44px] min-w-0 flex-1 flex-col justify-center text-left">
             <span className="block truncate text-sm font-600">{c.title}</span>
             <span className="block truncate text-xs text-muted-foreground">{c.clientId ? c.clientName : "Fără client"}</span>
-          </span>
+          </button>
           {filmTag(c)}
           <button onClick={() => onDelete(c.id)} aria-label="Șterge" className="text-muted-foreground opacity-60 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
         </div>
