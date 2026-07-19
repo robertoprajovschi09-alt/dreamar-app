@@ -6,6 +6,7 @@ import { Modal } from "@/components/overlay";
 import { useClips, CLIP_STATES, CLIP_STATE_ORDER, clipStateLabel, type Clip, type ClipState } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useToast } from "@/lib/toast";
+import { prefillClientId, rememberLastClientId } from "@/lib/lastClient";
 import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, Clapperboard, Layers, Plus, X } from "lucide-react";
@@ -310,13 +311,14 @@ function NewClipModal({ open, prefillClient, clients, onClose, onCreate }: {
   const [title, setTitle] = useState("");
   const [state, setState] = useState<ClipState>("idea");
   const [date, setDate] = useState(todayISO());
-  useEffect(() => { if (open) { setClientId(prefillClient ?? ""); setTitle(""); setState("idea"); setDate(todayISO()); } }, [open, prefillClient]);
-  const submit = () => { if (!title.trim()) return; onCreate({ clientId: clientId || null, title: title.trim(), state, scheduledDate: needsDate(state) ? date : null }); onClose(); };
+  // Explicit prefill (the client opened in level 2) wins; else the remembered client.
+  useEffect(() => { if (open) { setClientId(prefillClientId(clients, prefillClient)); setTitle(""); setState("idea"); setDate(todayISO()); } }, [open, prefillClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = () => { if (!title.trim()) return; rememberLastClientId(clientId); onCreate({ clientId: clientId || null, title: title.trim(), state, scheduledDate: needsDate(state) ? date : null }); onClose(); };
   return (
     <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Un clip nou în pipeline" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={!title.trim()} onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
-        <Input autoFocus className="h-12 text-base" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
+        <Input autoFocus enterKeyHint="done" className="h-12 text-base" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
         <div className="grid grid-cols-2 gap-3">
           <Select className="h-12" value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="">Fără client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
           <Select className="h-12" value={state} onChange={(e) => setState(e.target.value as ClipState)}>{CLIP_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</Select>

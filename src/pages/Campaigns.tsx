@@ -293,7 +293,7 @@ function CampaignComposer({ open, onClose, clients, onCreate }: {
           <Field label="Sfârșit"><Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Buget total (€)"><Input type="number" min={0} inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" /></Field>
+          <Field label="Buget total (€)"><Input type="number" min={0} inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="0" /></Field>
           <Field label="Status"><Select value={status} onChange={(e) => setStatus(e.target.value as CampaignStatus)} className="w-full">{STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS[s].label}</option>)}</Select></Field>
         </div>
       </div>

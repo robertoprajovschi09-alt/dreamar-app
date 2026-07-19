@@ -5,6 +5,7 @@ import { Drawer, Modal } from "@/components/overlay";
 import { PageSkeleton } from "@/components/Skeleton";
 import { useClips, CLIP_STATES, clipStateLabel, type Clip, type ClipState } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
+import { prefillClientId, rememberLastClientId } from "@/lib/lastClient";
 import { useScripts } from "@/lib/scripts";
 import { useToast } from "@/lib/toast";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -140,9 +141,10 @@ export function BatchModal({ open, onClose, clients, onCreate, prefillClient }: 
   const [state, setState] = useState<ClipState>("to_film");
   const [count, setCount] = useState("8");
   const [prefix, setPrefix] = useState("");
-  useEffect(() => { if (open) setClientId(prefillClient ?? ""); }, [open, prefillClient]);
+  // Explicit prefill wins; otherwise the remembered client (if still in the list).
+  useEffect(() => { if (open) setClientId(prefillClientId(clients, prefillClient)); }, [open, prefillClient]); // eslint-disable-line react-hooks/exhaustive-deps
   const n = Math.max(1, Math.min(50, Number(count) || 1));
-  function submit() { onCreate(clientId || null, state, n, prefix); onClose(); setPrefix(""); }
+  function submit() { rememberLastClientId(clientId); onCreate(clientId || null, state, n, prefix); onClose(); setPrefix(""); }
   return (
     <Modal open={open} onClose={onClose} title="Adaugă clipuri în lot" subtitle="Creează mai multe carduri deodată" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={submit}><Plus className="h-4 w-4" /> Creează {n}</Button></>}>

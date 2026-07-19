@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Modal } from "@/components/overlay";
 import { Button, Input, Select } from "@/components/ui";
 import { CLIP_STATES, type ClipState, type NewClipInput } from "@/lib/clips";
+import { prefillClientId, rememberLastClientId } from "@/lib/lastClient";
 import type { YanisDealInit } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { Car, Check, Clapperboard, Film, Plus, UserPlus, X } from "lucide-react";
@@ -81,8 +82,10 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
   const [state, setState] = useState<ClipState>("idea");
   const [platform, setPlatform] = useState("");
   const [date, setDate] = useState(todayISO());
+  useEffect(() => { if (open) setClientId(prefillClientId(clients)); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const submit = () => {
     if (!clientId || !title.trim()) return;
+    rememberLastClientId(clientId);
     onAdd({ clientId, title: title.trim(), state, platform: platform || undefined, scheduledDate: needsDate(state) ? date : null });
     setTitle("");
   };
@@ -90,7 +93,7 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
     <Modal open={open} onClose={onClose} title="Clip nou" subtitle="Apare în Pipeline" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={!clientId || !title.trim()} onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
-        <Input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
+        <Input autoFocus enterKeyHint="done" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Titlul clipului" />
         <div className="grid grid-cols-2 gap-3">
           <Select value={clientId} onChange={(e) => setClientId(e.target.value)}><option value="">Client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
           <Select value={state} onChange={(e) => setState(e.target.value as ClipState)}>{CLIP_STATES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</Select>
@@ -108,12 +111,13 @@ function ClipModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: 
 function FilmModal({ open, onClose, clients, onAdd }: { open: boolean; onClose: () => void; clients: ClientLite[]; onAdd: (desc: string, clientId: string | null) => void }) {
   const [desc, setDesc] = useState("");
   const [clientId, setClientId] = useState("");
-  const submit = () => { if (desc.trim()) { onAdd(desc.trim(), clientId || null); setDesc(""); setClientId(""); } };
+  useEffect(() => { if (open) setClientId(prefillClientId(clients)); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = () => { if (desc.trim()) { rememberLastClientId(clientId); onAdd(desc.trim(), clientId || null); setDesc(""); } };
   return (
     <Modal open={open} onClose={onClose} title="Clip de filmat" subtitle="Ajunge direct în lista De filmat" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" disabled={!desc.trim()} onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
-        <Input autoFocus className={BIG} value={desc} onChange={(e) => setDesc(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Ce filmezi? ex. Reel testimonial" />
+        <Input autoFocus enterKeyHint="done" className={BIG} value={desc} onChange={(e) => setDesc(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Ce filmezi? ex. Reel testimonial" />
         <Select value={clientId} onChange={(e) => setClientId(e.target.value)} className={BIG}><option value="">Fără client</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
       </div>
     </Modal>
@@ -134,8 +138,8 @@ function YanisModal({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
     <Modal open={open} onClose={onClose} title="Rând nou · Decont Yanis" subtitle="Adaugă o mașină în Decont Yanis" size="sm"
       footer={<><Button variant="ghost" onClick={onClose}>Anulează</Button><Button variant="primary" className="ml-auto" onClick={submit}><Plus className="h-4 w-4" /> Adaugă</Button></>}>
       <div className="space-y-3">
-        <Input autoFocus className={BIG} value={car} onChange={(e) => setCar(e.target.value)} placeholder="Mașină - ex. VW Golf 2018" />
-        <Input className={BIG} type="number" inputMode="numeric" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="Comision (lei)" />
+        <Input autoFocus enterKeyHint="done" className={BIG} value={car} onChange={(e) => setCar(e.target.value)} placeholder="Mașină - ex. VW Golf 2018" />
+        <Input className={BIG} type="number" inputMode="decimal" value={commission} onChange={(e) => setCommission(e.target.value)} placeholder="Comision (lei)" />
         <button onClick={() => setSold((s) => !s)}
           className={cn("flex h-12 w-full items-center justify-between rounded-lg border px-3 text-sm font-600 transition", sold ? "border-success bg-success/10 text-success" : "border-input text-foreground")}>
           <span>Vândută</span>

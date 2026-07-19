@@ -125,9 +125,9 @@ export function NewClientModal({ open, onClose }: { open: boolean; onClose: () =
             </select>
           </Field>
           {billingType === "retainer"
-            ? <Field label="Retainer lunar (lei)"><Input type="number" placeholder="2000" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
+            ? <Field label="Retainer lunar (lei)"><Input type="number" inputMode="decimal" placeholder="2000" value={retainer} onChange={(e) => setRetainer(e.target.value)} /></Field>
             : <Field label="Retainer lunar (lei)"><Input disabled placeholder="" value="" /></Field>}
-          <Field label="Livrabile pe lună"><Input type="number" placeholder="8" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
+          <Field label="Livrabile pe lună"><Input type="number" inputMode="numeric" placeholder="8" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} /></Field>
         </div>
       )}
 

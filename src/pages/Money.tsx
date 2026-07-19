@@ -333,7 +333,7 @@ function Yanis({ money }: { money: MoneyApi }) {
         <input type="date" value={qDate} onChange={(e) => setQDate(e.target.value)} className="h-9 w-full rounded-lg border border-input bg-card px-2 text-sm ring-focus sm:w-36" />
         <input value={qCar} onChange={(e) => setQCar(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="Mașină (ex. VW Golf 2018)" className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />
         <div className="flex items-center gap-2">
-          <input type="number" inputMode="numeric" value={qComm} onChange={(e) => setQComm(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="comision" className="h-9 w-28 rounded-lg border border-input bg-card px-2 text-right text-sm ring-focus" />
+          <input type="number" inputMode="decimal" enterKeyHint="done" value={qComm} onChange={(e) => setQComm(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") quickAdd(); }} placeholder="comision" className="h-9 w-28 rounded-lg border border-input bg-card px-2 text-right text-sm ring-focus" />
           <Toggle on={qSold} onToggle={() => setQSold((s) => !s)} onLabel="Vândută" offLabel="Nevândută" />
           <Button size="sm" variant="primary" onClick={quickAdd}><Plus className="h-4 w-4" /> Adaugă</Button>
         </div>
@@ -371,7 +371,7 @@ function Buckets({ money }: { money: MoneyApi }) {
           <Toggle on={dir === 1} onToggle={() => setDir((d) => (d === 1 ? -1 : 1))} onLabel="Intrare" offLabel="Ieșire" />
           <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Descriere (ex. plată geomar)" className="h-9 flex-1 rounded-lg border border-input bg-card px-2 text-sm ring-focus" />
           <div className="flex items-center gap-2">
-            <input type="number" inputMode="numeric" value={amt} onChange={(e) => setAmt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEntry(); }} placeholder="sumă" className="h-9 w-24 rounded-lg border border-input bg-card px-2 text-right text-sm ring-focus" />
+            <input type="number" inputMode="decimal" enterKeyHint="done" value={amt} onChange={(e) => setAmt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addEntry(); }} placeholder="sumă" className="h-9 w-24 rounded-lg border border-input bg-card px-2 text-right text-sm ring-focus" />
             <Button size="sm" variant="primary" onClick={addEntry}><Plus className="h-4 w-4" /> Adaugă</Button>
           </div>
         </div>
