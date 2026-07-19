@@ -31,7 +31,7 @@ function urlB64ToUint8Array(base64: string): Uint8Array {
 }
 
 // Subscribe this device (if needed) and store the subscription for the agency.
-export async function ensurePushSubscription(agencyId: string): Promise<{ error?: string }> {
+export async function ensurePushSubscription(agencyId: string): Promise<{ error?: string; count?: number }> {
   if (!isPushSupported()) return { error: "Dispozitivul nu acceptă notificări push." };
   if (!supabase) return { error: "Serviciul nu este configurat." };
   if (!agencyId) return { error: "Nicio agenție selectată." };
@@ -59,16 +59,19 @@ export async function ensurePushSubscription(agencyId: string): Promise<{ error?
     const auth = json.keys?.auth;
     if (!endpoint || !p256dh || !auth) return { error: "Abonamentul de notificări este incomplet." };
 
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
     const profileId = userData.user?.id;
-    if (!profileId) return { error: "Nu ești autentificat." };
+    if (userErr) return { error: "Sesiune: " + userErr.message };
+    if (!profileId) return { error: "Nu ești autentificat (fără sesiune)." };
 
-    const { error } = await supabase.from("push_subscriptions").upsert(
+    const { data: written, error } = await supabase.from("push_subscriptions").upsert(
       { profile_id: profileId, agency_id: agencyId, endpoint, p256dh, auth, user_agent: navigator.userAgent },
       { onConflict: "endpoint" },
-    );
+    ).select("id");
     if (error) return { error: error.message };
-    return {};
+    // The write returned no row → RLS accepted nothing (silent drop). Surface it.
+    if (!written || written.length === 0) return { error: "Scriere goală (RLS/agenție). agency=" + agencyId.slice(0, 8) };
+    return { count: written.length };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Nu s-au putut activa notificările." };
   }

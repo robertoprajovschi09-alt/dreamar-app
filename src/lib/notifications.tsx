@@ -217,7 +217,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       return;
     }
     persistSettings({ ...settings, push: true });
-    toast({ tone: "success", title: "Notificările push sunt active pe telefonul ăsta." });
+    toast({ tone: "success", title: "Notificările push sunt active pe telefonul ăsta.", description: `Dispozitiv înregistrat (${res.count ?? 0}).` });
   }, [settings, isIOS, currentAgency.id, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const firedRef = useRef<string>(lsGet<string>(K.pushFired, ""));
