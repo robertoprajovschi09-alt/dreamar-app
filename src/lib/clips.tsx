@@ -2,6 +2,16 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { supabase } from "./supabase";
 import { useWorkspace } from "./workspace";
 import { useClients } from "./clients";
+import { useToast } from "./toast";
+
+// Deferred-delete window. Slightly longer than the toast's action lifetime
+// (~5.2s) so the real DELETE only runs once "Anulează" is no longer offered.
+const UNDO_MS = 5500;
+function insertAt<T>(arr: T[], index: number, item: T): T[] {
+  const next = arr.slice();
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, item);
+  return next;
+}
 
 /*
  * The clip - the central object of the app. A single 6-state pipeline is the one
@@ -85,6 +95,8 @@ type ClipsCtx = {
   createClip: (input: NewClipInput) => Promise<{ error?: string; id?: string }>;
   updateClip: (id: string, patch: Partial<Omit<Clip, "id" | "clientName">>) => Promise<{ error?: string }>;
   deleteClip: (id: string) => Promise<{ error?: string }>;
+  // Optimistic delete with a 5s "Anulează" window; the real DELETE runs on expiry.
+  deleteClipWithUndo: (id: string) => void;
   batchCreate: (clientId: string | null, state: ClipState, count: number, titlePrefix: string) => Promise<{ error?: string }>;
 };
 
@@ -111,6 +123,7 @@ function mapRow(r: any): Clip {
 export function ClipsProvider({ children }: { children: ReactNode }) {
   const { live, currentAgency, agencyReady } = useWorkspace();
   const { clients } = useClients();
+  const { push: toast } = useToast();
   const agencyId = currentAgency.id;
   const agencyRef = useRef(agencyId);
   agencyRef.current = agencyId;
@@ -162,7 +175,12 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
   }, [live, agencyId, reload, clientName]);
 
   const updateClip = useCallback(async (id: string, patch: Partial<Omit<Clip, "id" | "clientName">>) => {
-    setClips((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch, clientName: patch.clientId !== undefined ? clientName(patch.clientId) : c.clientName } : c)));
+    let previous: Clip | undefined;
+    setClips((prev) => prev.map((c) => {
+      if (c.id !== id) return c;
+      previous = c; // capture pre-edit state for rollback
+      return { ...c, ...patch, clientName: patch.clientId !== undefined ? clientName(patch.clientId) : c.clientName };
+    }));
     if (!live || !supabase) return {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db: any = {};
@@ -177,9 +195,14 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     if (patch.notes !== undefined) db.notes = patch.notes;
     if (patch.finalLink !== undefined) db.final_link = patch.finalLink || null;
     const { error } = await supabase.from("clips").update(db).eq("id", id);
-    if (error) { console.error("[clips] update failed:", error.message); return { error: error.message }; }
+    if (error) {
+      console.error("[clips] update failed:", error.message);
+      if (previous) setClips((prev) => prev.map((c) => (c.id === id ? previous! : c))); // roll back the optimistic edit
+      toast({ tone: "danger", title: "Nu s-a salvat. Încearcă din nou." });
+      return { error: error.message };
+    }
     return {};
-  }, [live, clientName]);
+  }, [live, clientName, toast]);
 
   const deleteClip = useCallback(async (id: string) => {
     setClips((prev) => prev.filter((c) => c.id !== id));
@@ -188,6 +211,31 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
     if (error) return { error: error.message };
     return {};
   }, [live]);
+
+  // Hide now, show an "Anulează" toast, and only run the real DELETE once the
+  // window passes. Lives in the provider so the timer survives navigation.
+  const deleteClipWithUndo = useCallback((id: string) => {
+    const at = clips.findIndex((c) => c.id === id);
+    const removed = clips[at];
+    if (!removed) return;
+    setClips((prev) => prev.filter((c) => c.id !== id));
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      if (live && supabase) {
+        const { error } = await supabase.from("clips").delete().eq("id", id);
+        if (error) {
+          console.error("[clips] delete failed:", error.message);
+          setClips((prev) => insertAt(prev, at, removed));
+          toast({ tone: "danger", title: "Nu s-a putut șterge clipul. A revenit." });
+        }
+      }
+    }, UNDO_MS);
+    toast({
+      tone: "warning", title: "Clip șters",
+      action: { label: "Anulează", run: () => { cancelled = true; window.clearTimeout(timer); setClips((prev) => insertAt(prev, at, removed)); } },
+    });
+  }, [clips, live, toast]);
 
   const batchCreate = useCallback(async (clientId: string | null, state: ClipState, count: number, titlePrefix: string) => {
     const n = Math.max(1, Math.min(50, Math.floor(count)));
@@ -213,7 +261,7 @@ export function ClipsProvider({ children }: { children: ReactNode }) {
   }, [live, agencyId, reload, clientName]);
 
   return (
-    <Ctx.Provider value={{ clips, loading, live, reload, createClip, updateClip, deleteClip, batchCreate }}>
+    <Ctx.Provider value={{ clips, loading, live, reload, createClip, updateClip, deleteClip, deleteClipWithUndo, batchCreate }}>
       {children}
     </Ctx.Provider>
   );

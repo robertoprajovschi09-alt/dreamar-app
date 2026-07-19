@@ -20,7 +20,7 @@ export const needsDate = (s: ClipState) => s === "scheduled" || s === "posted";
 export const canSetFilmDate = (s: ClipState) => s === "idea" || s === "to_film" || s === "filmed";
 
 export default function Pipeline() {
-  const { clips, loading, updateClip, deleteClip, batchCreate } = useClips();
+  const { clips, loading, updateClip, deleteClipWithUndo, batchCreate } = useClips();
   const { clients, loading: lc } = useClients();
   const { push } = useToast();
   const isMobile = useIsMobile();
@@ -109,7 +109,7 @@ export default function Pipeline() {
 
       <ClipEditor clip={editing} clients={clients} onClose={() => setEditId(null)}
         onSave={(patch) => { if (editing) { void updateClip(editing.id, patch); push({ tone: "success", title: "Clip salvat" }); } setEditId(null); }}
-        onDelete={() => { if (editing) { void deleteClip(editing.id); push({ tone: "warning", title: "Clip șters", description: editing.title }); } setEditId(null); }} />
+        onDelete={() => { if (editing) deleteClipWithUndo(editing.id); setEditId(null); }} />
     </>
   );
 }

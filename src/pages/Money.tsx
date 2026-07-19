@@ -110,6 +110,7 @@ function Block({ icon: Icon, tone, title, right, children }: { icon: typeof Wall
 /* ── 1 · Încasări luna curentă ───────────────────────────────────────────── */
 function Collections({ money, clients }: { money: MoneyApi; clients: Client[] }) {
   const { collections, overdueCollections, updateCollection, removeCollection, addCollection, generateFromRetainers } = money;
+  const { push } = useToast();
   const isMobile = useIsMobile();
   const nameOf = useMemo(() => { const m = new Map(clients.map((c) => [c.id, c.name] as const)); return (id: string | null) => (id ? m.get(id) ?? "Client" : "Fără client"); }, [clients]);
   const rows = [...collections].sort((a, b) => nameOf(a.clientId).localeCompare(nameOf(b.clientId)) || a.dueDay - b.dueDay);
@@ -155,7 +156,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
                   {overdueLabel}
                 </div>
                 <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
-                <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => removeCollection(r.id, push)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <NumInput value={r.amount} onCommit={(n) => void updateCollection(r.id, { amount: n })} className="w-28 text-right" />
@@ -174,7 +175,7 @@ function Collections({ money, clients }: { money: MoneyApi; clients: Client[] })
               <span className="text-xs text-muted-foreground">ziua</span>
               <NumInput value={r.dueDay} onCommit={(n) => void updateCollection(r.id, { dueDay: Math.min(31, Math.max(1, n)) })} className="w-14 text-center" />
               <Toggle on={r.collected} onToggle={() => void updateCollection(r.id, { collected: !r.collected })} onLabel="Încasat" offLabel="Neîncasat" />
-              <button onClick={() => void removeCollection(r.id)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => removeCollection(r.id, push)} aria-label="Șterge" className="text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
             </div>
           );
         })
@@ -293,7 +294,7 @@ function Yanis({ money }: { money: MoneyApi }) {
             <div className="flex items-center gap-2">
               <span className="min-w-0 flex-1"><TextInput value={d.car} onCommit={(s) => void updateDeal(d.id, { car: s })} placeholder="Mașină - ex. VW Golf 2018" /></span>
               <span className="shrink-0 font-display text-base font-800">{lei(total(d))}</span>
-              <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
+              <button onClick={() => removeDeal(d.id, push)} aria-label="Șterge" className="shrink-0 text-muted-foreground transition hover:text-danger"><Trash2 className="h-4 w-4" /></button>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
               <label className="block text-[11px] font-700 text-muted-foreground">Comision<NumInput value={d.commission} onCommit={(n) => void updateDeal(d.id, { commission: n })} className="mt-0.5 block w-full text-right" /></label>
@@ -322,7 +323,7 @@ function Yanis({ money }: { money: MoneyApi }) {
                 <span className="w-20"><NumInput value={d.commission} onCommit={(n) => void updateDeal(d.id, { commission: n })} className="w-full text-right" /></span>
                 <span className="w-20"><NumInput value={d.markup} onCommit={(n) => void updateDeal(d.id, { markup: n })} className="w-full text-right" /></span>
                 <span className="grid w-16 place-items-center"><Toggle on={d.paid} onToggle={() => void updateDeal(d.id, { paid: !d.paid })} onLabel="Da" offLabel="Nu" /></span>
-                <button onClick={() => void removeDeal(d.id)} aria-label="Șterge" className="w-6 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                <button onClick={() => removeDeal(d.id, push)} aria-label="Șterge" className="w-6 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
           </div>
@@ -344,6 +345,7 @@ function Yanis({ money }: { money: MoneyApi }) {
 /* ── 4 · Împărțirea banilor ───────────────────────────────────────────────── */
 function Buckets({ money }: { money: MoneyApi }) {
   const { settings, saveSettings, tampon, addTamponEntry, removeTamponEntry } = money;
+  const { push } = useToast();
   const [desc, setDesc] = useState("");
   const [amt, setAmt] = useState("");
   const [dir, setDir] = useState<1 | -1>(1);
@@ -381,7 +383,7 @@ function Buckets({ money }: { money: MoneyApi }) {
               <span className="w-12 shrink-0 text-xs text-muted-foreground">{fmtDay(t.date)}</span>
               <span className="min-w-0 flex-1 truncate text-sm">{t.description}</span>
               <span className={cn("shrink-0 text-sm font-700", t.amount >= 0 ? "text-success" : "text-danger")}>{t.amount >= 0 ? "+" : "−"}{lei(Math.abs(t.amount))}</span>
-              <button onClick={() => void removeTamponEntry(t.id)} aria-label="Șterge" className="shrink-0 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
+              <button onClick={() => removeTamponEntry(t.id, push)} aria-label="Șterge" className="shrink-0 text-muted-foreground opacity-0 transition hover:text-danger group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           ))}
         </div>

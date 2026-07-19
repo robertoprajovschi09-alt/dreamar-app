@@ -8,7 +8,7 @@ import { useClients } from "@/lib/clients";
 import { useToast } from "@/lib/toast";
 import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Clapperboard, Layers, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clapperboard, Layers, Plus, X } from "lucide-react";
 import { BatchModal, DateModal, ClipEditor } from "@/pages/Pipeline";
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -29,7 +29,7 @@ const NO_CLIENT = "__none__";
 const NO_CLIENT_CLIENT = { id: NO_CLIENT, name: "Fără client", billingType: "retainer" } as unknown as Client;
 
 export function PipelineMobile() {
-  const { clips, updateClip, deleteClip, createClip, batchCreate } = useClips();
+  const { clips, updateClip, deleteClipWithUndo, createClip, batchCreate } = useClips();
   const { clients } = useClients();
   const { push } = useToast();
   const [sp] = useSearchParams();
@@ -41,7 +41,6 @@ export function PipelineMobile() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchPrefill, setBatchPrefill] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
-  const [delTarget, setDelTarget] = useState<Clip | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
   const openBatch = (clientId: string | null) => { setBatchPrefill(clientId); setBatchOpen(true); };
   // The synthetic "Fără client" id must never reach a client prefill (it is not a real client).
@@ -83,19 +82,11 @@ export function PipelineMobile() {
     haptic();
     push({ tone: "success", title: "Mutat în Programat", action: { label: "Anulează", run: () => updateClip(clip.id, { state: prevState, scheduledDate: prevDate }) } });
   }
-  function doDelete() {
-    if (!delTarget) return;
-    const c = delTarget;
-    setDelTarget(null);
-    void deleteClip(c.id);
-    push({ tone: "warning", title: "Clip șters", description: c.title });
-  }
-
   return (
     <>
       {openId && openClient ? (
         <Level2 key={openId} client={openClient} clips={clientClips} onBack={() => setOpenId(null)}
-          onAdvance={advanceClip} onDelete={setDelTarget} onOpenDetail={(id) => setEditId(id)} onBatch={() => openBatch(prefillClientId)} />
+          onAdvance={advanceClip} onDelete={(c) => deleteClipWithUndo(c.id)} onOpenDetail={(id) => setEditId(id)} onBatch={() => openBatch(prefillClientId)} />
       ) : (
         <Level1 clients={clients} clips={clips} onOpen={setOpenId} onBatch={openBatch} />
       )}
@@ -127,7 +118,7 @@ export function PipelineMobile() {
       )}
 
       <NewClipModal open={newOpen} prefillClient={prefillClientId} clients={clients} onClose={() => setNewOpen(false)}
-        onCreate={(input) => { void createClip(input); push({ tone: "success", title: "Clip creat" }); }} />
+        onCreate={async (input) => { const res = await createClip(input); if (res?.error) push({ tone: "danger", title: "Nu s-a putut crea clipul." }); else push({ tone: "success", title: "Clip creat" }); }} />
 
       <BatchModal open={batchOpen} onClose={() => setBatchOpen(false)} clients={clients} prefillClient={batchPrefill}
         onCreate={async (clientId, state, count, prefix) => {
@@ -140,12 +131,7 @@ export function PipelineMobile() {
 
       <ClipEditor clip={editing} clients={clients} onClose={() => setEditId(null)}
         onSave={(patch) => { if (editing) { void updateClip(editing.id, patch); push({ tone: "success", title: "Clip salvat" }); } setEditId(null); }}
-        onDelete={() => { if (editing) { void deleteClip(editing.id); push({ tone: "warning", title: "Clip șters", description: editing.title }); } setEditId(null); }} />
-
-      <Modal open={delTarget !== null} onClose={() => setDelTarget(null)} title="Ștergi clipul?" subtitle={delTarget?.title || undefined} size="sm"
-        footer={<><Button variant="ghost" onClick={() => setDelTarget(null)}>Anulează</Button><Button variant="danger" className="ml-auto" onClick={doDelete}><Trash2 className="h-4 w-4" /> Șterge</Button></>}>
-        <p className="text-sm text-muted-foreground">Clipul se șterge definitiv din pipeline.</p>
-      </Modal>
+        onDelete={() => { if (editing) deleteClipWithUndo(editing.id); setEditId(null); }} />
     </>
   );
 }

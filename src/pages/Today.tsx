@@ -8,6 +8,7 @@ import { useWorkspace } from "@/lib/workspace";
 import { useClips, type Clip } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useMoney } from "@/lib/money";
+import { useToast } from "@/lib/toast";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,14 @@ export default function Today() {
   const clipsCtx = useClips();
   const { clients, loading: lc } = useClients();
   const money = useMoney();
+  const { push } = useToast();
+
+  // Create a clip and only report the outcome after the insert resolves.
+  const createClip = async (input: Parameters<typeof clipsCtx.createClip>[0], successTitle?: string) => {
+    const res = await clipsCtx.createClip(input);
+    if (res?.error) push({ tone: "danger", title: "Nu s-a putut crea clipul." });
+    else if (successTitle) push({ tone: "success", title: successTitle });
+  };
 
   const firstName = profile.name.trim().split(/\s+/)[0] || "prietene";
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? "Bună dimineața" : h < 18 ? "Bună ziua" : "Bună seara"; })();
@@ -59,9 +68,9 @@ export default function Today() {
         <FilmQueue
           clips={clipsCtx.clips}
           clients={clients}
-          onCreate={(clientId, title) => void clipsCtx.createClip({ clientId, title, state: "to_film" })}
+          onCreate={(clientId, title) => void createClip({ clientId, title, state: "to_film" })}
           onFilmed={(id) => void clipsCtx.updateClip(id, { state: "filmed" })}
-          onDelete={(id) => void clipsCtx.deleteClip(id)}
+          onDelete={(id) => clipsCtx.deleteClipWithUndo(id)}
         />
         {(day === 2 || day === 3) && <TulceaRoute day={day} />}
       </div>
@@ -69,8 +78,8 @@ export default function Today() {
       <QuickAdd
         clients={clients}
         mobile={isMobile}
-        onCreateClip={(input) => void clipsCtx.createClip(input)}
-        onAddShot={(desc, clientId) => void clipsCtx.createClip({ clientId, title: desc, state: "to_film" })}
+        onCreateClip={(input) => void createClip(input, "Clip creat")}
+        onAddShot={(desc, clientId) => void createClip({ clientId, title: desc, state: "to_film" })}
         onAddDeal={(init) => void money.addDeal(init)}
         onNewClient={openNewClient}
       />

@@ -37,6 +37,17 @@ function lsSet(key: string, v: unknown) { try { localStorage.setItem(key, JSON.s
 let seq = 0;
 const newId = () => `demo-${++seq}-${Date.now()}`;
 
+// Toast push signature (kept local so money.ts stays free of React-context deps).
+type ToastPush = (t: { tone: "success" | "info" | "warning" | "danger"; title: string; description?: string; action?: { label: string; run: () => void } }) => void;
+// Deferred-delete window; longer than the toast action lifetime so the real
+// DELETE only fires once "Anulează" is gone.
+const UNDO_MS = 5500;
+function insertAt<T>(arr: T[], index: number, item: T): T[] {
+  const next = arr.slice();
+  next.splice(Math.min(Math.max(index, 0), next.length), 0, item);
+  return next;
+}
+
 export function useMoney() {
   const { live, currentAgency, agencyReady } = useWorkspace();
   const agencyId = currentAgency.id;
@@ -127,10 +138,26 @@ export function useMoney() {
       await supabase.from("collections").update(db).eq("id", id);
     }
   }, [live]); // eslint-disable-line react-hooks/exhaustive-deps
-  const removeCollection = useCallback(async (id: string) => {
-    setCollections((prev) => { const next = prev.filter((c) => c.id !== id); if (!live) persistDemoCollections(next); return next; });
-    if (live && supabase) await supabase.from("collections").delete().eq("id", id);
-  }, [live]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Optimistic delete + "Anulează" toast; the real DELETE (and demo persist) run
+  // only once the window passes. Restores the row on undo or on a failed delete.
+  const removeCollection = useCallback((id: string, push: ToastPush) => {
+    const at = collections.findIndex((c) => c.id === id);
+    const item = collections[at];
+    if (!item) return;
+    setCollections((prev) => prev.filter((c) => c.id !== id));
+    let cancelled = false;
+    const restore = () => setCollections((prev) => insertAt(prev, at, item));
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      if (live && supabase) {
+        const { error } = await supabase.from("collections").delete().eq("id", id);
+        if (error) { restore(); push({ tone: "danger", title: "Nu s-a putut șterge. A revenit." }); return; }
+      } else {
+        setCollections((prev) => { persistDemoCollections(prev); return prev; });
+      }
+    }, UNDO_MS);
+    push({ tone: "warning", title: "Încasare ștearsă", action: { label: "Anulează", run: () => { cancelled = true; window.clearTimeout(timer); restore(); } } });
+  }, [collections, live]); // eslint-disable-line react-hooks/exhaustive-deps
   // Add one row per retainer client that has no row this month yet.
   const generateFromRetainers = useCallback(async (clients: { id: string; billingType?: string; retainer: number }[]) => {
     const have = new Set(collections.map((c) => c.clientId));
@@ -163,10 +190,24 @@ export function useMoney() {
       await supabase.from("yanis_deals").update(db).eq("id", id);
     }
   }, [live]);
-  const removeDeal = useCallback(async (id: string) => {
-    setDeals((prev) => { const next = prev.filter((d) => d.id !== id); if (!live) lsSet(K.deals, next); return next; });
-    if (live && supabase) await supabase.from("yanis_deals").delete().eq("id", id);
-  }, [live]);
+  const removeDeal = useCallback((id: string, push: ToastPush) => {
+    const at = deals.findIndex((d) => d.id === id);
+    const item = deals[at];
+    if (!item) return;
+    setDeals((prev) => prev.filter((d) => d.id !== id));
+    let cancelled = false;
+    const restore = () => setDeals((prev) => insertAt(prev, at, item));
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      if (live && supabase) {
+        const { error } = await supabase.from("yanis_deals").delete().eq("id", id);
+        if (error) { restore(); push({ tone: "danger", title: "Nu s-a putut șterge. A revenit." }); return; }
+      } else {
+        setDeals((prev) => { lsSet(K.deals, prev); return prev; });
+      }
+    }, UNDO_MS);
+    push({ tone: "warning", title: "Rând șters", action: { label: "Anulează", run: () => { cancelled = true; window.clearTimeout(timer); restore(); } } });
+  }, [deals, live]);
 
   // ── Tampon entries (also adjust the tampon balance) ──────────────────────────
   const addTamponEntry = useCallback(async (description: string, amount: number) => {
@@ -180,11 +221,26 @@ export function useMoney() {
     }
     await saveSettings({ tampon: settings.tampon + amount });
   }, [live, agencyId, settings.tampon, saveSettings]);
-  const removeTamponEntry = useCallback(async (id: string) => {
-    const entry = tampon.find((t) => t.id === id);
-    setTampon((prev) => { const next = prev.filter((t) => t.id !== id); if (!live) lsSet(K.tampon, next); return next; });
-    if (live && supabase) await supabase.from("tampon_entries").delete().eq("id", id);
-    if (entry) await saveSettings({ tampon: settings.tampon - entry.amount });
+  const removeTamponEntry = useCallback((id: string, push: ToastPush) => {
+    const at = tampon.findIndex((t) => t.id === id);
+    const item = tampon[at];
+    if (!item) return;
+    const balanceBefore = settings.tampon;
+    // Hide the row and adjust the balance instantly so the UI stays consistent.
+    setTampon((prev) => prev.filter((t) => t.id !== id));
+    void saveSettings({ tampon: balanceBefore - item.amount });
+    let cancelled = false;
+    const restore = () => { setTampon((prev) => insertAt(prev, at, item)); void saveSettings({ tampon: balanceBefore }); };
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      if (live && supabase) {
+        const { error } = await supabase.from("tampon_entries").delete().eq("id", id);
+        if (error) { restore(); push({ tone: "danger", title: "Nu s-a putut șterge. A revenit." }); return; }
+      } else {
+        setTampon((prev) => { lsSet(K.tampon, prev); return prev; });
+      }
+    }, UNDO_MS);
+    push({ tone: "warning", title: "Intrare ștearsă", action: { label: "Anulează", run: () => { cancelled = true; window.clearTimeout(timer); restore(); } } });
   }, [live, tampon, settings.tampon, saveSettings]);
 
   // ── Invoices (data prep only — the firm issues the fiscal invoice elsewhere) ──

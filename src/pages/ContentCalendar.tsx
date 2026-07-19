@@ -39,7 +39,7 @@ export default function ContentCalendar() {
 export function CalendarView({ lockedClientId }: { lockedClientId?: string }) {
   const embedded = !!lockedClientId;
   const { push } = useToast();
-  const { clips, loading, updateClip, deleteClip } = useClips();
+  const { clips, loading, updateClip, deleteClipWithUndo } = useClips();
   const { clients } = useClients();
 
   // Build the two entry streams from the clips.
@@ -249,7 +249,7 @@ export function CalendarView({ lockedClientId }: { lockedClientId?: string }) {
 
       <ClipEditor clip={selected} clients={clients} onClose={() => setSelectedId(null)}
         onSave={(patch) => { if (selected) { void updateClip(selected.id, patch); push({ tone: "success", title: "Clip salvat" }); } setSelectedId(null); }}
-        onDelete={() => { if (selected) { void deleteClip(selected.id); push({ tone: "warning", title: "Clip șters", description: selected.title }); } setSelectedId(null); }} />
+        onDelete={() => { if (selected) deleteClipWithUndo(selected.id); setSelectedId(null); }} />
     </>
   );
 }
