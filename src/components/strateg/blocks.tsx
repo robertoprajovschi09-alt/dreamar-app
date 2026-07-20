@@ -49,6 +49,26 @@ export function parseSegments(content: string): Segment[] {
   return out;
 }
 
+// Streaming-safe parse: complete fenced blocks become segments as usual, but an
+// UNCLOSED fence at the tail is cut off and reported via `open`, so raw JSON /
+// ``` guards never hit the screen mid-stream. Stray trailing backticks (a fence
+// arriving character by character) are hidden too.
+export function parseStreaming(content: string): { segments: Segment[]; open: "actiuni" | "bloc" | null } {
+  // Fences don't nest: walk all ``` delimiters; odd count = last one opens a block.
+  const re = /```(\w*)/g;
+  let open = false, openStart = -1, openLabel = "";
+  for (const m of content.matchAll(re)) {
+    if (!open) { open = true; openStart = m.index ?? 0; openLabel = m[1] || ""; }
+    else { open = false; openStart = -1; openLabel = ""; }
+  }
+  if (open && openStart >= 0) {
+    return { segments: parseSegments(content.slice(0, openStart)), open: openLabel === "actiuni" ? "actiuni" : "bloc" };
+  }
+  const tail = content.match(/`{1,2}$/); // partial fence still streaming in
+  const clean = tail ? content.slice(0, content.length - tail[0].length) : content;
+  return { segments: parseSegments(clean), open: null };
+}
+
 const META: Record<BlockKind, { icon: LucideIcon; tag: string; action: string }> = {
   script: { icon: ScrollText, tag: "Script", action: "Salvează în Scripturi" },
   obiectiv: { icon: Target, tag: "Obiectiv", action: "Adaugă în Kill List" },
@@ -57,16 +77,19 @@ const META: Record<BlockKind, { icon: LucideIcon; tag: string; action: string }>
 
 export type SavedRef = { label: string; to: string };
 
-export function BlockCard({ kind, data, saved, busy, onSave }: {
+export function BlockCard({ kind, data, saved, busy, onSave, preview }: {
   kind: BlockKind;
   data: ScriptBlock & ObiectivBlock & ClipBlock;
   saved: SavedRef | null;
   busy: boolean;
   onSave: () => void;
+  // Mid-stream preview: same card, but the save action is inert until the
+  // message is final (nothing from `pending` may execute).
+  preview?: boolean;
 }) {
   const M = META[kind];
   return (
-    <div className="my-2 overflow-hidden rounded-xl border border-[hsl(var(--strateg))]/35 bg-[hsl(var(--strateg))]/[0.05]">
+    <div className="my-2 overflow-hidden rounded-xl border border-[hsl(var(--strateg))]/35 bg-[hsl(var(--strateg))]/[0.05] animate-scale-in motion-reduce:animate-none">
       <div className="flex items-center gap-2 border-b border-[hsl(var(--strateg))]/20 px-3 py-2">
         <M.icon className="h-4 w-4 text-[hsl(var(--strateg))]" />
         <span className="text-[11px] font-800 uppercase tracking-wide text-[hsl(var(--strateg))]">{M.tag}</span>
@@ -90,7 +113,7 @@ export function BlockCard({ kind, data, saved, busy, onSave }: {
             <Link to={saved.to} className="ml-1 text-[hsl(var(--strateg))] underline">Deschide</Link>
           </span>
         ) : (
-          <button onClick={onSave} disabled={busy}
+          <button onClick={preview ? undefined : onSave} disabled={busy || preview}
             className={cn("rounded-lg bg-[hsl(var(--strateg))] px-3 py-1.5 text-xs font-700 text-[hsl(var(--strateg-foreground))] transition hover:opacity-90 disabled:opacity-50")}>
             {M.action}
           </button>

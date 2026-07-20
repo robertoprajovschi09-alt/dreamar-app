@@ -4,9 +4,9 @@ import { useClients } from "@/lib/clients";
 import { useSnapshotBuilder } from "@/lib/strategSnapshot";
 import { useActionExecutor } from "@/lib/strategActions";
 import { streamStrateg, titleFrom, STRATEG_ROOMS, useStrategStore, type StrategConvo, type StrategMsg, type StrategRoom } from "@/lib/strateg";
-import { parseSegments, BlockCard, type BlockKind, type SavedRef, type ScriptBlock, type ObiectivBlock, type ClipBlock } from "./blocks";
+import { parseSegments, parseStreaming, BlockCard, type BlockKind, type SavedRef, type ScriptBlock, type ObiectivBlock, type ClipBlock } from "./blocks";
 import { ActionsCard } from "./ActionsCard";
-import { ArrowLeft, ArrowUp, Compass } from "lucide-react";
+import { ArrowLeft, ArrowUp, Compass, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
@@ -47,6 +47,7 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
   const convoRef = useRef<StrategConvo | null>(convo);
   const skipLoad = useRef<string | null>(null); // a convo we just created locally: don't clobber optimistic msgs
   const endRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streaming = pending !== null;
 
   useEffect(() => {
@@ -59,7 +60,29 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convo?.id]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs.length, pending]);
+  // Smart auto-scroll: follow the end of the thread ONLY while the user is near
+  // the bottom (the page scrolls on mobile). Scrolling up detaches; coming back
+  // within ~120px re-attaches. Passive listener, reads only — no layout writes.
+  const stickToEnd = useRef(true);
+  useEffect(() => {
+    const onScroll = () => {
+      const doc = document.documentElement;
+      stickToEnd.current = window.innerHeight + window.scrollY >= doc.scrollHeight - 120;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  useEffect(() => {
+    if (stickToEnd.current) endRef.current?.scrollIntoView({ block: "end" });
+  }, [msgs.length, pending]);
+
+  // Composer grows with its content up to max-h-32, then scrolls internally.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
+  }, [input]);
 
   const send = useCallback(async (raw: string) => {
     const text = raw.trim();
@@ -78,6 +101,7 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
       onCreated(c);
     }
     const userMsg = await store.addMessage(c.id, "user", text);
+    stickToEnd.current = true; // a fresh user message always scrolls to the end
     setMsgs((prev) => [...prev, userMsg]);
     setInput("");
     setPending(""); // "Strategul citește datele"
@@ -140,23 +164,23 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
 
       <div className="mt-4 flex-1 space-y-4">
         {msgs.map((m) => m.role === "user" ? (
-          <div key={m.id} className="flex justify-end">
+          <div key={m.id} className="flex justify-end animate-fade-in motion-reduce:animate-none">
             <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-muted px-3.5 py-2.5 text-sm">{m.content}</p>
           </div>
         ) : (
-          <div key={m.id} className="flex gap-2.5">
+          <div key={m.id} className="flex gap-2.5 animate-fade-in motion-reduce:animate-none">
             <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--strateg))]/12 text-[hsl(var(--strateg))]"><Compass className="h-4 w-4" /></span>
             <AssistantBody msgId={m.id} content={m.content} executor={executor} saved={saved} savingKey={savingKey} onSaveBlock={saveBlock} onApplied={onApplied} />
           </div>
         ))}
 
         {pending !== null && (
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5 animate-fade-in motion-reduce:animate-none">
             <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--strateg))]/12 text-[hsl(var(--strateg))]"><Compass className="h-4 w-4 animate-pulse" /></span>
             {pending === "" ? (
               <p className="py-1 text-sm text-muted-foreground">Strategul citește datele<span className="animate-pulse">…</span></p>
             ) : (
-              <p className="min-w-0 whitespace-pre-wrap text-sm leading-relaxed">{pending}</p>
+              <StreamingBody content={pending} />
             )}
           </div>
         )}
@@ -167,6 +191,7 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
 
       <div className="sticky bottom-[calc(5.25rem+env(safe-area-inset-bottom))] mt-4 flex items-end gap-2 rounded-2xl border border-border bg-card p-2 md:bottom-4">
         <textarea
+          ref={textareaRef}
           value={input} onChange={(e) => setInput(e.target.value)} rows={1}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(input); } }}
           placeholder={clientName ? `Întreabă despre ${clientName}…` : "Întreabă Strategul…"}
@@ -184,6 +209,32 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
 // Module-level (NOT nested in Conversation): a nested definition would get a new
 // component identity on every parent render, remounting ActionsCard and wiping
 // its checklist state mid-apply.
+// The reply while it streams: text renders live, a COMPLETE fenced block shows
+// as a non-interactive preview, and an open fence at the tail shows as an
+// animated placeholder. Raw ``` content never reaches the screen, and nothing
+// here can execute — interactivity exists only on the saved final message.
+function StreamingBody({ content }: { content: string }) {
+  const { segments, open } = parseStreaming(content);
+  return (
+    <div className="min-w-0 flex-1">
+      {segments.map((s, i) => {
+        if (s.kind === "text") return s.text.trim() ? <p key={i} className="whitespace-pre-wrap text-sm leading-relaxed">{s.text.trim()}</p> : null;
+        if (s.kind === "actiuni") return <StreamPlaceholder key={i} label="Strategul pregătește operațiile…" />;
+        return <BlockCard key={i} kind={s.kind} data={s.data as ScriptBlock & ObiectivBlock & ClipBlock} saved={null} busy={false} onSave={() => {}} preview />;
+      })}
+      {open !== null && <StreamPlaceholder label={open === "actiuni" ? "Strategul pregătește operațiile…" : "Strategul pregătește o propunere…"} />}
+    </div>
+  );
+}
+function StreamPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="my-2 flex items-center gap-2 rounded-xl border border-[hsl(var(--strateg))]/35 bg-[hsl(var(--strateg))]/[0.05] px-3 py-2.5 animate-scale-in motion-reduce:animate-none">
+      <ListChecks className="h-4 w-4 animate-pulse text-[hsl(var(--strateg))]" />
+      <span className="text-sm text-muted-foreground">{label}<span className="animate-pulse">…</span></span>
+    </div>
+  );
+}
+
 function AssistantBody({ msgId, content, executor, saved, savingKey, onSaveBlock, onApplied }: {
   msgId: string; content: string;
   executor: ReturnType<typeof useActionExecutor>;
