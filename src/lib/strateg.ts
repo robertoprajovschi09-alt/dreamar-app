@@ -125,7 +125,9 @@ export type StreamResult = { text: string; error?: string };
 // POST to the server proxy and consume its SSE stream. Only `content` deltas
 // arrive (the server strips reasoning). Errors come back as friendly text.
 export async function streamStrateg(opts: {
-  room: StrategRoom;
+  // "sugestii" is a server-side-only room (daily suggestions); it never creates
+  // a saved conversation, so it stays out of the StrategRoom union.
+  room: StrategRoom | "sugestii";
   messages: { role: "user" | "assistant"; content: string }[];
   snapshot: unknown;
   clientId?: string | null;

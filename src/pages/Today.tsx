@@ -10,11 +10,12 @@ import { useClips, type Clip } from "@/lib/clips";
 import { useClients } from "@/lib/clients";
 import { useMoney } from "@/lib/money";
 import { useToast } from "@/lib/toast";
+import { useStrategSuggestions } from "@/lib/strategSuggestions";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { Client } from "@/data/sample";
 import { cn } from "@/lib/utils";
 import {
-  Check, Clapperboard, Film, MapPin, Pencil, Plus, Send, Trash2, Video, X, type LucideIcon,
+  Check, Clapperboard, Compass, Film, MapPin, Pencil, Plus, RefreshCw, Send, Trash2, Video, X, type LucideIcon,
 } from "lucide-react";
 
 /*
@@ -81,6 +82,7 @@ export default function Today() {
       <PageHeader title={`${greeting}, ${firstName}`} subtitle={subtitle} help="azi" />
 
       <div className="space-y-3">
+        <StrategSuggests clients={clients} onOpen={(room, clientId, msg) => navigate(`/strateg?room=${room}&client=${clientId ?? ""}&msg=${encodeURIComponent(msg)}`)} />
         <PostsToday clips={clipsCtx.clips} onPost={markPosted} onOpen={setEditId} onPipeline={() => navigate("/pipeline")} />
         <ClipBuffer active={active} clips={clipsCtx.clips} onClient={(id) => navigate(`/pipeline?client=${id}`)} onNewClient={openNewClient} />
         <FilmQueue
@@ -133,6 +135,53 @@ function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: ()
   );
 }
 const countPill = (n: number | string) => <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-700 text-muted-foreground">{n}</span>;
+
+/* ── 0 · Strategul îți propune (daily suggestions, teal accent) ──────────── */
+// One card, at most 3 tappable suggestions, generated once per day (cached in
+// the hook). No items and not loading → the card simply doesn't render.
+function StrategSuggests({ clients, onOpen }: {
+  clients: { id: string; name: string }[];
+  onOpen: (room: string, clientId: string | null, msg: string) => void;
+}) {
+  const { items, loading, refresh, canRefresh, hideForToday } = useStrategSuggestions();
+  if (!loading && items.length === 0) return null;
+  // Resolve the suggestion's client NAME to an id (exact, case-insensitive).
+  const idFor = (name: string) => (name ? clients.find((c) => c.name.toLowerCase() === name.toLowerCase())?.id ?? null : null);
+  return (
+    <Panel className="overflow-hidden border-[hsl(var(--strateg))]/30 p-0">
+      <div className="flex items-center gap-2.5 px-4 py-3">
+        <Compass className="h-4 w-4 shrink-0 text-[hsl(var(--strateg))]" />
+        <p className="font-display text-sm font-800">Strategul îți propune</p>
+        <span className="ml-auto flex items-center gap-1">
+          {canRefresh && (
+            <button onClick={refresh} aria-label="Reîmprospătează sugestiile"
+              className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          )}
+          <button onClick={hideForToday} aria-label="Ascunde azi"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </span>
+      </div>
+      {loading && items.length === 0 ? (
+        <div className="space-y-2 border-t border-border/60 px-4 py-3">
+          <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+        </div>
+      ) : (
+        items.map((s, i) => (
+          <button key={i} onClick={() => onOpen(s.camera, idFor(s.client), s.mesaj)}
+            className="flex min-h-[44px] w-full items-center gap-3 border-t border-border/60 px-4 py-2.5 text-left transition hover:bg-[hsl(var(--strateg))]/[0.05]">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--strateg))]" />
+            <span className="min-w-0 flex-1 text-sm">{s.text}</span>
+          </button>
+        ))
+      )}
+    </Panel>
+  );
+}
 
 /* ── 1 · De postat azi ───────────────────────────────────────────────────── */
 // Today's Programat clips. Checking one moves it to Postat, so it leaves the

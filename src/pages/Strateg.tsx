@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader, Panel, Button } from "@/components/ui";
 import { Modal } from "@/components/overlay";
 import { useClients } from "@/lib/clients";
@@ -43,6 +44,23 @@ export default function Strateg() {
   const [view, setView] = useState<View>({ mode: "home" });
   const [pickFor, setPickFor] = useState<StrategRoom | null>(null); // client chips before scripturi/reincercat
   const [delTarget, setDelTarget] = useState<StrategConvo | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep link from a daily suggestion on Azi: ?room=..&client=<id>&msg=.. opens
+  // the draft view directly with the prepared message, then cleans the URL.
+  // Operations still confirm through ActionsCard — a suggestion executes nothing.
+  useEffect(() => {
+    const room = searchParams.get("room");
+    if (!room) return;
+    const valid: StrategRoom[] = ["analiza", "scripturi", "obiective", "reincercat", "brainstorm"];
+    if ((valid as string[]).includes(room)) {
+      const clientId = searchParams.get("client") || null;
+      const msg = searchParams.get("msg") || undefined;
+      setView({ mode: "draft", draft: { room: room as StrategRoom, clientId }, initialMessage: msg });
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const reports = store.convos.filter((c) => c.room === "analiza");
 

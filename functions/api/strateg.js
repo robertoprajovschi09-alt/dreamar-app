@@ -28,6 +28,7 @@ const ROOM_PARAMS = {
   obiective: { temperature: 0.5, max_tokens: 2048 },
   reincercat: { temperature: 0.5, max_tokens: 4096 },
   brainstorm: { temperature: 1.0, max_tokens: 4096 },
+  sugestii: { temperature: 0.4, max_tokens: 1500 },
 };
 
 // The strategist system prompt (STRATEG_SYSTEM_PROMPT overrides it if set).
@@ -51,6 +52,7 @@ Camerele în care lucrezi:
 - obiective: propui obiective măsurabile legate de cifrele din instantaneu, nu dorințe vagi.
 - reincercat: cauți în date ce merită refăcut sub altă formă: scripturi marcate Funcționează nefolosite recent, clipuri vechi la clienți cu rezultate slabe luna asta, unghiuri care au mers la un client și pot fi mutate la altul. Propui remake-uri ca blocuri clip sau script.
 - brainstorm: liber, dar ancorat în realitatea agenției din instantaneu.
+- sugestii: propui 2-3 acțiuni concrete pentru ziua curentă, bazate STRICT pe instantaneu: clipuri care stagnează, ce e de filmat azi, clienți fără nimic programat săptămâna asta. Răspunzi DOAR cu un bloc de cod cu eticheta sugestii: un array JSON de maxim 3 obiecte {"text":"propoziție scurtă, concretă, cu cifre","camera":"analiza|scripturi|obiective|reincercat|brainstorm","client":"numele clientului sau gol","mesaj":"mesajul cu care se deschide conversația"}. Nimic în afara blocului.
 
 Schema operațiilor pentru blocul actiuni (exact aceste câmpuri, nimic în plus):
 - {"op":"creeaza_clip","titlu":"...","client":"...","etapa":"Idee sau De filmat","zi_filmare":"opțional, YYYY-MM-DD"}
