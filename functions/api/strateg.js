@@ -95,12 +95,13 @@ async function getUser(request, env) {
 
 // Strategul is an INTERNAL endpoint. A client user (linked via client_users) is
 // explicitly rejected here — the AI, its data snapshot and its actions are never
-// for clients. We ask with the caller's own token (RLS lets them see only their
-// own client_users row); any row means "this is a client". Fail-closed on error.
-async function isClientUser(request, env) {
+// for clients. RLS also lets AGENCY MEMBERS see their clients' link rows, so the
+// query must filter to the caller's own profile_id — otherwise an owner with at
+// least one invited client would be misread as a client. Fail-closed on error.
+async function isClientUser(request, env, userId) {
   const auth = request.headers.get("Authorization");
   try {
-    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/client_users?select=id&limit=1`, {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/client_users?select=id&profile_id=eq.${encodeURIComponent(userId)}&limit=1`, {
       headers: { Authorization: auth, apikey: env.SUPABASE_ANON_KEY },
     });
     if (!res.ok) return true; // can't confirm they are NOT a client → deny
@@ -181,7 +182,7 @@ export async function onRequestPost(context) {
   if (!user) return jsonError(401, "Trebuie să fii autentificat.");
 
   // Internal endpoint: client-role users are rejected outright.
-  if (await isClientUser(request, env)) return jsonError(403, "Nu ai acces la Strateg.");
+  if (await isClientUser(request, env, user.id)) return jsonError(403, "Nu ai acces la Strateg.");
 
   if (!(await withinRateLimit(env, user.id))) {
     return jsonError(429, "Strategul are nevoie de o pauză scurtă. Încearcă din nou într-un minut.");
