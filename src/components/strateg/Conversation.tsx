@@ -64,16 +64,36 @@ export function Conversation({ convo, draft, store, initialMessage, onCreated, o
   // the bottom (the page scrolls on mobile). Scrolling up detaches; coming back
   // within ~120px re-attaches. Passive listener, reads only — no layout writes.
   const stickToEnd = useRef(true);
+  const touching = useRef(false); // finger down = never fight the user's gesture
   useEffect(() => {
     const onScroll = () => {
       const doc = document.documentElement;
       stickToEnd.current = window.innerHeight + window.scrollY >= doc.scrollHeight - 120;
     };
+    const onTouchStart = () => { touching.current = true; };
+    const onTouchEnd = () => { touching.current = false; };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+    };
   }, []);
+  // Coalesce follow-scrolls to ONE per animation frame. Tokens arrive many per
+  // frame; a synchronous scrollIntoView for each forces layout every time and
+  // makes the whole page stutter on the phone while the reply streams.
+  const scrollQueued = useRef(false);
   useEffect(() => {
-    if (stickToEnd.current) endRef.current?.scrollIntoView({ block: "end" });
+    if (scrollQueued.current) return;
+    scrollQueued.current = true;
+    requestAnimationFrame(() => {
+      scrollQueued.current = false;
+      if (stickToEnd.current && !touching.current) endRef.current?.scrollIntoView({ block: "end" });
+    });
   }, [msgs.length, pending]);
 
   // Composer grows with its content up to max-h-32, then scrolls internally.

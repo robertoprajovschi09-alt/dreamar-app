@@ -216,12 +216,15 @@ summary,
 }
 /* iOS zooms the whole page when focusing a control smaller than 16px.
    Force 16px up to 767px — the same breakpoint as the mobile shell
-   (src/lib/useIsMobile.ts), so every phone viewport is covered. */
+   (src/lib/useIsMobile.ts), so every phone viewport is covered.
+   !important: utility classes (text-sm etc.) have higher specificity than an
+   element selector and were re-shrinking fields (e.g. the Strateg composer),
+   which brought the focus zoom back. */
 @media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }
 
